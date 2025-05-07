@@ -1,0 +1,6 @@
+@CertEmpire_HostAddress = http://localhost:5273
+
+GET {{CertEmpire_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
