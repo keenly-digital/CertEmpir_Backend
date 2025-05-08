@@ -1,6 +1,6 @@
 ﻿namespace CertEmpire.Helpers.Enums
 {
-    public enum TaskStatus
+    public enum UserTaskStatus
     {
         Pending = 0,
         UnderReview = 1,

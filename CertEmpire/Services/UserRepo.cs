@@ -11,28 +11,36 @@ namespace CertEmpire.Services
     {
         public async Task<Response<string>> AddUser(AddUserRequest request)
         {
-            Response<string> response;
+            Response<string> response = new();
             if (request == null)
             {
                 response = new Response<string>(false, "Request can't be null", "", default);
             }
             else
             {
-                User user = new()
+                var checkUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+                if (checkUser != null)
                 {
-                    Email = request.Email,
-                    Password = request.Password,
-                    UserId = Guid.NewGuid()
-                };
-                var result = await _context.AddAsync(user);
-                if (result != null)
-                {
-                    response = new Response<string>(true, "User added successfully", "", default);
+                    
                 }
                 else
                 {
-                    response = new Response<string>(true, "Error while adding user.", "", default);
-                }
+                    User user = new()
+                    {
+                        Email = request.Email,
+                        Password = request.Password,
+                        UserId = Guid.NewGuid()
+                    };
+                    var result = await AddAsync(user);
+                    if (result != null)
+                    {
+                        response = new Response<string>(true, "User added successfully", "", default);
+                    }
+                    else
+                    {
+                        response = new Response<string>(true, "Error while adding user.", "", default);
+                    }
+                }   
             }
             return response;
         }
