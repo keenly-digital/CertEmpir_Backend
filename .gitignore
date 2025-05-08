@@ -1,0 +1,21 @@
+# Ignore Visual Studio temporary files, build results, and
+# user-specific files
+
+.vs/
+*.user
+*.suo
+*.cache
+*.log
+*.vspscc
+*.vssscc
+*.pdb
+*.obj
+*.exe
+*.dll
+*.vcxproj.user
+*.ncb
+*.sdf
+*.dbmdl
+*.bak
+*.zip
+*.vsidx
