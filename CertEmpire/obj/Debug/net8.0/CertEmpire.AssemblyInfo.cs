@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CertEmpire")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c883ffd8d6a93366e90d2a76a3c2f7ca16f9d0e4")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+909924353e0216047bc2405cccb71c7a7dd806c3")]
 [assembly: System.Reflection.AssemblyProductAttribute("CertEmpire")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CertEmpire")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
