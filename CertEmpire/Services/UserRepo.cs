@@ -21,7 +21,7 @@ namespace CertEmpire.Services
                 var checkUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
                 if (checkUser != null)
                 {
-                    
+                    response = new Response<string>(true, "User exist", "", default);
                 }
                 else
                 {
