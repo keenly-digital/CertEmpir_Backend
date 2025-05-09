@@ -35,22 +35,16 @@ namespace CertEmpire.Migrations
                 columns: table => new
                 {
                     QuestionId = table.Column<Guid>(type: "uuid", nullable: false),
-                    QuizId = table.Column<Guid>(type: "uuid", nullable: false),
+                    FileId = table.Column<Guid>(type: "uuid", nullable: false),
                     QuestionText = table.Column<string>(type: "text", nullable: true),
                     QuestionDescription = table.Column<string>(type: "text", nullable: true),
                     Options = table.Column<List<string>>(type: "text[]", nullable: false),
                     CorrectAnswerIndices = table.Column<List<int>>(type: "integer[]", nullable: false),
                     AnswerDescription = table.Column<string>(type: "text", nullable: true),
                     Explanation = table.Column<string>(type: "text", nullable: true),
-                    isMultiSelect = table.Column<bool>(type: "boolean", nullable: false),
-                    UserAnswerIndices = table.Column<List<int>>(type: "integer[]", nullable: true),
-                    IsAttempted = table.Column<bool>(type: "boolean", nullable: false),
                     questionImageURL = table.Column<string>(type: "text", nullable: false),
                     answerImageURL = table.Column<string>(type: "text", nullable: false),
-                    TimeTaken = table.Column<int>(type: "integer", nullable: true),
                     ShowAnswer = table.Column<bool>(type: "boolean", nullable: false),
-                    TopicId = table.Column<Guid>(type: "uuid", nullable: true),
-                    CaseStudyId = table.Column<Guid>(type: "uuid", nullable: true),
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
@@ -59,6 +53,26 @@ namespace CertEmpire.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Questions", x => x.QuestionId);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Reports",
+                columns: table => new
+                {
+                    ReportId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Type = table.Column<int>(type: "integer", nullable: false),
+                    TargetId = table.Column<int>(type: "integer", nullable: false),
+                    Reason = table.Column<string>(type: "text", nullable: true),
+                    Explanation = table.Column<string>(type: "text", nullable: true),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    LastModified = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Reports", x => x.ReportId);
                 });
 
             migrationBuilder.CreateTable(
@@ -157,6 +171,9 @@ namespace CertEmpire.Migrations
 
             migrationBuilder.DropTable(
                 name: "Questions");
+
+            migrationBuilder.DropTable(
+                name: "Reports");
 
             migrationBuilder.DropTable(
                 name: "TaskVotes");

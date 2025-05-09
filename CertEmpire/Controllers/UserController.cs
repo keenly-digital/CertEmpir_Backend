@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CertEmpire.Controllers
 {
+    [ApiController]
+    [Route("api/[controller]")]
     public class UserController(IUserRepo userRepo) : ControllerBase
     {
         private readonly IUserRepo _userRepo = userRepo;

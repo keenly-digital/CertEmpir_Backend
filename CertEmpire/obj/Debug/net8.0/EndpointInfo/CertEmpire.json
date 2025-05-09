@@ -5,7 +5,38 @@
     "version": "1.0"
   },
   "paths": {
-    "/PracticeOnline": {
+    "/api/Report/SubmitReport": {
+      "post": {
+        "tags": [
+          "Report"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportSubmissionDTO"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportSubmissionDTO"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportSubmissionDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Simulation/PracticeOnline": {
       "get": {
         "tags": [
           "Simulation"
@@ -27,7 +58,7 @@
         }
       }
     },
-    "/RegisterUser": {
+    "/api/User/RegisterUser": {
       "post": {
         "tags": [
           "User"
@@ -58,7 +89,7 @@
         }
       }
     },
-    "/Login": {
+    "/api/User/Login": {
       "post": {
         "tags": [
           "User"
@@ -89,7 +120,7 @@
         }
       }
     },
-    "/GetAllEmails": {
+    "/api/User/GetAllEmails": {
       "get": {
         "tags": [
           "User"
@@ -152,6 +183,40 @@
           }
         },
         "additionalProperties": false
+      },
+      "ReportSubmissionDTO": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ReportType"
+          },
+          "targetId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "explanation": {
+            "type": "string",
+            "nullable": true
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReportType": {
+        "enum": [
+          0,
+          1,
+          2
+        ],
+        "type": "integer",
+        "format": "int32"
       }
     }
   }

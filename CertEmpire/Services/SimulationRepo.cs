@@ -2,7 +2,10 @@
 using CertEmpire.DTOs.SimulationDTOs;
 using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
+using CertEmpire.Models;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using System.IO;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -23,22 +26,83 @@ namespace CertEmpire.Services
         public async Task<Response<ExamDTO>> PracticeOnline(Guid fileId)
         {
             Response<ExamDTO> response = new();
+            int questionOrder = 0;
             var fileInfo = await _context.UploadedFiles.FindAsync(fileId);
             if (fileInfo == null)
             {
-                response = new Response<ExamDTO>(true, "No file found.", "", default);
+                response = new Response<ExamDTO>(false, "No file found.", "", default);
             }
             else
             {
-                var result = await UploadPdfFromUrlToThirdPartyApiAsync(fileInfo.FilePath);
-                if(result == null)
+                // Check if the file is already processed
+                var existingFile = await _context.Questions.Where(x => x.FileId == fileInfo.FileId).ToListAsync();
+                if (existingFile.Count > 0)
                 {
-                    response = new Response<ExamDTO>(true, "No data found.", "", default);
+                    ExamDTO examDTO = new ExamDTO
+                    {
+                        ExamTitle = fileInfo.FileName,
+                        Questions = existingFile.Select(q => new QuestionObject
+                        {
+                            q = questionOrder++,
+                            id = q.Id,
+                            questionText = q.QuestionText ??"",
+                            questionDescription = q.QuestionDescription??"",
+                            options = q.Options,
+                            correctAnswerIndices = q.CorrectAnswerIndices,
+                            answerExplanation = q.Explanation ?? "",
+                            questionImageURL = q.questionImageURL,
+                            answerImageURL = q.answerImageURL
+                        }).ToList()
+                    };
+                   
+                    response = new Response<ExamDTO>(true, "Success", "", examDTO);
                 }
                 else
                 {
-                    var examDTO = await MapApiResponseToExamDTO(result, fileInfo.FileName);
-                    response = new Response<ExamDTO>(false, "Success", "", examDTO);
+                var result = await UploadPdfFromUrlToThirdPartyApiAsync(fileInfo.FilePath);
+                    if (result == null)
+                    {
+                        response = new Response<ExamDTO>(false, "No data found.", "", default);
+                    }
+                    else
+                    {
+                        var examDTO = await MapApiResponseToExamDTO(result, fileInfo.FileName);
+                        if (examDTO != null)
+                        {
+                            fileInfo.FileName = examDTO.ExamTitle;
+                            _context.UploadedFiles.Update(fileInfo);
+                            await _context.SaveChangesAsync();
+                            if (examDTO.Questions != null)
+                            {
+                                if (examDTO.Questions.Count > 0)
+                                {
+                                    foreach (var question in examDTO.Questions)
+                                    {
+                                        var questionEntity = new Question
+                                        {
+                                            QuestionId = Guid.NewGuid(),
+                                            QuestionText = question.questionText,
+                                            QuestionDescription = question.questionDescription,
+                                            Options = question.options,
+                                            CorrectAnswerIndices = question.correctAnswerIndices,
+                                            Explanation = question.answerExplanation,
+                                            FileId = fileInfo.FileId,
+                                            questionImageURL = question.questionImageURL,
+                                            answerImageURL = question.answerImageURL,
+                                            ShowAnswer = false
+                                        };
+                                        await _context.Questions.AddAsync(questionEntity);
+                                        await _context.SaveChangesAsync();
+                                    }
+                                }
+                            }
+                            response = new Response<ExamDTO>(true, "Success", "", examDTO);
+                        }
+                        else
+                        {
+                            response = new Response<ExamDTO>(false, "No data found.", "", default);
+                        }
+                    }
                 }
             }
             return response;
@@ -87,7 +151,7 @@ namespace CertEmpire.Services
                 Questions = new List<QuestionObject>()
             };
 
-            foreach (var questions in rootexam.FileContent)
+            foreach (var questions in rootexam.topics)
             {
                 var QuestionsList = questions.Value;
 
@@ -117,13 +181,8 @@ namespace CertEmpire.Services
                         questionDescription = "",
                         options = q.options,
                         correctAnswerIndices = correctAnswers,
-                        answerDescription = "",
                         answerExplanation = cleanedExplanation,
-                        isMultiSelect = correctAnswers.Count > 1,
-                        isAttempted = false,
-                        userAnswerIndices = null,
                         showAnswer = false,
-                        timeTaken = null,
                         questionImageURL = questionImageUrl ?? "",
                         answerImageURL = questionImageUrl ?? ""
                     };

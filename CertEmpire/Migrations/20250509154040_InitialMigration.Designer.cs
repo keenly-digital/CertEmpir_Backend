@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CertEmpire.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250508140027_InitialMigration")]
+    [Migration("20250509154040_InitialMigration")]
     partial class InitialMigration
     {
         /// <inheritdoc />
@@ -65,9 +65,6 @@ namespace CertEmpire.Migrations
                     b.Property<string>("AnswerDescription")
                         .HasColumnType("text");
 
-                    b.Property<Guid?>("CaseStudyId")
-                        .HasColumnType("uuid");
-
                     b.PrimitiveCollection<List<int>>("CorrectAnswerIndices")
                         .IsRequired()
                         .HasColumnType("integer[]");
@@ -78,14 +75,14 @@ namespace CertEmpire.Migrations
                     b.Property<string>("Explanation")
                         .HasColumnType("text");
 
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("IsAttempted")
-                        .HasColumnType("boolean");
 
                     b.Property<DateTime?>("LastModified")
                         .HasColumnType("timestamp with time zone");
@@ -100,27 +97,12 @@ namespace CertEmpire.Migrations
                     b.Property<string>("QuestionText")
                         .HasColumnType("text");
 
-                    b.Property<Guid>("QuizId")
-                        .HasColumnType("uuid");
-
                     b.Property<bool>("ShowAnswer")
                         .HasColumnType("boolean");
-
-                    b.Property<int?>("TimeTaken")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid?>("TopicId")
-                        .HasColumnType("uuid");
-
-                    b.PrimitiveCollection<List<int>>("UserAnswerIndices")
-                        .HasColumnType("integer[]");
 
                     b.Property<string>("answerImageURL")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<bool>("isMultiSelect")
-                        .HasColumnType("boolean");
 
                     b.Property<string>("questionImageURL")
                         .IsRequired()
@@ -129,6 +111,44 @@ namespace CertEmpire.Migrations
                     b.HasKey("QuestionId");
 
                     b.ToTable("Questions");
+                });
+
+            modelBuilder.Entity("CertEmpire.Models.Report", b =>
+                {
+                    b.Property<Guid>("ReportId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Explanation")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("LastModified")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("text");
+
+                    b.Property<int>("TargetId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("ReportId");
+
+                    b.ToTable("Reports");
                 });
 
             modelBuilder.Entity("CertEmpire.Models.ReviewTask", b =>

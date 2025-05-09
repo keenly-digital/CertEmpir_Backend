@@ -10,6 +10,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<IUserRepo, UserRepo>();
 builder.Services.AddScoped<ISimulationRepo, SimulationRepo>();
+builder.Services.AddScoped<IReportRepo, ReportRepo>();
+builder.Services.AddScoped<IUploadedFileRepo, UploadedFileRepo>();
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 builder.Services.AddSingleton<HttpClient>();
 builder.Services.AddControllers();

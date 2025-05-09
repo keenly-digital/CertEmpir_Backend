@@ -1,25 +1,15 @@
 [
   {
-    "ContainingType": "CertEmpire.Controllers.UserController",
-    "Method": "GET",
-    "RelativePath": "GetAllEmails",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "CertEmpire.Controllers.UserController",
-    "Method": "Login",
-    "RelativePath": "Login",
+    "ContainingType": "CertEmpire.Controllers.ReportController",
+    "Method": "SubmitReport",
+    "RelativePath": "api/Report/SubmitReport",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
     "Parameters": [
       {
         "Name": "request",
-        "Type": "CertEmpire.DTOs.UserDTOs.LoginRequest",
+        "Type": "CertEmpire.DTOs.ReportDTOs.ReportSubmissionDTO",
         "IsRequired": true
       }
     ],
@@ -28,7 +18,7 @@
   {
     "ContainingType": "CertEmpire.Controllers.SimulationController",
     "Method": "PracticeOnline",
-    "RelativePath": "PracticeOnline",
+    "RelativePath": "api/Simulation/PracticeOnline",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
@@ -43,8 +33,34 @@
   },
   {
     "ContainingType": "CertEmpire.Controllers.UserController",
+    "Method": "GET",
+    "RelativePath": "api/User/GetAllEmails",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CertEmpire.Controllers.UserController",
+    "Method": "Login",
+    "RelativePath": "api/User/Login",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CertEmpire.DTOs.UserDTOs.LoginRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CertEmpire.Controllers.UserController",
     "Method": "RegisterUser",
-    "RelativePath": "RegisterUser",
+    "RelativePath": "api/User/RegisterUser",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,

@@ -80,22 +80,29 @@ namespace CertEmpire.Services
                         {
                             foreach (var file in request.File)
                             {
-                                var uploadedFile = new UploadedFile
+                                if (file.FileUrl != null)
                                 {
-                                    FilePath = file.FileUrl ?? "",
-                                    FilePrice = file.FilePrice,
-                                    UserId = user.UserId,
-                                    FileId = Guid.NewGuid(),
-                                    FileName = file.FileUrl?.Split('/').Last() ?? ""
-                                };
-                                await _context.UploadedFiles.AddAsync(uploadedFile);
-                                FileObj.Add(new FileResponseObject
-                                {
-                                    FileId = uploadedFile.FileId,
-                                    FileUrl = uploadedFile.FilePath
-                                });
+                                    var fileExist = await _context.UploadedFiles.FirstOrDefaultAsync(x=>x.FilePath.Equals(file.FileUrl));
+                                    if (fileExist == null)
+                                    {
+                                        var uploadedFile = new UploadedFile
+                                        {
+                                            FilePath = file.FileUrl ?? "",
+                                            FilePrice = file.FilePrice,
+                                            UserId = user.UserId,
+                                            FileId = Guid.NewGuid(),
+                                            FileName = file.FileUrl?.Split('/').Last() ?? ""
+                                        };
+                                        await _context.UploadedFiles.AddAsync(uploadedFile);
+                                        FileObj.Add(new FileResponseObject
+                                        {
+                                            FileId = uploadedFile.FileId,
+                                            FileUrl = uploadedFile.FilePath
+                                        });
+                                        await _context.SaveChangesAsync();
+                                    }
+                                }
                             }
-                            await _context.SaveChangesAsync();
                         }
                     response = new Response<AddUserResponse>(true, "User logged in successfully", "", new AddUserResponse { FileObj = FileObj });
                 }

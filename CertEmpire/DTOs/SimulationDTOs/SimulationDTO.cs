@@ -4,11 +4,13 @@ namespace CertEmpire.DTOs.SimulationDTOs
 {
     public class Root
     {
-        public Dictionary<string, File> FileContent { get; set; } = new Dictionary<string, File>();
+        public Dictionary<string, Topics> topics { get; set; } = new Dictionary<string, Topics>();
     }
-    public class File
+
+    public class Topics
     {
-        public string fileName { get; set; } = string.Empty;
+        public string topic_name { get; set; } = string.Empty;
+        public string case_study { get; set; } = string.Empty;
         public List<Questions> questions { get; set; } = new List<Questions>();
     }
     public class Questions
@@ -37,16 +39,8 @@ namespace CertEmpire.DTOs.SimulationDTOs
         public List<string> options { get; set; } = new List<string>();
         [JsonPropertyName("correctAnswerIndices")]
         public List<int> correctAnswerIndices { get; set; } = new List<int>();
-        [JsonPropertyName("answerDescription")]
-        public string answerDescription { get; set; } = string.Empty;
         [JsonPropertyName("explanation")]
         public string answerExplanation { get; set; } = string.Empty;
-        [JsonPropertyName("isMultiSelect")]
-        public bool isMultiSelect { get; set; }
-        [JsonPropertyName("userAnswerIndices")]
-        public List<int>? userAnswerIndices { get; set; }
-        [JsonPropertyName("isAttempted")]
-        public bool isAttempted { get; set; }
         [JsonPropertyName("showAnswer")]
         public bool showAnswer { get; set; }
         [JsonPropertyName("questionImageURL")]
@@ -54,9 +48,7 @@ namespace CertEmpire.DTOs.SimulationDTOs
         [JsonPropertyName("answerImageURL")]
         public string answerImageURL { get; set; } = string.Empty;
         [JsonPropertyName("timeTaken")]
-        public int? timeTaken { get; set; }
-        public Guid TopicId { get; set; }
-        public Guid CaseStudyId { get; set; }
         public Guid fileId { get; set; }
+        public int q { get; set; }
     }
 }

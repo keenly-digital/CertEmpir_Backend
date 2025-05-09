@@ -16,6 +16,7 @@ namespace CertEmpire.Data
         public DbSet<User> Users { get; set; }
         public DbSet<ReviewTask> ReviewTasks { get; set; }
         public DbSet<TaskVote> TaskVotes { get; set; }
+        public DbSet<Report> Reports { get; set; }
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             if (ChangeTracker.HasChanges())

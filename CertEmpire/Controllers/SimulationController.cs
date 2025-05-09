@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CertEmpire.Controllers
 {
+    [ApiController]
+    [Route("api/[controller]")]
     public class SimulationController(ISimulationRepo simulationRepo) : ControllerBase
     {
         private readonly ISimulationRepo _simulationRepo = simulationRepo;
