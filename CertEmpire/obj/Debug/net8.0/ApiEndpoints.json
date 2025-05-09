@@ -18,18 +18,24 @@
     "Order": 0,
     "Parameters": [
       {
-        "Name": "Email",
-        "Type": "System.String",
-        "IsRequired": false
-      },
+        "Name": "request",
+        "Type": "CertEmpire.DTOs.UserDTOs.LoginRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CertEmpire.Controllers.SimulationController",
+    "Method": "PracticeOnline",
+    "RelativePath": "PracticeOnline",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
       {
-        "Name": "Password",
-        "Type": "System.String",
-        "IsRequired": false
-      },
-      {
-        "Name": "File",
-        "Type": "System.Collections.Generic.IEnumerable\u00601[[CertEmpire.DTOs.UserDTOs.FileInfo, CertEmpire, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "Name": "fileId",
+        "Type": "System.Guid",
         "IsRequired": false
       }
     ],
@@ -44,14 +50,9 @@
     "Order": 0,
     "Parameters": [
       {
-        "Name": "Email",
-        "Type": "System.String",
-        "IsRequired": false
-      },
-      {
-        "Name": "Password",
-        "Type": "System.String",
-        "IsRequired": false
+        "Name": "request",
+        "Type": "CertEmpire.DTOs.UserDTOs.AddUserRequest",
+        "IsRequired": true
       }
     ],
     "ReturnTypes": []

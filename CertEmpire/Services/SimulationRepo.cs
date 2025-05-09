@@ -30,57 +30,55 @@ namespace CertEmpire.Services
             }
             else
             {
-
+                var result = await UploadPdfFromUrlToThirdPartyApiAsync(fileInfo.FilePath);
+                if(result == null)
+                {
+                    response = new Response<ExamDTO>(true, "No data found.", "", default);
+                }
+                else
+                {
+                    var examDTO = await MapApiResponseToExamDTO(result, fileInfo.FileName);
+                    response = new Response<ExamDTO>(false, "Success", "", examDTO);
+                }
             }
             return response;
         }
-        private async Task<Root?> UploadToThirdPartyApiAsync(IFormFile formFile)
+        private async Task<Root> UploadPdfFromUrlToThirdPartyApiAsync(string fileUrl)
         {
-            try
+            string thirdPartyUrl = "https://exam-ai-production-2bdc.up.railway.app/process-pdf/";
+
+            using HttpClient client = new HttpClient();
+
+            // Step 1: Download the PDF file
+            HttpResponseMessage response = await client.GetAsync(fileUrl);
+            response.EnsureSuccessStatusCode();
+            byte[] fileBytes = await response.Content.ReadAsByteArrayAsync();
+
+            // Optional: Validate that it's a real PDF
+            if (fileBytes.Length < 4 || Encoding.ASCII.GetString(fileBytes, 0, 4) != "%PDF")
+                throw new Exception("Downloaded file is not a valid PDF.");
+
+            // Step 2: Prepare content for AI API
+            using var content = new MultipartFormDataContent();
+            var fileContent = new ByteArrayContent(fileBytes);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+
+            content.Add(fileContent, "file", "downloaded.pdf");
+
+            // Step 3: Send to AI API
+            HttpResponseMessage apiResponse = await client.PostAsync(thirdPartyUrl, content);
+
+            if (!apiResponse.IsSuccessStatusCode)
             {
-                string thirdPartyUrl = "https://exam-ai-production-2bdc.up.railway.app/process-pdf/";
-
-                using var content = new MultipartFormDataContent();
-                using var ms = new MemoryStream();
-
-                await formFile.CopyToAsync(ms);
-                ms.Position = 0;
-                var fileExtension = Path.GetExtension(formFile.FileName).ToLowerInvariant();
-                if (fileExtension == ".pdf")
-                {
-                    byte[] header = new byte[4];
-                    await ms.ReadAsync(header, 0, 4);
-                    ms.Position = 0;
-
-                    bool isPdf = Encoding.ASCII.GetString(header) == "%PDF";
-                    if (!isPdf)
-                        throw new Exception("File extension is .pdf but it's not a valid PDF file.");
-                }
-                using var fileContent = new StreamContent(ms);
-                if (fileExtension == ".pdf")
-                    fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
-                else
-                    fileContent.Headers.ContentType = new MediaTypeHeaderValue(formFile.ContentType ?? "application/octet-stream");
-
-                content.Add(fileContent, "file", formFile.FileName);
-
-                var response = await _httpClient.PostAsync(thirdPartyUrl, content);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var error = await response.Content.ReadAsStringAsync();
-                    throw new Exception($"API call failed: {response.StatusCode} - {error}");
-                }
-
-                var responseJson = await response.Content.ReadAsStringAsync();
-                var result = JsonConvert.DeserializeObject<Root>(responseJson);
-                return result;
+                var error = await apiResponse.Content.ReadAsStringAsync();
+                throw new Exception($"API call failed: {apiResponse.StatusCode} - {error}");
             }
-            catch (Exception)
-            {
-                throw;
-            }
+
+            var responseJson = await apiResponse.Content.ReadAsStringAsync();
+            var result = JsonConvert.DeserializeObject<Root>(responseJson);
+            return result;
         }
+
         private async Task<ExamDTO> MapApiResponseToExamDTO(Root rootexam, string fileName)
         {
             var examDTO = new ExamDTO

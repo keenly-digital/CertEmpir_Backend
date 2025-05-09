@@ -10,7 +10,7 @@ namespace CertEmpire.Controllers
         private readonly IUserRepo _userRepo = userRepo;
 
         [HttpPost("RegisterUser")]
-        public async Task<IActionResult> RegisterUser(AddUserRequest request)
+        public async Task<IActionResult> RegisterUser([FromBody]AddUserRequest request)
         {
             try
             {

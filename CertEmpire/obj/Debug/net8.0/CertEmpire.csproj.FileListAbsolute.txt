@@ -173,3 +173,6 @@ C:\Users\admin\Downloads\Documents\Other Projects\CertEmpir_Backend-main\CertEmp
 C:\Users\admin\Downloads\Documents\Other Projects\CertEmpir_Backend-main\CertEmpire\obj\Debug\net8.0\CertEmpire.csproj.Up2Date
 C:\Users\admin\Downloads\Documents\Other Projects\CertEmpir_Backend-main\CertEmpire\obj\Debug\net8.0\CertEmpire.genruntimeconfig.cache
 C:\Users\admin\Downloads\Documents\Other Projects\CertEmpir_Backend-main\CertEmpire\obj\Debug\net8.0\ref\CertEmpire.dll
+C:\Users\admin\Downloads\Documents\Other Projects\CertEmpir_Backend-main\CertEmpire\bin\Debug\net8.0\appsettings.Production.json
+C:\Users\admin\Downloads\Documents\Other Projects\CertEmpir_Backend-main\CertEmpire\bin\Debug\net8.0\Newtonsoft.Json.dll
+C:\Users\admin\Downloads\Documents\Other Projects\CertEmpir_Backend-main\CertEmpire\bin\Debug\net8.0\Newtonsoft.Json.Bson.dll
