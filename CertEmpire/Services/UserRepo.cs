@@ -65,7 +65,7 @@ namespace CertEmpire.Services
         public async Task<Response<AddUserResponse>> LoginResponse(LoginRequest request)
         {
             Response<AddUserResponse> response;
-            List<Guid> FileId = new List<Guid>();
+            List<FileResponseObject> FileObj = new List<FileResponseObject>();
             if (request == null)
             {
                 response = new Response<AddUserResponse>(false, "Request can't be null", "", default);
@@ -89,11 +89,15 @@ namespace CertEmpire.Services
                                     FileName = file.FileUrl?.Split('/').Last() ?? ""
                                 };
                                 await _context.UploadedFiles.AddAsync(uploadedFile);
-                                FileId.Add(uploadedFile.FileId);
+                                FileObj.Add(new FileResponseObject
+                                {
+                                    FileId = uploadedFile.FileId,
+                                    FileUrl = uploadedFile.FilePath
+                                });
                             }
                             await _context.SaveChangesAsync();
                         }
-                    response = new Response<AddUserResponse>(true, "User logged in successfully", "", new AddUserResponse { FileId = FileId });
+                    response = new Response<AddUserResponse>(true, "User logged in successfully", "", new AddUserResponse { FileObj = FileObj });
                 }
                 else
                 {

@@ -24,7 +24,7 @@ namespace CertEmpire.Controllers
             }
         }
         [HttpPost("Login")]
-        public async Task<IActionResult> Login(LoginRequest request)
+        public async Task<IActionResult> Login([FromBody]LoginRequest request)
         {
             try
             {
