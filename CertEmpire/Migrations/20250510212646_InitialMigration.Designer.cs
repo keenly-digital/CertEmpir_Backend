@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CertEmpire.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250509154040_InitialMigration")]
+    [Migration("20250510212646_InitialMigration")]
     partial class InitialMigration
     {
         /// <inheritdoc />
@@ -119,8 +119,19 @@ namespace CertEmpire.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AdminExplanation")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.PrimitiveCollection<List<int>>("CorrectAnswerIndices")
+                        .HasColumnType("integer[]");
+
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExamName")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Explanation")
                         .HasColumnType("text");
@@ -137,6 +148,13 @@ namespace CertEmpire.Migrations
                     b.Property<string>("Reason")
                         .HasColumnType("text");
 
+                    b.Property<string>("ReportName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
                     b.Property<int>("TargetId")
                         .HasColumnType("integer");
 
@@ -144,6 +162,9 @@ namespace CertEmpire.Migrations
                         .HasColumnType("integer");
 
                     b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("fileId")
                         .HasColumnType("uuid");
 
                     b.HasKey("ReportId");

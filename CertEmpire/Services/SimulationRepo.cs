@@ -5,7 +5,6 @@ using CertEmpire.Interfaces;
 using CertEmpire.Models;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using System.IO;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -26,6 +25,7 @@ namespace CertEmpire.Services
         public async Task<Response<ExamDTO>> PracticeOnline(Guid fileId)
         {
             Response<ExamDTO> response = new();
+            ExamDTO examDTO = new();
             int questionOrder = 0;
             var fileInfo = await _context.UploadedFiles.FindAsync(fileId);
             if (fileInfo == null)
@@ -38,15 +38,15 @@ namespace CertEmpire.Services
                 var existingFile = await _context.Questions.Where(x => x.FileId == fileInfo.FileId).ToListAsync();
                 if (existingFile.Count > 0)
                 {
-                    ExamDTO examDTO = new ExamDTO
+                    examDTO = new ExamDTO
                     {
                         ExamTitle = fileInfo.FileName,
                         Questions = existingFile.Select(q => new QuestionObject
                         {
                             q = questionOrder++,
                             id = q.Id,
-                            questionText = q.QuestionText ??"",
-                            questionDescription = q.QuestionDescription??"",
+                            questionText = q.QuestionText ?? "",
+                            questionDescription = q.QuestionDescription ?? "",
                             options = q.Options,
                             correctAnswerIndices = q.CorrectAnswerIndices,
                             answerExplanation = q.Explanation ?? "",
@@ -54,29 +54,29 @@ namespace CertEmpire.Services
                             answerImageURL = q.answerImageURL
                         }).ToList()
                     };
-                   
+
                     response = new Response<ExamDTO>(true, "Success", "", examDTO);
                 }
                 else
                 {
-                var result = await UploadPdfFromUrlToThirdPartyApiAsync(fileInfo.FilePath);
+                    var result = await UploadPdfFromUrlToThirdPartyApiAsync(fileInfo.FilePath);
                     if (result == null)
                     {
                         response = new Response<ExamDTO>(false, "No data found.", "", default);
                     }
                     else
                     {
-                        var examDTO = await MapApiResponseToExamDTO(result, fileInfo.FileName);
-                        if (examDTO != null)
+                        var mapExamDTO = await MapApiResponseToExamDTO(result, fileInfo.FileName);
+                        if (mapExamDTO != null)
                         {
-                            fileInfo.FileName = examDTO.ExamTitle;
+                            fileInfo.FileName = mapExamDTO.ExamTitle;
                             _context.UploadedFiles.Update(fileInfo);
                             await _context.SaveChangesAsync();
-                            if (examDTO.Questions != null)
+                            if (mapExamDTO.Questions != null)
                             {
-                                if (examDTO.Questions.Count > 0)
+                                if (mapExamDTO.Questions.Count > 0)
                                 {
-                                    foreach (var question in examDTO.Questions)
+                                    foreach (var question in mapExamDTO.Questions)
                                     {
                                         var questionEntity = new Question
                                         {
@@ -94,15 +94,40 @@ namespace CertEmpire.Services
                                         await _context.Questions.AddAsync(questionEntity);
                                         await _context.SaveChangesAsync();
                                     }
+                                    var getAllQuestions = await _context.Questions.Where(x => x.FileId == fileInfo.FileId).ToListAsync();
+                                    if (existingFile.Count > 0)
+                                    {
+                                        examDTO = new ExamDTO
+                                        {
+                                            ExamTitle = fileInfo.FileName,
+                                            Questions = existingFile.Select(q => new QuestionObject
+                                            {
+                                                q = questionOrder++,
+                                                id = q.Id,
+                                                questionText = q.QuestionText ?? "",
+                                                questionDescription = q.QuestionDescription ?? "",
+                                                options = q.Options,
+                                                correctAnswerIndices = q.CorrectAnswerIndices,
+                                                answerExplanation = q.Explanation ?? "",
+                                                questionImageURL = q.questionImageURL,
+                                                answerImageURL = q.answerImageURL
+                                            }).ToList()
+                                        };
+
+                                    }
                                 }
+                                response = new Response<ExamDTO>(true, "Success", "", examDTO);
                             }
-                            response = new Response<ExamDTO>(true, "Success", "", examDTO);
+                            else
+                            {
+                                response = new Response<ExamDTO>(false, "No data found.", "", default);
+                            }
                         }
                         else
                         {
                             response = new Response<ExamDTO>(false, "No data found.", "", default);
                         }
-                    }
+                    }                   
                 }
             }
             return response;

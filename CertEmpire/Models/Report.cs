@@ -13,5 +13,11 @@ namespace CertEmpire.Models
         public string? Reason { get; set; }
         public string? Explanation { get; set; }
         public Guid UserId { get; set; }
+        public Guid fileId { get; set; }
+        public ReportStatus Status { get; set; }
+        public string ReportName { get; set; } = string.Empty;
+        public string ExamName { get; set; } = string.Empty;
+        public string AdminExplanation { get; set; } = string.Empty;
+        public List<int>? CorrectAnswerIndices { get; set; } = new List<int>();
     }
 }

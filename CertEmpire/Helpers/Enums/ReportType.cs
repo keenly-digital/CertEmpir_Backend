@@ -6,4 +6,10 @@
         Answer,
         Explanation
     }
+    public enum ReportStatus
+    {
+        Pending,
+        Approved,
+        Unapproved
+    }
 }

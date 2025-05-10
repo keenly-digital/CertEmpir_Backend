@@ -65,6 +65,12 @@ namespace CertEmpire.Migrations
                     Reason = table.Column<string>(type: "text", nullable: true),
                     Explanation = table.Column<string>(type: "text", nullable: true),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    fileId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    ReportName = table.Column<string>(type: "text", nullable: false),
+                    ExamName = table.Column<string>(type: "text", nullable: false),
+                    AdminExplanation = table.Column<string>(type: "text", nullable: false),
+                    CorrectAnswerIndices = table.Column<List<int>>(type: "integer[]", nullable: true),
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
