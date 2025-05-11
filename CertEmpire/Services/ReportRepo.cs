@@ -67,7 +67,7 @@ namespace CertEmpire.Services
                             ExamName = fileInfo.FileName,
                             fileId = request.FileId,
                             Status = ReportStatus.Pending,
-                            ReportName = request.ReportName
+                            ReportName = request.Reason + " " + request.TargetId
                         };
                         var result = await AddAsync(report);
                         if (result != null)
@@ -119,7 +119,7 @@ namespace CertEmpire.Services
                             ExamName = fileInfo.FileName,
                             fileId = request.FileId,
                             Status = ReportStatus.Pending,
-                            ReportName = request.ReportName,
+                            ReportName = request.Reason + " " + request.TargetId,
                             CorrectAnswerIndices = request.CorrectAnswerIndices
                         };
                         var result = await AddAsync(report);
