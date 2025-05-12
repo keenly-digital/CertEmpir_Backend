@@ -11,7 +11,7 @@ namespace CertEmpire.Services
         public async Task<Response<UploadedFile>> GetFileByFileUrl(string fileUrl)
         {
             Response<UploadedFile> response = new();
-            var resullt = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FilePath == fileUrl);
+            var resullt = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileURL == fileUrl);
             if (resullt != null)
             {
                 response = new Response<UploadedFile>(true, "File found.", "", resullt);

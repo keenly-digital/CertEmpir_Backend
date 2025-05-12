@@ -1,11 +1,13 @@
 ﻿using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
+using CertEmpire.Middlewares;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CertEmpire.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    //[Authorize]
     public class SimulationController(ISimulationRepo simulationRepo) : ControllerBase
     {
         private readonly ISimulationRepo _simulationRepo = simulationRepo;

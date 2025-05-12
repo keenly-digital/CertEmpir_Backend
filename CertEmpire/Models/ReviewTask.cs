@@ -7,13 +7,12 @@ namespace CertEmpire.Models
     public class ReviewTask : AuditableBaseEntity
     {
         [Key]
-        public Guid TaskId { get; set; }
-        public TaskType Type { get; set; } // WrongAnswer, OutdatedQuestion
-        public string Explanation { get; set; } = string.Empty;
-        public UserTaskStatus Status { get; set; }
-        public List<TaskVote> Votes { get; set; } = new();
-        public Guid FileId { get; set; }
-        public Guid QuestionId { get; set; }
-
+        public Guid ReviewTaskId { get; set; }
+        public Guid ReportId { get; set; }
+        public Guid ReviewerUserId { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public DateTime? ReviewedAt { get; set; }
+        public Report? Report { get; set; }
+        public string ReviewerExplanation { get; set; } = string.Empty;
     }
 }

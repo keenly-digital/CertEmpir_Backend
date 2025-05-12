@@ -1,12 +1,14 @@
 ﻿using CertEmpire.DTOs.ReportRequestDTOs;
 using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
+using CertEmpire.Middlewares;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CertEmpire.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+   // [Authorize]
     public class ReportController : ControllerBase
     {
         private readonly IReportRepo _reportRepo;
@@ -14,6 +16,7 @@ namespace CertEmpire.Controllers
         {
             _reportRepo = reportRepo;
         }
+
         [HttpGet("GetAllReports")]
         public async Task<IActionResult> GetAllReports([FromQuery] ReportFilterDTO filter)
         {

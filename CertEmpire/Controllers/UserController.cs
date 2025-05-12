@@ -54,5 +54,35 @@ namespace CertEmpire.Controllers
                 return StatusCode(500, response);
             }
         }
+        [HttpPut("UpdatePassword")]
+        public async Task<IActionResult> UpdatePasssword(UpdatePasswordRequest request)
+        {
+            try
+            {
+                var response = await _userRepo.UpdatePassword(request);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                var response = new Response<object>(false, ex.Message, "", null);
+                return StatusCode(500, response);
+            }
+        }
+        [HttpDelete("DeleteUser")]
+        public async Task<IActionResult> DeleteUser(string Email)
+        {
+            try
+            {
+                var response = await _userRepo.DeleteUser(Email);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                var response = new Response<object>(false, ex.Message, "", null);
+                return StatusCode(500, response);
+            }
+           
+
+        }
     }
 }

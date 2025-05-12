@@ -1,6 +1,7 @@
 ﻿using CertEmpire.Models.CommonModel;
 using CertEmpire.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Reflection.Emit;
 
 namespace CertEmpire.Data
 {
@@ -11,12 +12,14 @@ namespace CertEmpire.Data
             ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
         }
         public DbSet<Question> Questions { get; set; }
-        public DbSet<Device> Devices { get; set; }
         public DbSet<UploadedFile> UploadedFiles { get; set; }
         public DbSet<User> Users { get; set; }
         public DbSet<ReviewTask> ReviewTasks { get; set; }
         public DbSet<TaskVote> TaskVotes { get; set; }
         public DbSet<Report> Reports { get; set; }
+        public DbSet<UserFilePrice> UserFilePrices { get; set; }
+        public DbSet<Reward> Rewards {  get; set; }
+        public DbSet<Withdrawal> Withdrawals {  get; set; }
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             if (ChangeTracker.HasChanges())
@@ -46,6 +49,10 @@ namespace CertEmpire.Data
                 property.SetPrecision(18);
                 property.SetScale(6);
             }
+            builder.Entity<ReviewTask>()
+       .HasOne(rt => rt.Report)
+       .WithMany(r => r.ReviewTasks)
+       .HasForeignKey(rt => rt.ReportId);
             base.OnModelCreating(builder);
         }
     }

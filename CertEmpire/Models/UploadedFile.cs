@@ -7,10 +7,8 @@ namespace CertEmpire.Models
     {
         [Key]
         public Guid FileId { get; set; }
-        public Guid UserId { get; set; }
         public string FileName { get; set; } = string.Empty;
-        public string FilePath { get; set; } = string.Empty;
-        public double FilePrice { get; set; }
-        public DateTime UploadedAt { get; set; }
+        public string FileURL { get; set; } = string.Empty;
+        public decimal FilePrice { get; set; }
     }
 }

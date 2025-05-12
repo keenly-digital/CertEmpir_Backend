@@ -11,6 +11,7 @@ namespace CertEmpire.Services
 {
     public class ReportRepo(ApplicationDbContext context) : Repository<Report>(context), IReportRepo
     {
+
         public async Task<Response<ViewRejectReasonResponseDTO>> ViewRejectReason(Guid reportId)
         {
             Response<ViewRejectReasonResponseDTO> response = new();
@@ -72,6 +73,21 @@ namespace CertEmpire.Services
                         var result = await AddAsync(report);
                         if (result != null)
                         {
+                            var buyerIds = await _context.UserFilePrices.Where(x => x.FileId == request.FileId && x.UserId != request.UserId).Select(x => x.UserId).ToListAsync();
+                            if(buyerIds.Count>0)
+                                foreach (var buyerId in buyerIds)
+                                {
+                                    var task = new ReviewTask
+                                    {
+                                        ReviewTaskId = Guid.NewGuid(),
+                                        ReportId = report.ReportId,
+                                        ReviewerUserId = buyerId,
+                                        Status = "Pending"
+                                    };
+                                    await _context.ReviewTasks.AddAsync(task);
+                                }
+
+                            await _context.SaveChangesAsync();
                             response = new Response<string>(true, "Thank You For Your Report. This Helps Us And Our Community.", "", default);
                         }
                         else
@@ -125,6 +141,21 @@ namespace CertEmpire.Services
                         var result = await AddAsync(report);
                         if (result != null)
                         {
+                            var buyerIds = await _context.UserFilePrices.Where(x => x.FileId == request.FileId && x.UserId != request.UserId).Select(x => x.UserId).ToListAsync();
+                            if (buyerIds.Count > 0)
+                                foreach (var buyerId in buyerIds)
+                                {
+                                    var task = new ReviewTask
+                                    {
+                                        ReviewTaskId = Guid.NewGuid(),
+                                        ReportId = report.ReportId,
+                                        ReviewerUserId = buyerId,
+                                        Status = "Pending"
+                                    };
+                                    await _context.ReviewTasks.AddAsync(task);
+                                }
+
+                            await _context.SaveChangesAsync();
                             response = new Response<string>(true, "Thank You For Your Report. This Helps Us And Our Community.", "", default);
                         }
                         else
@@ -140,7 +171,7 @@ namespace CertEmpire.Services
         {
             Response<List<ReportViewDto>> response = new();
             var query = _context.Reports.AsQueryable();
-            if (query.Count() > 0)
+            if (query.Any())
             {
                 var reports = await query.OrderByDescending(a => a.Created).Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize)
                     .Select(x => new ReportViewDto

@@ -6,6 +6,7 @@
     public class AddUserResponse
     {
         public List<FileResponseObject>? FileObj { get; set; }
+        public string? JwtToken { get; set; }
     }
     public class FileResponseObject
     {

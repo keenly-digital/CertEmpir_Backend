@@ -59,7 +59,7 @@ namespace CertEmpire.Services
                 }
                 else
                 {
-                    var result = await UploadPdfFromUrlToThirdPartyApiAsync(fileInfo.FilePath);
+                    var result = await UploadPdfFromUrlToThirdPartyApiAsync(fileInfo.FileURL);
                     if (result == null)
                     {
                         response = new Response<ExamDTO>(false, "No data found.", "", default);

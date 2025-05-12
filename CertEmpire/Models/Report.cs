@@ -18,6 +18,7 @@ namespace CertEmpire.Models
         public string ReportName { get; set; } = string.Empty;
         public string ExamName { get; set; } = string.Empty;
         public string AdminExplanation { get; set; } = string.Empty;
-        public List<int>? CorrectAnswerIndices { get; set; } = new List<int>();
+        public List<int>? CorrectAnswerIndices { get; set; } = [];
+        public ICollection<ReviewTask>? ReviewTasks { get; set; }
     }
 }
