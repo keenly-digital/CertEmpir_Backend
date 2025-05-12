@@ -173,13 +173,15 @@ namespace CertEmpire.Services
             var query = _context.Reports.AsQueryable();
             if (query.Any())
             {
-                var reports = await query.OrderByDescending(a => a.Created).Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize)
+                int totalCount = query.Where(x=>x.UserId.Equals(request.UserId)).Count();
+                var reports = await query.OrderByDescending(a => a.Created).Where(x=>x.UserId.Equals(request.UserId)).Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize)
                     .Select(x => new ReportViewDto
                     {
                         Id = x.ReportId,
                         ReportName = x.ReportName,
                         ExamName = x.ExamName,
-                        Status = x.Status.ToString()
+                        Status = x.Status.ToString(),
+                        Results = totalCount
                     }).ToListAsync();
                 response = new Response<List<ReportViewDto>>(true, "Reports found.", "", reports);
             }
