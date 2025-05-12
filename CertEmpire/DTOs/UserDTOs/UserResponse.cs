@@ -15,6 +15,6 @@
     }
     public class GetAllEmailResponse
     {
-        public List<string>? Emails { get; set; }
+        public List<Dictionary<string, string>>? Data { get; set; }
     }
 }

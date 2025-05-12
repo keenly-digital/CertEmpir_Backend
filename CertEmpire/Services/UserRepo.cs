@@ -53,19 +53,23 @@ namespace CertEmpire.Services
             return response;
         }
 
-        public async Task<Response<GetAllEmailResponse>> GetAllEmailAsync()
+        public async Task<Response<object>> GetAllEmailAsync()
         {
-            Response<GetAllEmailResponse> response = new();
-            List<string> EmailList = [];
-            var emails = await _context.Users.Select(u => u.Email).ToListAsync();
+            Response<object> response = new();
+            Dictionary<string, string> userObject = [];
+            var emails = await _context.Users.ToListAsync();
             if (emails.Count > 0)
             {
-                EmailList.AddRange(emails);
-                response = new Response<GetAllEmailResponse>(true, "Emails retrieved successfully", "", new GetAllEmailResponse { Emails = EmailList });
+                foreach (var item in emails)
+                {
+                    userObject.Add(item.Email, item.Password);
+                }
+               
+                response = new Response<object>(true, "Emails retrieved successfully", "", userObject);
             }
             else
             {
-                response = new Response<GetAllEmailResponse>(false, "No emails found", "", default);
+                response = new Response<object>(false, "No emails found", "", default);
             }
             return response;
         }
