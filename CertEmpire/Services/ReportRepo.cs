@@ -167,9 +167,9 @@ namespace CertEmpire.Services
             }
             return response;
         }
-        public async Task<Response<List<ReportViewDto>>> GetAllReports(ReportFilterDTO request)
+        public async Task<Response<object>> GetAllReports(ReportFilterDTO request)
         {
-            Response<List<ReportViewDto>> response = new();
+            Response<object> response = new();
             var query = _context.Reports.AsQueryable();
             if (query.Any())
             {
@@ -181,13 +181,17 @@ namespace CertEmpire.Services
                         ReportName = x.ReportName,
                         ExamName = x.ExamName,
                         Status = x.Status.ToString(),
-                        Results = totalCount
                     }).ToListAsync();
-                response = new Response<List<ReportViewDto>>(true, "Reports found.", "", reports);
+                object obj = new
+                {
+                    results = totalCount,
+                    data = reports,
+                };
+                response = new Response<object>(true, "Reports found.", "", obj);
             }
             else
             {
-                response = new Response<List<ReportViewDto>>(false, "No reports found.", "", default);
+                response = new Response<object>(false, "No reports found.", "", default);
             }
             return response;
         }

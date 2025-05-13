@@ -10,6 +10,6 @@ namespace CertEmpire.Interfaces
         Task<Response<ViewRejectReasonResponseDTO>> ViewRejectReason(Guid reportId);
         Task<Response<string>> SubmitReport(ReportSubmissionDTO request);
         Task<Response<string>> SubmitReportAnswer(ReportAnswerDTO request);
-        Task<Response<List<ReportViewDto>>> GetAllReports(ReportFilterDTO request);
+        Task<Response<object>> GetAllReports(ReportFilterDTO request);
     }
 }
