@@ -1,5 +1,143 @@
 [
   {
+    "ContainingType": "CertEmpire.Controllers.MyRewardController",
+    "Method": "CalculateReward",
+    "RelativePath": "api/MyReward/CalculateReward",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CertEmpire.DTOs.RewardsDTO.FileReportRewardRequestDTO",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CertEmpire.Controllers.MyRewardController",
+    "Method": "GetUserRewards",
+    "RelativePath": "api/MyReward/GetUserRewards",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "userId",
+        "Type": "System.Guid",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CertEmpire.Controllers.MyRewardController",
+    "Method": "Withdraw",
+    "RelativePath": "api/MyReward/Withdraw",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CertEmpire.DTOs.RewardsDTO.FileReportRewardRequestDTO",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CertEmpire.Controllers.MyTaskController",
+    "Method": "GetAllTasks",
+    "RelativePath": "api/MyTask/GetAllTasks",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "userId",
+        "Type": "System.Guid",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CertEmpire.Controllers.MyTaskController",
+    "Method": "SubitVote",
+    "RelativePath": "api/MyTask/SubmitVote",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CertEmpire.DTOs.MyTaskDTOs.SubmitVoteDTO",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CertEmpire.Controllers.ReportController",
+    "Method": "GetAllReports",
+    "RelativePath": "api/Report/GetAllReports",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "UserId",
+        "Type": "System.Guid",
+        "IsRequired": false
+      },
+      {
+        "Name": "PageNumber",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "PageSize",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CertEmpire.Controllers.ReportController",
+    "Method": "GetReport",
+    "RelativePath": "api/Report/GetReportById/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CertEmpire.Controllers.ReportController",
+    "Method": "ReportAnswer",
+    "RelativePath": "api/Report/ReportAnswer",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CertEmpire.DTOs.ReportRequestDTOs.ReportAnswerDTO",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "CertEmpire.Controllers.ReportController",
     "Method": "SubmitReport",
     "RelativePath": "api/Report/SubmitReport",
@@ -9,8 +147,24 @@
     "Parameters": [
       {
         "Name": "request",
-        "Type": "CertEmpire.DTOs.ReportDTOs.ReportSubmissionDTO",
+        "Type": "CertEmpire.DTOs.ReportRequestDTOs.ReportSubmissionDTO",
         "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CertEmpire.Controllers.ReportController",
+    "Method": "ViewReason",
+    "RelativePath": "api/Report/ViewRejectReason",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "ReportId",
+        "Type": "System.Guid",
+        "IsRequired": false
       }
     ],
     "ReturnTypes": []
@@ -26,6 +180,22 @@
       {
         "Name": "fileId",
         "Type": "System.Guid",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CertEmpire.Controllers.UserController",
+    "Method": "DeleteUser",
+    "RelativePath": "api/User/DeleteUser",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "Email",
+        "Type": "System.String",
         "IsRequired": false
       }
     ],
@@ -68,6 +238,22 @@
       {
         "Name": "request",
         "Type": "CertEmpire.DTOs.UserDTOs.AddUserRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CertEmpire.Controllers.UserController",
+    "Method": "UpdatePasssword",
+    "RelativePath": "api/User/UpdatePassword",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "CertEmpire.DTOs.UserDTOs.UpdatePasswordRequest",
         "IsRequired": true
       }
     ],

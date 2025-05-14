@@ -61,7 +61,7 @@ namespace CertEmpire.Services
             {
                 FileId = request.FileId,
                 UserId = request.UserId,
-                Reward = rewardAmount
+                CurrentBalance = rewardAmount
             };
 
             return new Response<FileReportRewardResponseDTO>(true, "Reward calculated.", "", responseDto);
@@ -127,6 +127,10 @@ namespace CertEmpire.Services
                         FileName = fileObj.FileName,
                         FilePrice = fileObj.FilePrice,
                         ApprovedReports = rg.ApprovedReports,
+                        ReportsSubmitted = await _context.Reports.CountAsync(x => x.UserId == userId && x.fileId == rg.FileId),
+                        VotedReports = await _context.Reports.CountAsync(x => x.UserId == userId && x.fileId == rg.FileId && x.Status == ReportStatus.Voted),
+                      //  VotedReportsApproved = await _context.Reports.CountAsync(x => x.UserId == userId && x.fileId == rg.FileId && x.Status == ReportStatus.Voted && x.VoteStatus == ReportStatus.Approved),
+                        VotedReportsApproved = 0,
                         Balance = Math.Min(rg.TotalUnwithdrawn, fileObj.FilePrice)
                     });
                 }

@@ -10,6 +10,7 @@
     {
         Pending,
         Approved,
-        Unapproved
+        Unapproved,
+        Voted
     }
 }
