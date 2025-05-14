@@ -54,8 +54,7 @@ namespace CertEmpire.Services
                 task.Status = request.Decision.ToString();
                 task.ReviewerExplanation = request.Explanation;
                 task.ReviewedAt = DateTime.UtcNow;
-                _context.ReviewTasks.Update(task);
-                await _context.SaveChangesAsync();
+                await UpdateAsync(task);
                 response = new Response<string>(true, "Vote submitted successfully", "", null);
             }
             return response;

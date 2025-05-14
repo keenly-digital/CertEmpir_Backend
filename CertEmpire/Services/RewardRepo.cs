@@ -13,22 +13,60 @@ namespace CertEmpire.Services
     {
         public async Task<Response<FileReportRewardResponseDTO>> CalculateReward(FileReportRewardRequestDTO request)
         {
-            Response<FileReportRewardResponseDTO> response;
-            var filePrice = await _context.UploadedFiles.Where(x => x.FileId.Equals(request.FileId)).Select(x => x.FilePrice).FirstOrDefaultAsync();
+            var filePrice = await _context.UploadedFiles
+                .Where(x => x.FileId.Equals(request.FileId))
+                .Select(x => x.FilePrice)
+                .FirstOrDefaultAsync();
+
             if (filePrice == 0)
             {
-                response = new Response<FileReportRewardResponseDTO>(true, "No reward on free files.", "", default);
+                return new Response<FileReportRewardResponseDTO>(
+                    true, "No reward on free files.", "", default);
+            }
+
+            var approvedReportsCount = await _context.Reports
+                .Where(x => x.fileId.Equals(request.FileId) && x.Status == ReportStatus.Approved)
+                .CountAsync();
+
+            decimal rewardAmount = Math.Min(filePrice, approvedReportsCount * 0.33m);
+
+            // Check if reward already exists for this FileId and UserId
+            var existingReward = await _context.Rewards
+                .FirstOrDefaultAsync(r => r.FileId == request.FileId && r.UserId == request.UserId);
+
+            if (existingReward != null)
+            {
+                // Update the existing reward amount
+                existingReward.Amount = rewardAmount;
+                _context.Rewards.Update(existingReward);
             }
             else
             {
-                var approvedReportsCount = await _context.Reports
-                    .Where(x => x.fileId.Equals(request.FileId) && x.Status == ReportStatus.Approved)
-                    .CountAsync();
-                decimal reward = Math.Min(filePrice, approvedReportsCount * 0.33m);
-                response = new Response<FileReportRewardResponseDTO>(true, "Rewards", "", new FileReportRewardResponseDTO { FileId = request.FileId, UserId = request.UserId, Reward = reward });
+                // Add a new reward
+                Reward newReward = new()
+                {
+                    ReportId = Guid.NewGuid(),
+                    Amount = rewardAmount,
+                    FileId = request.FileId,
+                    RewardId = Guid.NewGuid(),
+                    UserId = request.UserId,
+                    Withdrawn = false
+                };
+                await _context.Rewards.AddAsync(newReward);
             }
-            return response;
+
+            await _context.SaveChangesAsync();
+
+            var responseDto = new FileReportRewardResponseDTO
+            {
+                FileId = request.FileId,
+                UserId = request.UserId,
+                Reward = rewardAmount
+            };
+
+            return new Response<FileReportRewardResponseDTO>(true, "Reward calculated.", "", responseDto);
         }
+
         public async Task<Response<decimal>> Withdraw(FileReportRewardRequestDTO request)
         {
             Response<decimal> response;
