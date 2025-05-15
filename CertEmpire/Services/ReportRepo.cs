@@ -82,7 +82,7 @@ namespace CertEmpire.Services
                                         ReviewTaskId = Guid.NewGuid(),
                                         ReportId = report.ReportId,
                                         ReviewerUserId = buyerId,
-                                        Status = "Pending"
+                                        Status = ReportStatus.Pending
                                     };
                                     await _context.ReviewTasks.AddAsync(task);
                                 }
@@ -150,7 +150,7 @@ namespace CertEmpire.Services
                                         ReviewTaskId = Guid.NewGuid(),
                                         ReportId = report.ReportId,
                                         ReviewerUserId = buyerId,
-                                        Status = "Pending"
+                                        Status = ReportStatus.Pending
                                     };
                                     await _context.ReviewTasks.AddAsync(task);
                                 }

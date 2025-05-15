@@ -21,7 +21,7 @@ namespace CertEmpire.Controllers
         {
             try
             {
-                var response = await _rewardRepo.GetUserRewards(userId);
+                var response = await _rewardRepo.GetUserRewardDetailsWithOrder(userId);
                 return Ok(response);
             }
             catch (Exception ex)

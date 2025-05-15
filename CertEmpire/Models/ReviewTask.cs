@@ -10,9 +10,11 @@ namespace CertEmpire.Models
         public Guid ReviewTaskId { get; set; }
         public Guid ReportId { get; set; }
         public Guid ReviewerUserId { get; set; }
-        public string Status { get; set; } = string.Empty;
+        public ReportStatus Status { get; set; }
         public DateTime? ReviewedAt { get; set; }
-        public Report? Report { get; set; }
+        public bool VotedStatus { get; set; }
+        public ReportStatus AdminSatus { get; set; }
         public string ReviewerExplanation { get; set; } = string.Empty;
+        public Report? Report { get; set; }
     }
 }

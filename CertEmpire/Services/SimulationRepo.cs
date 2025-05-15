@@ -22,115 +22,242 @@ namespace CertEmpire.Services
             _httpContextAccessor = httpContextAccessor;
             _context = context;
         }
-        public async Task<Response<ExamDTO>> PracticeOnline(Guid fileId)
+        public async Task<Response<object>> PracticeOnline(Guid fileId)
         {
-            Response<ExamDTO> response = new();
+            Response<object> response = new();
             ExamDTO examDTO = new();
-            int questionOrder = 0;
             var fileInfo = await _context.UploadedFiles.FindAsync(fileId);
             if (fileInfo == null)
             {
-                response = new Response<ExamDTO>(false, "No file found.", "", default);
+                var fileCotent = await GetFileContent(fileId);
+                response = new Response<object>(false, "No data found.", "", fileCotent);
             }
             else
             {
                 // Check if the file is already processed
-                var existingFile = await _context.Questions.Where(x => x.FileId == fileInfo.FileId).ToListAsync();
-                if (existingFile.Count > 0)
-                {
-                    examDTO = new ExamDTO
-                    {
-                        ExamTitle = fileInfo.FileName,
-                        Questions = existingFile.Select(q => new QuestionObject
-                        {
-                            q = questionOrder++,
-                            id = q.Id,
-                            questionText = q.QuestionText ?? "",
-                            questionDescription = q.QuestionDescription ?? "",
-                            options = q.Options,
-                            correctAnswerIndices = q.CorrectAnswerIndices,
-                            answerExplanation = q.Explanation ?? "",
-                            questionImageURL = q.questionImageURL,
-                            answerImageURL = q.answerImageURL
-                        }).ToList()
-                    };
 
-                    response = new Response<ExamDTO>(true, "Success", "", examDTO);
+                var result = await UploadPdfFromUrlToThirdPartyApiAsync(fileInfo.FileURL);
+                if (result == null)
+                {
+                    response = new Response<object>(false, "No data found.", "", default);
                 }
                 else
                 {
-                    var result = await UploadPdfFromUrlToThirdPartyApiAsync(fileInfo.FileURL);
-                    if (result == null)
+                    // Map the API response to ExamDTO
+                    examDTO = await MapApiResponseToExamDTO(result, fileInfo.FileName);
+                    if (examDTO == null)
                     {
-                        response = new Response<ExamDTO>(false, "No data found.", "", default);
+                        response = new Response<object>(false, "No data found.", "", default);
                     }
                     else
                     {
-                        var mapExamDTO = await MapApiResponseToExamDTO(result, fileInfo.FileName);
-                        if (mapExamDTO != null)
+                        var userFile = await _context.UserFilePrices.FirstOrDefaultAsync(x => x.FileId.Equals(fileId));
+                        if (userFile != null)
                         {
-                            fileInfo.FileName = mapExamDTO.ExamTitle;
-                            _context.UploadedFiles.Update(fileInfo);
-                            await _context.SaveChangesAsync();
-                            if (mapExamDTO.Questions != null)
-                            {
-                                if (mapExamDTO.Questions.Count > 0)
+                            //var existingFileRecord = await _context.UploadedFiles.FindAsync(fileId);
+                            //if (existingFileRecord != null)
+                            //{
+
+                                if (userFile == null)
                                 {
-                                    foreach (var question in mapExamDTO.Questions)
+                                    response = new Response<object>(false, "No data found.", "", default);
+                                    return response;
+                                }
+                                else
+                                {
+                                    // Update existing file content
+                                    var updateResponse = await UpdateFileContent(fileInfo, examDTO, userFile.UserId);
+                                    if (updateResponse == null)
                                     {
-                                        var questionEntity = new Question
-                                        {
-                                            QuestionId = Guid.NewGuid(),
-                                            QuestionText = question.questionText,
-                                            QuestionDescription = question.questionDescription,
-                                            Options = question.options,
-                                            CorrectAnswerIndices = question.correctAnswerIndices,
-                                            Explanation = question.answerExplanation,
-                                            FileId = fileInfo.FileId,
-                                            questionImageURL = question.questionImageURL,
-                                            answerImageURL = question.answerImageURL,
-                                            ShowAnswer = false
-                                        };
-                                        await _context.Questions.AddAsync(questionEntity);
-                                        await _context.SaveChangesAsync();
-                                    }
-                                    var getAllQuestions = await _context.Questions.Where(x => x.FileId == fileInfo.FileId).ToListAsync();
-                                    if (existingFile.Count > 0)
-                                    {
-                                        examDTO = new ExamDTO
-                                        {
-                                            ExamTitle = fileInfo.FileName,
-                                            Questions = existingFile.Select(q => new QuestionObject
-                                            {
-                                                q = questionOrder++,
-                                                id = q.Id,
-                                                questionText = q.QuestionText ?? "",
-                                                questionDescription = q.QuestionDescription ?? "",
-                                                options = q.Options,
-                                                correctAnswerIndices = q.CorrectAnswerIndices,
-                                                answerExplanation = q.Explanation ?? "",
-                                                questionImageURL = q.questionImageURL,
-                                                answerImageURL = q.answerImageURL
-                                            }).ToList()
-                                        };
 
                                     }
+                                    else
+                                    {
+                                        var fileContent = await GetFileContent(updateResponse.Data.FileId);
+                                        response = new Response<object>(true, "File updated successfully.", "", fileContent);
+                                    }                                   
                                 }
-                                response = new Response<ExamDTO>(true, "Success", "", examDTO);
                             }
                             else
                             {
-                                response = new Response<ExamDTO>(false, "No data found.", "", default);
+                                // Create a new file content
+                                var createResponse = await CreateNewFileContent(examDTO, userFile.UserId);
+                                if (createResponse.Data == null)
+                                {
+                                    response = new Response<object>(false, "No data found.", "", default);
+                                    return response;
+                                }
+                                else
+                                {
+                                    var fileContent = await GetFileContent(createResponse.Data.FileId);
+                                    if (fileContent == null)
+                                    {
+                                        response = new Response<object>(false, "No data found.", "", default);
+                                        return response;
+                                    }
+                                    response = new Response<object>(true, "File uploaded successfully.", "", fileContent);
+                                }
                             }
-                        }
-                        else
-                        {
-                            response = new Response<ExamDTO>(false, "No data found.", "", default);
-                        }
-                    }                   
+                        //}
+                    }
                 }
             }
             return response;
+        }
+        private async Task<object> GetFileContent(Guid quizId)
+        {
+            try
+            {
+                // Get the file first
+                var uploadedFile = await _context.UploadedFiles.FindAsync(quizId);
+                if (uploadedFile == null)
+                {
+                    return new Response<object>(false, "File not found", "", null);
+                }
+
+                // Get all data sequentially
+                var allTopics = _context.Topics.AsQueryable()
+                    .Where(t => t.FileId == quizId)
+                    .ToList();
+
+                var allQuestions = _context.Questions.AsQueryable()
+                    .Where(q => q.FileId == quizId)
+                    .OrderBy(q => q.Created)
+                    .ToList();
+
+                // Organize data
+                var caseStudies = allTopics
+                    .Where(t => !string.IsNullOrWhiteSpace(t.Description))
+                    .ToList();
+
+                var topics = allTopics
+                    .Where(t => !string.IsNullOrWhiteSpace(t.TopicName))
+                    .ToList();
+
+                var responseItems = new List<object>();
+                int questionIndex = 1;
+
+                // Process standalone questions first
+                var standaloneQuestions = allQuestions
+                    .Where(q => (q.TopicId == null || q.TopicId == Guid.Empty) &&
+                               (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty))
+                    .OrderBy(q => q.Created)
+                    .Select(q => new
+                    {
+                        type = "question",
+                        question = MapToQuestionObject(q, questionIndex++)
+                    })
+                    .ToList();
+
+                responseItems.AddRange(standaloneQuestions);
+
+                // Process topics and their contents
+                foreach (var topic in topics)
+                {
+                    var topicContent = new List<object>();
+
+                    // 1. Add questions directly under topic (not in case studies)
+                    var topicQuestions = allQuestions
+                        .Where(q => q.TopicId == topic.TopicId &&
+                                  (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty))
+                        .OrderBy(q => q.Created)
+                        .Select(q => new
+                        {
+                            type = "question",
+                            question = MapToQuestionObject(q, questionIndex++)
+                        })
+                        .ToList();
+
+                    topicContent.AddRange(topicQuestions);
+
+                    // 2. Add case studies under this topic
+                    var topicCaseStudies = caseStudies
+                        .Where(cs => cs.TopicId == topic.TopicId)
+                        .Select(cs =>
+                        {
+                            // Get questions for this case study
+                            var caseStudyQuestions = allQuestions
+                                .Where(q => q.CaseStudyId == cs.TopicId) // Changed from cs.CaseStudyId to cs.TopicId
+                                .OrderBy(q => q.Created)
+                                .Select(q => MapToQuestionObject(q, questionIndex++))
+                                .ToList();
+
+                            return new
+                            {
+                                type = "caseStudy",
+                                caseStudy = new
+                                {
+                                    id = cs.TopicId, // Using TopicId as identifier
+                                    title = cs.CaseStudy,
+                                    description = cs.Description,
+                                    fileId = cs.FileId,
+                                    topicId = topic.TopicId,
+                                    questions = caseStudyQuestions
+                                }
+                            };
+                        })
+                        .ToList();
+
+                    topicContent.AddRange(topicCaseStudies);
+
+                    // Add the topic with its content to the main response
+                    responseItems.Add(new
+                    {
+                        type = "topic",
+                        topic = new
+                        {
+                            id = topic.TopicId,
+                            fileId = quizId,
+                            title = topic.TopicName,
+                            topicItems = topicContent
+                        }
+                    });
+                }
+
+                // Process standalone case studies (not linked to any topic)
+                var standaloneCaseStudies = caseStudies
+                    .Where(cs => cs.TopicId == null || cs.TopicId == Guid.Empty)
+                    .Select(cs =>
+                    {
+                        var questions = allQuestions
+                            .Where(q => q.CaseStudyId == cs.TopicId) // Changed from cs.CaseStudyId to cs.TopicId
+                            .OrderBy(q => q.Created)
+                            .Select(q => MapToQuestionObject(q, questionIndex++))
+                            .ToList();
+
+                        return new
+                        {
+                            type = "caseStudy",
+                            caseStudy = new
+                            {
+                                id = cs.TopicId, // Using TopicId as identifier
+                                title = cs.CaseStudy,
+                                description = cs.Description,
+                                fileId = cs.FileId,
+                                topicId = (Guid?)null,
+                                questions = questions
+                            }
+                        };
+                    })
+                    .ToList();
+
+                responseItems.AddRange(standaloneCaseStudies);
+
+                // Build final response
+                var response = new
+                {
+                    fileId = quizId,
+                    fileName = uploadedFile.FileName,
+                    items = responseItems
+                };
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                // Log the exception
+                return new Response<object>(false, "Error retrieving file content", ex.Message, null);
+            }
         }
         private async Task<Root> UploadPdfFromUrlToThirdPartyApiAsync(string fileUrl)
         {
@@ -173,16 +300,24 @@ namespace CertEmpire.Services
             var examDTO = new ExamDTO
             {
                 ExamTitle = fileName,
-                Questions = new List<QuestionObject>()
+                Topics = new List<Topic>()
             };
 
-            foreach (var questions in rootexam.topics)
+            foreach (var topicItem in rootexam.topics)
             {
-                var QuestionsList = questions.Value;
+                var topic = topicItem.Value;
 
-                foreach (var q in QuestionsList.questions)
+                var topicDTO = new Topic
                 {
-                    //Extract image URLs
+                    TopicId = Guid.NewGuid(),
+                    TopicName = topic.topic_name,
+                    CaseStudy = topic.case_study,
+                    Questions = new List<QuestionObject>()
+                };
+
+                foreach (var q in topic.questions)
+                {
+                    // Extract image URLs
                     var questionImageUrl = ReplaceImageSrcWithAbsoluteUrl(q.question);
                     var answerImageUrl = ReplaceImageSrcWithAbsoluteUrl(q.explanation);
                     // Remove <img> tags from HTML to get clean text
@@ -212,12 +347,15 @@ namespace CertEmpire.Services
                         answerImageURL = questionImageUrl ?? ""
                     };
 
-                    examDTO.Questions.Add(question);
+                    topicDTO.Questions.Add(question);
                 }
+
+                examDTO.Topics.Add(topicDTO);
             }
+
             return examDTO;
         }
-        public string ReplaceImageSrcWithAbsoluteUrl(string html)
+        private string ReplaceImageSrcWithAbsoluteUrl(string html)
         {
             if (string.IsNullOrWhiteSpace(html)) return html;
 
@@ -249,6 +387,126 @@ namespace CertEmpire.Services
             }
 
             return html;
+        }
+        private object MapToQuestionObject(Question q, int qNumber)
+        {
+            return new
+            {
+                Q = qNumber,
+                id = q.Id, // Or use q.QuestionId.ToString() if you want string IDs
+                questionText = q.QuestionText ?? string.Empty,
+                questionDescription = q.QuestionDescription ?? string.Empty,
+                options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
+                correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
+                answerDescription = q.AnswerDescription ?? string.Empty,
+                answerExplanation = q.Explanation ?? string.Empty,
+                showAnswer = q.ShowAnswer,
+                questionImageURL = q.questionImageURL ?? string.Empty,
+                answerImageURL = q.answerImageURL ?? string.Empty,
+                TopicId = q.TopicId ?? Guid.Empty,
+                CaseStudyId = q.CaseStudyId ?? Guid.Empty // Optional: set properly if you're tracking CaseStudyId separately
+            };
+        }
+        private async Task<Response<UploadedFile>> UpdateFileContent(UploadedFile existingFile, ExamDTO exam, Guid userId)
+        {
+
+            try
+            {
+                // Remove existing content
+                // Step 1: Delete Questions first
+                var questionsList = await _context.Questions.Where(q => q.FileId == existingFile.FileId).ToListAsync();
+                if (questionsList.Any())
+                {
+                    _context.Questions.RemoveRange(questionsList);
+                    await _context.SaveChangesAsync();
+                }
+
+                // Step 2: Delete Topics
+                var topicData = await _context.Topics.Where(t => t.FileId == existingFile.FileId).ToListAsync();
+                if (topicData.Any())
+                {
+                    _context.Topics.RemoveRange(topicData);
+                    await _context.SaveChangesAsync();
+                }
+                // Add new content
+                await AddExamContent(exam, existingFile.FileId, userId);
+
+                return new Response<UploadedFile>(true, "File updated successfully.", "",existingFile);
+            }
+            catch (Exception ex)
+            {
+                return new Response<UploadedFile>(false, "Error updating file.", ex.Message, null);
+            }
+        }
+        private async Task AddExamContent(ExamDTO exam, Guid fileId, Guid userId)
+        {
+            foreach (var topic in exam.Topics)
+            {
+                var hasTopic = !string.IsNullOrWhiteSpace(topic.TopicName);
+                var hasCaseStudy = !string.IsNullOrWhiteSpace(topic.CaseStudy);
+                var topicId = Guid.NewGuid();
+
+                // Create topic/case study entity
+                var topicEntity = new TopicEntity
+                {
+                    TopicId = hasTopic ? topicId : Guid.Empty,
+                    CaseStudyId = hasCaseStudy ? Guid.NewGuid() : Guid.Empty,
+                    TopicName = topic.TopicName ?? "",
+                    Description = topic.CaseStudy ?? "",
+                    CaseStudyTopicId = (hasTopic && hasCaseStudy) ? topicId : Guid.Empty,
+                    FileId = fileId
+                };
+                await _context.Topics.AddAsync(topicEntity);
+                await _context.SaveChangesAsync();
+
+                // Add questions
+                foreach (var question in topic.Questions)
+                {
+                    var questionEntity = new Question
+                    {
+                        QuestionId = Guid.NewGuid(),
+                        QuestionText = question.questionText,
+                        QuestionDescription = question.questionDescription,
+                        Options = question.options,
+                        CorrectAnswerIndices = question.correctAnswerIndices,
+                        AnswerDescription = question.answerExplanation,
+                        Explanation = question.answerExplanation,
+                        questionImageURL = question.questionImageURL,
+                        answerImageURL = question.answerImageURL,
+                        ShowAnswer = false,
+                        TopicId = hasTopic ? topicId : Guid.Empty,
+                        CaseStudyId = hasCaseStudy ? topicId : Guid.Empty,
+                        FileId = fileId
+                    };
+                    await  _context.Questions.AddAsync(questionEntity);
+                    await _context.SaveChangesAsync();
+                }
+            }
+        }
+        private async Task<Response<UploadedFile>> CreateNewFileContent(ExamDTO exam, Guid userId)
+        {
+            try
+            {
+                // Create file record
+                var fileId = Guid.NewGuid();
+                var uploadedFile = new UploadedFile
+                {
+                    FileId = fileId,
+                    FileName = exam.ExamTitle,
+
+                };
+                await _context.UploadedFiles.AddAsync(uploadedFile);
+                await _context.SaveChangesAsync();
+
+                // Add content
+                await AddExamContent(exam, fileId, userId);
+
+                return new Response<UploadedFile>(true, "File uploaded successfully.", "", uploadedFile);
+            }
+            catch (Exception ex)
+            {
+                return new Response<UploadedFile>(false, "Error uploading file.", ex.Message, null);
+            }
         }
     }
 }

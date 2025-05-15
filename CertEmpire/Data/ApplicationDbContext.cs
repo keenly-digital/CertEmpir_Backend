@@ -20,6 +20,7 @@ namespace CertEmpire.Data
         public DbSet<UserFilePrice> UserFilePrices { get; set; }
         public DbSet<Reward> Rewards {  get; set; }
         public DbSet<Withdrawal> Withdrawals {  get; set; }
+        public DbSet<TopicEntity> Topics { get; set; }  
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             if (ChangeTracker.HasChanges())

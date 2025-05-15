@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using CertEmpire.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CertEmpire.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250515083024_ChangesInReviewTask")]
+    partial class ChangesInReviewTask
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -31,9 +34,6 @@ namespace CertEmpire.Migrations
 
                     b.Property<string>("AnswerDescription")
                         .HasColumnType("text");
-
-                    b.Property<Guid?>("CaseStudyId")
-                        .HasColumnType("uuid");
 
                     b.PrimitiveCollection<List<int>>("CorrectAnswerIndices")
                         .IsRequired()
@@ -69,9 +69,6 @@ namespace CertEmpire.Migrations
 
                     b.Property<bool>("ShowAnswer")
                         .HasColumnType("boolean");
-
-                    b.Property<Guid?>("TopicId")
-                        .HasColumnType("uuid");
 
                     b.Property<string>("answerImageURL")
                         .IsRequired()
@@ -265,49 +262,6 @@ namespace CertEmpire.Migrations
                     b.HasIndex("TaskId");
 
                     b.ToTable("TaskVotes");
-                });
-
-            modelBuilder.Entity("CertEmpire.Models.TopicEntity", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("CaseStudy")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid?>("CaseStudyId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("CaseStudyTopicId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("FileId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("LastModified")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("TopicId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("TopicName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Topics");
                 });
 
             modelBuilder.Entity("CertEmpire.Models.UploadedFile", b =>

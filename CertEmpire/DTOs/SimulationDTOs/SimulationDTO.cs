@@ -25,7 +25,15 @@ namespace CertEmpire.DTOs.SimulationDTOs
     {
         [JsonPropertyName("examTitle")]
         public string ExamTitle { get; set; } = string.Empty;
-        public List<QuestionObject>? Questions {  get; set; }
+        public List<Topic> Topics { get; set; } = new List<Topic>();
+    }
+    public class Topic
+    {
+        public Guid TopicId { get; set; }
+        public string TopicName { get; set; } = string.Empty;
+        public string CaseStudy { get; set; } = string.Empty;
+        public string description { get; set; } = string.Empty;
+        public List<QuestionObject> Questions { get; set; } = new List<QuestionObject>();
     }
     public class QuestionObject
     {

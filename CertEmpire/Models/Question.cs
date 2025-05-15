@@ -18,5 +18,7 @@ namespace CertEmpire.Models
         public string questionImageURL { get; set; } = string.Empty;
         public string answerImageURL { get; set; } = string.Empty;
         public bool ShowAnswer { get; set; } = false;
+        public Guid? TopicId { get; set; }
+        public Guid? CaseStudyId { get; set; }
     }
 }

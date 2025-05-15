@@ -16,7 +16,7 @@ namespace CertEmpire.Services
                                join report in _context.Reports on rt.ReportId equals report.ReportId
                                join file in _context.UploadedFiles on report.fileId equals file.FileId
                                join question in _context.Questions on report.TargetId equals question.Id
-                               where rt.ReviewerUserId == userId && rt.Status == "Pending"
+                               where rt.ReviewerUserId == userId && rt.Status == Helpers.Enums.ReportStatus.Pending
                                select new ReviewTaskDto
                                {
                                    TaskId = rt.ReviewTaskId,
@@ -31,7 +31,7 @@ namespace CertEmpire.Services
                                    RequestedAt = report.Created
                                }).ToListAsync();
 
-            if (tasks.Count > 0)
+            if (tasks.Count()>0)
             {
                 response = new Response<List<ReviewTaskDto>>(true, "Pending Tasks", "", tasks);
             }
@@ -51,9 +51,11 @@ namespace CertEmpire.Services
             }
             else
             {
-                task.Status = request.Decision.ToString();
+                task.Status = request.Decision;
                 task.ReviewerExplanation = request.Explanation;
                 task.ReviewedAt = DateTime.UtcNow;
+                task.VotedStatus = true;
+                task.AdminSatus = Helpers.Enums.ReportStatus.Pending;
                 await UpdateAsync(task);
                 response = new Response<string>(true, "Vote submitted successfully", "", null);
             }

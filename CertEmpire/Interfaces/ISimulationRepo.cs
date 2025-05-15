@@ -5,6 +5,6 @@ namespace CertEmpire.Interfaces
 {
     public interface ISimulationRepo
     {
-        Task<Response<ExamDTO>> PracticeOnline(Guid fileId);
+        Task<Response<object>> PracticeOnline(Guid fileId);
     }
 }

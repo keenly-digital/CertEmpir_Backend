@@ -96,23 +96,29 @@ namespace CertEmpire.Services
             }
             return response;
         }
-        public async Task<Response<object>> GetUserRewards(Guid userId)
+        public async Task<Response<object>> GetUserRewardDetailsWithOrder(Guid userId)
         {
-            var rewardGroups = await _context.Rewards
+            var rewards = await _context.Rewards
                 .Where(r => r.UserId == userId && !r.Withdrawn)
+                .ToListAsync();
+
+            var rewardGroups = rewards
                 .GroupBy(r => r.FileId)
                 .Select(g => new
                 {
                     FileId = g.Key,
                     TotalUnwithdrawn = g.Sum(r => r.Amount),
                     ApprovedReports = g.Count()
-                }).ToListAsync();
+                }).ToList();
 
             var fileInfo = await _context.UserFilePrices
                 .Where(u => u.UserId == userId)
                 .ToListAsync();
 
             List<object> result = new();
+
+            int orderSeed = 40000;
+            int index = 1;
 
             foreach (var rg in rewardGroups)
             {
@@ -121,23 +127,35 @@ namespace CertEmpire.Services
 
                 if (fileRecord != null && fileObj != null)
                 {
+                    var fileId = rg.FileId;
+
+                    var reportsSubmitted = await _context.Reports.CountAsync(x => x.UserId == userId && x.fileId == fileId);
+                    var votedReports = await _context.Reports.CountAsync(x => x.UserId == userId && x.fileId == fileId && x.Status == ReportStatus.Voted);
+
+                    // Count of voted reports approved (by the reviewer) — custom logic may be needed here
+                    var votedReportsApproved = await _context.ReviewTasks.CountAsync(x =>
+                        x.ReviewerUserId == userId &&
+                        x.Status == ReportStatus.Voted &&
+                        x.VotedStatus == true &&  // You may need to adjust this condition
+                        _context.Reports.Any(r => r.ReportId == x.ReportId && r.fileId == fileId));
+
                     result.Add(new
                     {
-                        FileId = rg.FileId,
+                        OrderNumber = $"#{orderSeed + index++}",
                         FileName = fileObj.FileName,
                         FilePrice = fileObj.FilePrice,
-                        ApprovedReports = rg.ApprovedReports,
-                        ReportsSubmitted = await _context.Reports.CountAsync(x => x.UserId == userId && x.fileId == rg.FileId),
-                        VotedReports = await _context.Reports.CountAsync(x => x.UserId == userId && x.fileId == rg.FileId && x.Status == ReportStatus.Voted),
-                      //  VotedReportsApproved = await _context.Reports.CountAsync(x => x.UserId == userId && x.fileId == rg.FileId && x.Status == ReportStatus.Voted && x.VoteStatus == ReportStatus.Approved),
-                        VotedReportsApproved = 0,
-                        Balance = Math.Min(rg.TotalUnwithdrawn, fileObj.FilePrice)
+                        ReportsSubmitted = reportsSubmitted,
+                        ReportsApproved = rg.ApprovedReports,
+                        VotedReports = votedReports,
+                        VotedReportsApproved = votedReportsApproved,
+                        CurrentBalance = Math.Min(rg.TotalUnwithdrawn, fileObj.FilePrice)
                     });
                 }
             }
 
-            return new Response<object>(true, "User rewards retrieved", "", result);
+            return new Response<object>(true, "Reward details with order retrieved", "", result);
         }
+
 
     }
 }
