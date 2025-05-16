@@ -16,11 +16,13 @@ namespace CertEmpire.Services
         private readonly ApplicationDbContext _context;
         private readonly HttpClient _httpClient;
         private readonly IHttpContextAccessor _httpContextAccessor;
-        public SimulationRepo(HttpClient httpClient, IHttpContextAccessor httpContextAccessor, ApplicationDbContext context)
+        private readonly string _rootPath;
+        public SimulationRepo(HttpClient httpClient, IHttpContextAccessor httpContextAccessor, ApplicationDbContext context, IWebHostEnvironment env)
         {
             _httpClient = httpClient;
             _httpContextAccessor = httpContextAccessor;
             _context = context;
+            _rootPath = env.WebRootPath;
         }
         public async Task<Response<object>> PracticeOnline(Guid fileId)
         {
@@ -44,7 +46,7 @@ namespace CertEmpire.Services
                 else
                 {
                     // Map the API response to ExamDTO
-                    examDTO = await MapApiResponseToExamDTO(result, fileInfo.FileName);
+                    examDTO = await MapApiResponseToExamDTO(result, fileInfo.FileName, fileId);
                     if (examDTO == null)
                     {
                         response = new Response<object>(false, "No data found.", "", default);
@@ -54,51 +56,42 @@ namespace CertEmpire.Services
                         var userFile = await _context.UserFilePrices.FirstOrDefaultAsync(x => x.FileId.Equals(fileId));
                         if (userFile != null)
                         {
-                            //var existingFileRecord = await _context.UploadedFiles.FindAsync(fileId);
-                            //if (existingFileRecord != null)
-                            //{
-
-                                if (userFile == null)
-                                {
-                                    response = new Response<object>(false, "No data found.", "", default);
-                                    return response;
-                                }
-                                else
-                                {
-                                    // Update existing file content
-                                    var updateResponse = await UpdateFileContent(fileInfo, examDTO, userFile.UserId);
-                                    if (updateResponse == null)
-                                    {
-
-                                    }
-                                    else
-                                    {
-                                        var fileContent = await GetFileContent(updateResponse.Data.FileId);
-                                        response = new Response<object>(true, "File updated successfully.", "", fileContent);
-                                    }                                   
-                                }
+                            if (userFile == null)
+                            {
+                                response = new Response<object>(false, "No data found.", "", default);
+                                return response;
                             }
                             else
                             {
-                                // Create a new file content
-                                var createResponse = await CreateNewFileContent(examDTO, userFile.UserId);
-                                if (createResponse.Data == null)
+                                // Update existing file content
+                                var updateResponse = await UpdateFileContent(fileInfo, examDTO, userFile.UserId);
+                                if (updateResponse.Data != null)
+                                {
+                                    var fileContent = await GetFileContent(updateResponse.Data.FileId);
+                                    response = new Response<object>(true, "File updated successfully.", "", fileContent);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // Create a new file content
+                            var createResponse = await CreateNewFileContent(examDTO, userFile.UserId);
+                            if (createResponse.Data == null)
+                            {
+                                response = new Response<object>(false, "No data found.", "", default);
+                                return response;
+                            }
+                            else
+                            {
+                                var fileContent = await GetFileContent(createResponse.Data.FileId);
+                                if (fileContent == null)
                                 {
                                     response = new Response<object>(false, "No data found.", "", default);
                                     return response;
                                 }
-                                else
-                                {
-                                    var fileContent = await GetFileContent(createResponse.Data.FileId);
-                                    if (fileContent == null)
-                                    {
-                                        response = new Response<object>(false, "No data found.", "", default);
-                                        return response;
-                                    }
-                                    response = new Response<object>(true, "File uploaded successfully.", "", fileContent);
-                                }
+                                response = new Response<object>(true, "File uploaded successfully.", "", fileContent);
                             }
-                        //}
+                        }
                     }
                 }
             }
@@ -295,7 +288,7 @@ namespace CertEmpire.Services
             return result;
         }
 
-        private async Task<ExamDTO> MapApiResponseToExamDTO(Root rootexam, string fileName)
+        private async Task<ExamDTO> MapApiResponseToExamDTO(Root rootexam, string fileName, Guid fileId)
         {
             var examDTO = new ExamDTO
             {
@@ -306,23 +299,32 @@ namespace CertEmpire.Services
             foreach (var topicItem in rootexam.topics)
             {
                 var topic = topicItem.Value;
-
+                var caseStudyText = await ReplaceImageSrcWithAbsoluteUrl(topic.case_study, fileId, "QuestionImages");
                 var topicDTO = new Topic
                 {
                     TopicId = Guid.NewGuid(),
                     TopicName = topic.topic_name,
-                    CaseStudy = topic.case_study,
+                    CaseStudy = caseStudyText,
                     Questions = new List<QuestionObject>()
                 };
 
                 foreach (var q in topic.questions)
                 {
                     // Extract image URLs
-                    var questionImageUrl = ReplaceImageSrcWithAbsoluteUrl(q.question);
-                    var answerImageUrl = ReplaceImageSrcWithAbsoluteUrl(q.explanation);
+                    var questionImageUrl = await ReplaceImageSrcWithAbsoluteUrl(q.question, fileId, "QuestionImages");
+                    var answerImageUrl = await ReplaceImageSrcWithAbsoluteUrl(q.explanation, fileId, "QuestionImages");
+
+                    List<string> optionTextList = new();
+                    foreach (var item in q.options)
+                    {
+                        var optionsText = await ReplaceImageSrcWithAbsoluteUrl(item, fileId, "QuesionImages");
+                        optionTextList.Add(optionsText);
+                    }
+
+
                     // Remove <img> tags from HTML to get clean text
-                    string cleanedQuestionText = ReplaceImageSrcWithAbsoluteUrl(q.question);
-                    string cleanedExplanation = ReplaceImageSrcWithAbsoluteUrl(q.explanation);
+                    string cleanedQuestionText = await ReplaceImageSrcWithAbsoluteUrl(q.question, fileId, "QuestionImages");
+                    string cleanedExplanation = await ReplaceImageSrcWithAbsoluteUrl(q.explanation, fileId, "QuestionImages");
 
                     var correctAnswers = q.answer
                         .Select(ans =>
@@ -339,7 +341,7 @@ namespace CertEmpire.Services
                         id = 0,
                         questionText = cleanedQuestionText,
                         questionDescription = "",
-                        options = q.options,
+                        options = optionTextList,
                         correctAnswerIndices = correctAnswers,
                         answerExplanation = cleanedExplanation,
                         showAnswer = false,
@@ -355,34 +357,55 @@ namespace CertEmpire.Services
 
             return examDTO;
         }
-        private string ReplaceImageSrcWithAbsoluteUrl(string html)
+        public async Task<string> ReplaceImageSrcWithAbsoluteUrl(string html, Guid fileId, string subDirectory)
         {
             if (string.IsNullOrWhiteSpace(html)) return html;
 
-            var httpRequest = _httpContextAccessor.HttpContext.Request;
-            var domain = $"{httpRequest.Scheme}://{httpRequest.Host}{httpRequest.PathBase}/uploads/QuestionImages";
-
-            // Find all <img> tags
+            string domain = "https://exam-ai-production-2bdc.up.railway.app/static/images";
             var matches = Regex.Matches(html, "<img[^>]*src=['\"]([^'\"]+)['\"][^>]*>", RegexOptions.IgnoreCase);
 
             foreach (Match match in matches)
             {
                 if (match.Groups.Count > 1)
                 {
-                    var relativePath = match.Groups[1].Value; // e.g. images/page_7_img_1.jpg
-                    var fileName = Path.GetFileName(relativePath); // page_7_img_1.jpg
-                    var sourcePath = Path.Combine(Directory.GetCurrentDirectory(), relativePath);
-                    var destinationPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads/QuestionImages", fileName);
+                    string relativePath = match.Groups[1].Value;
+                    string fileName = Path.GetFileName(relativePath);
 
-                    // Copy image if not already exists
-                    if (System.IO.File.Exists(sourcePath) && !System.IO.File.Exists(destinationPath))
+                    // Ensure image is from AI domain
+                    string aiImageUrl = $"{domain}/{fileName}";
+                    if (!aiImageUrl.StartsWith(domain)) continue;
+
+                    try
                     {
-                        System.IO.File.Copy(sourcePath, destinationPath, true);
-                    }
+                        var httpClient = new HttpClient();
+                        var imageBytes = await httpClient.GetByteArrayAsync(aiImageUrl);
 
-                    // Replace entire <img ...> with just the absolute URL
-                    var absoluteUrl = $"{domain}/{fileName}";
-                    html = html.Replace(match.Value, absoluteUrl);
+                        string fileExtension = Path.GetExtension(aiImageUrl).ToLower();
+                        if (string.IsNullOrEmpty(fileExtension) || !new[] { ".jpg", ".jpeg", ".png", ".gif" }.Contains(fileExtension))
+                            continue;
+
+                        // Save to your server
+                        string folderPath = Path.Combine(_rootPath, "uploads", "QuestionImages", fileId.ToString());
+                        if (!Directory.Exists(folderPath))
+                            Directory.CreateDirectory(folderPath);
+
+                        string newFileName = $"{Guid.NewGuid()}{fileExtension}";
+                        string fullFilePath = Path.Combine(folderPath, newFileName);
+                        await File.WriteAllBytesAsync(fullFilePath, imageBytes);
+
+                        // Generate public image URL
+                        var request = _httpContextAccessor.HttpContext.Request;
+                        string newImageUrl = $"{request.Scheme}://{request.Host}/uploads/QuestionImages/{fileId}/{newFileName}";
+
+
+                        // Replace the entire <img> tag with just the new hosted URL
+                        html = html.Replace(match.Value, newImageUrl);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error downloading or saving image: {aiImageUrl} - {ex.Message}");
+                        html = html.Replace(match.Value, ""); // Remove broken image tag
+                    }
                 }
             }
 
@@ -431,7 +454,7 @@ namespace CertEmpire.Services
                 // Add new content
                 await AddExamContent(exam, existingFile.FileId, userId);
 
-                return new Response<UploadedFile>(true, "File updated successfully.", "",existingFile);
+                return new Response<UploadedFile>(true, "File updated successfully.", "", existingFile);
             }
             catch (Exception ex)
             {
@@ -478,7 +501,7 @@ namespace CertEmpire.Services
                         CaseStudyId = hasCaseStudy ? topicId : Guid.Empty,
                         FileId = fileId
                     };
-                    await  _context.Questions.AddAsync(questionEntity);
+                    await _context.Questions.AddAsync(questionEntity);
                     await _context.SaveChangesAsync();
                 }
             }
@@ -508,5 +531,35 @@ namespace CertEmpire.Services
                 return new Response<UploadedFile>(false, "Error uploading file.", ex.Message, null);
             }
         }
+
+        public async Task<Response<object>> GetAllFiles(string email)
+        {
+            Response<object> response = new();
+            var userInfo = await _context.Users.FirstOrDefaultAsync(x => x.Email.Equals(email));
+
+            if (userInfo == null)
+            {
+                return new Response<object>(true, "No user found.", "", "");
+            }
+
+            // Get all UserFilePrices at once
+            var userFileIds = await _context.UserFilePrices
+                .Where(x => x.UserId == userInfo.UserId)
+                .Select(x => x.FileId)
+                .ToListAsync();
+
+            if (userFileIds == null || !userFileIds.Any())
+            {
+                return new Response<object>(true, "No files found.", "", "");
+            }
+
+            // Get all related UploadedFiles in a single query
+            var files = await _context.UploadedFiles
+                .Where(x => userFileIds.Contains(x.FileId))
+                .ToListAsync();
+
+            return new Response<object>(true, "Files", "", files);
+        }
+
     }
 }
