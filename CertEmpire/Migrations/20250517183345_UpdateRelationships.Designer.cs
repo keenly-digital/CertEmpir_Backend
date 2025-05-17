@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using CertEmpire.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CertEmpire.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250517183345_UpdateRelationships")]
+    partial class UpdateRelationships
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -118,6 +121,9 @@ namespace CertEmpire.Migrations
                     b.Property<DateTime?>("LastModified")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Reason")
                         .HasColumnType("text");
 
@@ -141,6 +147,10 @@ namespace CertEmpire.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("ReportId");
+
+                    b.HasIndex("QuestionId");
+
+                    b.HasIndex("fileId");
 
                     b.ToTable("Reports");
                 });
@@ -186,6 +196,8 @@ namespace CertEmpire.Migrations
                         .HasColumnType("boolean");
 
                     b.HasKey("ReviewTaskId");
+
+                    b.HasIndex("ReportId");
 
                     b.ToTable("ReviewTasks");
                 });
@@ -435,6 +447,36 @@ namespace CertEmpire.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Withdrawals");
+                });
+
+            modelBuilder.Entity("CertEmpire.Models.Report", b =>
+                {
+                    b.HasOne("CertEmpire.Models.Question", "Question")
+                        .WithMany()
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CertEmpire.Models.UploadedFile", "File")
+                        .WithMany()
+                        .HasForeignKey("fileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("File");
+
+                    b.Navigation("Question");
+                });
+
+            modelBuilder.Entity("CertEmpire.Models.ReviewTask", b =>
+                {
+                    b.HasOne("CertEmpire.Models.Report", "Report")
+                        .WithMany()
+                        .HasForeignKey("ReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Report");
                 });
 
             modelBuilder.Entity("CertEmpire.Models.TaskVote", b =>

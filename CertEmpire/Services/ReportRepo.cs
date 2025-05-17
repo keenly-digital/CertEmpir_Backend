@@ -59,7 +59,7 @@ namespace CertEmpire.Services
                         var report = new Report
                         {
                             Type = request.Type,
-                            TargetId = request.TargetId,
+                            TargetId = questionInfo.Id,
                             Reason = request.Reason,
                             Explanation = request.Explanation,
                             ReportId = Guid.NewGuid(),

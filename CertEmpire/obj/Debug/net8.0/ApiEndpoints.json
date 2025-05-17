@@ -171,6 +171,22 @@
   },
   {
     "ContainingType": "CertEmpire.Controllers.SimulationController",
+    "Method": "GetAllFiles",
+    "RelativePath": "api/Simulation/GetAllFiles",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "email",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "CertEmpire.Controllers.SimulationController",
     "Method": "PracticeOnline",
     "RelativePath": "api/Simulation/PracticeOnline",
     "HttpMethod": "GET",

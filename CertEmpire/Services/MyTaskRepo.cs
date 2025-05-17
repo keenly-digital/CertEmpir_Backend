@@ -21,7 +21,7 @@ namespace CertEmpire.Services
                                {
                                    TaskId = rt.ReviewTaskId,
                                    ExamName = file.FileName,
-                                   QuestionContent = question.QuestionText??"",
+                                   QuestionContent = question.QuestionText ?? "",
                                    CurrentAnswer = question.CorrectAnswerIndices,
                                    CurrentExplanation = question.Explanation ?? "",
                                    SuggestedAnswer = report.CorrectAnswerIndices,
@@ -31,7 +31,7 @@ namespace CertEmpire.Services
                                    RequestedAt = report.Created
                                }).ToListAsync();
 
-            if (tasks.Count()>0)
+            if (tasks.Count() > 0)
             {
                 response = new Response<List<ReviewTaskDto>>(true, "Pending Tasks", "", tasks);
             }

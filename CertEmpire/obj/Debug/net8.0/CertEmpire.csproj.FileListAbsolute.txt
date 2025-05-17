@@ -185,3 +185,4 @@ C:\Users\admin\Downloads\Documents\Other Projects\CertEmpir_Backend-main\CertEmp
 C:\Users\admin\Downloads\Documents\Other Projects\CertEmpir_Backend-main\CertEmpire\bin\Debug\net8.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
 C:\Users\admin\Downloads\Documents\Other Projects\CertEmpir_Backend-main\CertEmpire\bin\Debug\net8.0\Microsoft.IdentityModel.Tokens.dll
 C:\Users\admin\Downloads\Documents\Other Projects\CertEmpir_Backend-main\CertEmpire\bin\Debug\net8.0\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\admin\Downloads\Documents\Other Projects\CertEmpir_Backend-main\CertEmpire\bin\Debug\net8.0\CertEmpire.staticwebassets.runtime.json

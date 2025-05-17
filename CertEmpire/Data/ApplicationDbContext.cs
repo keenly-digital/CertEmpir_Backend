@@ -50,11 +50,6 @@ namespace CertEmpire.Data
                 property.SetPrecision(18);
                 property.SetScale(6);
             }
-            builder.Entity<ReviewTask>()
-       .HasOne(rt => rt.Report)
-       .WithMany(r => r.ReviewTasks)
-       .HasForeignKey(rt => rt.ReportId);
-            base.OnModelCreating(builder);
         }
     }
 }

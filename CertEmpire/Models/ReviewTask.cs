@@ -15,6 +15,5 @@ namespace CertEmpire.Models
         public bool VotedStatus { get; set; }
         public ReportStatus AdminSatus { get; set; }
         public string ReviewerExplanation { get; set; } = string.Empty;
-        public Report? Report { get; set; }
     }
 }
