@@ -513,6 +513,9 @@
             "type": "string",
             "nullable": true
           },
+          "pageType": {
+            "$ref": "#/components/schemas/PageType"
+          },
           "file": {
             "type": "array",
             "items": {
@@ -522,6 +525,15 @@
           }
         },
         "additionalProperties": false
+      },
+      "PageType": {
+        "enum": [
+          "MyTasks",
+          "MyRewards",
+          "Report",
+          "Simulation"
+        ],
+        "type": "string"
       },
       "ReportAnswerDTO": {
         "type": "object",
@@ -562,13 +574,12 @@
       },
       "ReportStatus": {
         "enum": [
-          0,
-          1,
-          2,
-          3
+          "Pending",
+          "Approved",
+          "Unapproved",
+          "Voted"
         ],
-        "type": "integer",
-        "format": "int32"
+        "type": "string"
       },
       "ReportSubmissionDTO": {
         "type": "object",
@@ -601,12 +612,11 @@
       },
       "ReportType": {
         "enum": [
-          0,
-          1,
-          2
+          "Question",
+          "Answer",
+          "Explanation"
         ],
-        "type": "integer",
-        "format": "int32"
+        "type": "string"
       },
       "SubmitVoteDTO": {
         "type": "object",

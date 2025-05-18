@@ -1,4 +1,6 @@
-﻿namespace CertEmpire.DTOs.UserDTOs
+﻿using CertEmpire.Helpers.Enums;
+
+namespace CertEmpire.DTOs.UserDTOs
 {
     public class UserRequest
     {
@@ -13,6 +15,7 @@
     {
         public string Email { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
+        public PageType PageType { get; set; } 
         public List<LoginFileUploadDTO>? File { get; set; }
     }
 
@@ -29,7 +32,6 @@
     public class FileResponse
     {
         public string? FileUrl { get; set; }
-        public Guid FileId { get; set; }
     }
     public class UpdatePasswordRequest
     {

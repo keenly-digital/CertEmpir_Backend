@@ -1,10 +1,13 @@
 ﻿using CertEmpire.Data;
 using CertEmpire.DTOs.UserDTOs;
+using CertEmpire.Helpers.Enums;
 using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using CertEmpire.Interfaces.IJwtService;
 using CertEmpire.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Text;
+using System.Text.Json;
 
 namespace CertEmpire.Services
 {
@@ -12,10 +15,12 @@ namespace CertEmpire.Services
     {
         private readonly IUploadedFileRepo _uploadFileRepo;
         private readonly IJwtService _jwtService;
-        public UserRepo(ApplicationDbContext context,IUploadedFileRepo _uploadFileRepo, IJwtService jwtService) : base(context)
+        private readonly IConfiguration _configuration;
+        public UserRepo(ApplicationDbContext context, IUploadedFileRepo _uploadFileRepo, IJwtService jwtService, IConfiguration configuration) : base(context)
         {
             this._uploadFileRepo = _uploadFileRepo;
             this._jwtService = jwtService;
+            _configuration = configuration;
         }
         public async Task<Response<string>> AddUser(AddUserRequest request)
         {
@@ -48,7 +53,7 @@ namespace CertEmpire.Services
                     {
                         response = new Response<string>(true, "Error while adding user.", "", default);
                     }
-                }   
+                }
             }
             return response;
         }
@@ -64,7 +69,7 @@ namespace CertEmpire.Services
                 {
                     userObject.Add(item.Email, item.Password);
                 }
-               
+
                 response = new Response<object>(true, "Emails retrieved successfully", "", userObject);
             }
             else
@@ -78,29 +83,25 @@ namespace CertEmpire.Services
         {
             var response = new Response<AddUserResponse>();
             var FileObj = new List<FileResponseObject>();
-
+            string fileUrl = string.Empty;
             if (request == null)
             {
                 return new Response<AddUserResponse>(false, "Request can't be null", "", default);
             }
-
             var user = _context.Users.FirstOrDefault(u => u.Email == request.Email && u.Password == request.Password);
             if (user == null)
             {
                 return new Response<AddUserResponse>(false, "Invalid email or password", "", default);
             }
-
             if (request.File != null && request.File.Count != 0)
             {
+
                 foreach (var file in request.File)
                 {
-                    if (file.FileUrl == null) continue;
 
                     var fileExist = await _context.UploadedFiles
                         .FirstOrDefaultAsync(x => x.FileURL == file.FileUrl);
-
                     Guid fileId;
-
                     if (fileExist == null)
                     {
                         var uploadedFile = new UploadedFile
@@ -110,21 +111,17 @@ namespace CertEmpire.Services
                             FileId = Guid.NewGuid(),
                             FileName = file.FileUrl.Split('/').Last()
                         };
-
                         await _context.UploadedFiles.AddAsync(uploadedFile);
                         await _context.SaveChangesAsync();
-
                         fileId = uploadedFile.FileId;
                     }
                     else
                     {
                         fileId = fileExist.FileId;
                     }
-
                     // Check if user already linked to this file
                     var alreadyLinked = await _context.UserFilePrices
                         .AnyAsync(u => u.UserId == user.UserId && u.FileId == fileId);
-
                     if (!alreadyLinked)
                     {
                         UserFilePrice filePrice = new()
@@ -142,11 +139,10 @@ namespace CertEmpire.Services
                         .Where(u => u.FileId == fileId && u.UserId != user.UserId)
                         .Select(u => u.UserId)
                         .ToListAsync();
-
+                    fileUrl = GenerateFileURL(user.UserId, fileId, request.PageType);
                     FileObj.Add(new FileResponseObject
                     {
-                        FileId = fileId,
-                        FileUrl = file.FileUrl,
+                        FileUrl = fileUrl,
                     });
                 }
             }
@@ -155,7 +151,7 @@ namespace CertEmpire.Services
                 true,
                 "User logged in successfully",
                 "",
-                new AddUserResponse { FileObj = FileObj , JwtToken = jwtToken});
+                new AddUserResponse { FileObj = FileObj, JwtToken = jwtToken });
         }
 
         public async Task<Response<string>> UpdatePassword(UpdatePasswordRequest request)
@@ -200,6 +196,23 @@ namespace CertEmpire.Services
             {
                 return new Response<string>(false, "User not found", "", default);
             }
-        } 
+        }
+
+        #region Helper Functions
+        public string GenerateFileURL(Guid userId, Guid fileId, PageType pageValue)
+        {
+            var data = new
+            {
+                userId = userId,
+                fileId = fileId
+            };
+            string json = JsonSerializer.Serialize(data);
+            byte[] bytes = Encoding.UTF8.GetBytes(json);
+            string base64 = Convert.ToBase64String(bytes);
+            string baseUrl = _configuration["CertEmpire-WebURL:BaseUrl"];
+            string fullUrl = $"{baseUrl}?data={base64}#/{pageValue.ToString()}";
+            return fullUrl;
+        }
+        #endregion
     }
 }

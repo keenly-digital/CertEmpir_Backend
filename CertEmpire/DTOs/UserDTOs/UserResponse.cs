@@ -10,7 +10,6 @@
     }
     public class FileResponseObject
     {
-        public Guid FileId { get; set; }
         public string? FileUrl { get; set; }
     }
     public class GetAllEmailResponse
