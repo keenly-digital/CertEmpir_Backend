@@ -139,7 +139,7 @@ namespace CertEmpire.Services
                         .Where(u => u.FileId == fileId && u.UserId != user.UserId)
                         .Select(u => u.UserId)
                         .ToListAsync();
-                    fileUrl = GenerateFileURL(user.UserId, fileId, request.PageType);
+                    fileUrl = GenerateFileURL(user.UserId, fileId);
                     FileObj.Add(new FileResponseObject
                     {
                         FileUrl = fileUrl,
@@ -199,7 +199,7 @@ namespace CertEmpire.Services
         }
 
         #region Helper Functions
-        public string GenerateFileURL(Guid userId, Guid fileId, PageType pageValue)
+        public string GenerateFileURL(Guid userId, Guid fileId)
         {
             var data = new
             {
@@ -210,7 +210,7 @@ namespace CertEmpire.Services
             byte[] bytes = Encoding.UTF8.GetBytes(json);
             string base64 = Convert.ToBase64String(bytes);
             string baseUrl = _configuration["CertEmpire-WebURL:BaseUrl"];
-            string fullUrl = $"{baseUrl}?data={base64}#/{pageValue.ToString()}";
+            string fullUrl = $"{baseUrl}?data={base64}#/{PageType.Simulation.ToString()}";
             return fullUrl;
         }
         #endregion

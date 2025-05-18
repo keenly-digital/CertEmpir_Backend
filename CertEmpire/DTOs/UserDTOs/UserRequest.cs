@@ -15,7 +15,6 @@ namespace CertEmpire.DTOs.UserDTOs
     {
         public string Email { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
-        public PageType PageType { get; set; } 
         public List<LoginFileUploadDTO>? File { get; set; }
     }
 

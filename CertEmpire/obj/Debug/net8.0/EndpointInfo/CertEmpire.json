@@ -513,9 +513,6 @@
             "type": "string",
             "nullable": true
           },
-          "pageType": {
-            "$ref": "#/components/schemas/PageType"
-          },
           "file": {
             "type": "array",
             "items": {
@@ -525,15 +522,6 @@
           }
         },
         "additionalProperties": false
-      },
-      "PageType": {
-        "enum": [
-          "MyTasks",
-          "MyRewards",
-          "Report",
-          "Simulation"
-        ],
-        "type": "string"
       },
       "ReportAnswerDTO": {
         "type": "object",
