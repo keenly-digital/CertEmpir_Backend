@@ -17,12 +17,14 @@ namespace CertEmpire.Services
         private readonly HttpClient _httpClient;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly string _rootPath;
-        public SimulationRepo(HttpClient httpClient, IHttpContextAccessor httpContextAccessor, ApplicationDbContext context, IWebHostEnvironment env)
+        private readonly IConfiguration _configuration;
+        public SimulationRepo(HttpClient httpClient, IHttpContextAccessor httpContextAccessor, ApplicationDbContext context, IWebHostEnvironment env, IConfiguration configuration)
         {
             _httpClient = httpClient;
             _httpContextAccessor = httpContextAccessor;
             _context = context;
             _rootPath = env.WebRootPath;
+            _configuration = configuration;
         }
         public async Task<Response<object>> PracticeOnline(Guid fileId)
         {
