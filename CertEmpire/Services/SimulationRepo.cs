@@ -364,43 +364,50 @@ namespace CertEmpire.Services
             if (string.IsNullOrWhiteSpace(html)) return html;
 
             string domain = "https://exam-ai-production-2bdc.up.railway.app/static/images";
-            var request = _httpContextAccessor.HttpContext.Request;
-            string uploadBaseUrl = $"{request.Scheme}://{request.Host}/uploads/QuestionImages/{fileId}";
-            string folderPath = Path.Combine(_rootPath, "uploads", "QuestionImages", fileId.ToString());
-
-            if (!Directory.Exists(folderPath))
-                Directory.CreateDirectory(folderPath);
-
             var matches = Regex.Matches(html, "<img[^>]*src=['\"]([^'\"]+)['\"][^>]*>", RegexOptions.IgnoreCase);
 
             foreach (Match match in matches)
             {
-                if (match.Groups.Count < 2) continue;
-
-                string relativePath = match.Groups[1].Value;
-                string fileName = Path.GetFileName(relativePath);
-                string sourceUrl = $"{domain}/{fileName}";
-
-                try
+                if (match.Groups.Count > 1)
                 {
-                    using var httpClient = new HttpClient();
-                    byte[] imageBytes = await httpClient.GetByteArrayAsync(sourceUrl);
+                    string relativePath = match.Groups[1].Value;
+                    string fileName = Path.GetFileName(relativePath);
 
-                    string extension = Path.GetExtension(fileName).ToLower();
-                    if (!new[] { ".jpg", ".jpeg", ".png", ".gif" }.Contains(extension))
-                        continue;
+                    // Ensure image is from AI domain
+                    string aiImageUrl = $"{domain}/{fileName}";
+                    if (!aiImageUrl.StartsWith(domain)) continue;
 
-                    string newFileName = $"{Guid.NewGuid()}{extension}";
-                    string fullFilePath = Path.Combine(folderPath, newFileName);
-                    await File.WriteAllBytesAsync(fullFilePath, imageBytes);
+                    try
+                    {
+                        var httpClient = new HttpClient();
+                        var imageBytes = await httpClient.GetByteArrayAsync(aiImageUrl);
 
-                    string newImageUrl = $"{uploadBaseUrl}/{newFileName}";
-                    html = html.Replace(match.Value, newImageUrl);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Failed to process image: {sourceUrl} - {ex.Message}");
-                    html = html.Replace(match.Value, ""); // Remove <img> tag
+                        string fileExtension = Path.GetExtension(aiImageUrl).ToLower();
+                        if (string.IsNullOrEmpty(fileExtension) || !new[] { ".jpg", ".jpeg", ".png", ".gif" }.Contains(fileExtension))
+                            continue;
+
+                        // Save to your server
+                        string folderPath = Path.Combine(_rootPath, "uploads", "QuestionImages", fileId.ToString());
+                        if (!Directory.Exists(folderPath))
+                            Directory.CreateDirectory(folderPath);
+
+                        string newFileName = $"{Guid.NewGuid()}{fileExtension}";
+                        string fullFilePath = Path.Combine(folderPath, newFileName);
+                        await File.WriteAllBytesAsync(fullFilePath, imageBytes);
+
+                        // Generate public image URL
+                        var request = _httpContextAccessor.HttpContext.Request;
+                        string newImageUrl = $"{request.Scheme}://{request.Host}/uploads/QuestionImages/{fileId}/{newFileName}";
+
+
+                        // Replace the entire <img> tag with just the new hosted URL
+                        html = html.Replace(match.Value, newImageUrl);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error downloading or saving image: {aiImageUrl} - {ex.Message}");
+                        html = html.Replace(match.Value, ""); // Remove broken image tag
+                    }
                 }
             }
 
