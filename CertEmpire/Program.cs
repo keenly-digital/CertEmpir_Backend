@@ -6,6 +6,7 @@ using CertEmpire.Services;
 using CertEmpire.Services.JwtService;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
@@ -96,6 +97,18 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+string[] uploadDirs = new[]
+{
+    Path.Combine("wwwroot", "uploads", "QuestionImages")
+};
+app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "QuestionImages")),
+    RequestPath = "/uploads/QuestionImages",
+    ServeUnknownFileTypes = true, //Allow non-standard file types like .qzs
+    DefaultContentType = "application/octet-stream" //Generic binary type
+});
 
 app.UseSwagger();
 app.UseSwaggerUI();
