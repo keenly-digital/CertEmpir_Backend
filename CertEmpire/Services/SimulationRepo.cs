@@ -47,6 +47,12 @@ namespace CertEmpire.Services
                 }
                 else
                 {
+                    string folderPath = Path.Combine(_rootPath, "uploads", "QuestionImages", fileId.ToString());
+                    foreach (var file in Directory.GetFiles(folderPath))
+                    {
+                        try { File.Delete(file); }
+                        catch (Exception ex) { Console.WriteLine($"Error deleting file {file}: {ex.Message}"); }
+                    }
                     // Map the API response to ExamDTO
                     examDTO = await MapApiResponseToExamDTO(result, fileInfo.FileName, fileId);
                     if (examDTO == null)
@@ -66,6 +72,7 @@ namespace CertEmpire.Services
                             else
                             {
                                 // Update existing file content
+                               
                                 var updateResponse = await UpdateFileContent(fileInfo, examDTO, userFile.UserId);
                                 if (updateResponse.Data != null)
                                 {
