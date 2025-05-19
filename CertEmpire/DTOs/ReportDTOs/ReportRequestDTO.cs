@@ -10,6 +10,7 @@ namespace CertEmpire.DTOs.ReportRequestDTOs
         public string? Explanation { get; set; }
         public Guid UserId { get; set; }
         public Guid FileId { get; set; }
+        public string QuestionNumber { get; set; } = string.Empty;
     }
     public class ReportAnswerDTO
     {

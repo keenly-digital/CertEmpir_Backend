@@ -1,12 +1,7 @@
 ﻿using CertEmpire.Helpers.Enums;
-using CertEmpire.Models;
 
 namespace CertEmpire.DTOs.MyTaskDTOs
 {
-    public class MyTaskDTO
-    {
-
-    }
     public class ReviewTaskDto
     {
         public Guid TaskId { get; set; }
@@ -19,6 +14,8 @@ namespace CertEmpire.DTOs.MyTaskDTOs
         public string SuggestedExplanation { get; set; } = string.Empty;
         public string ReportType { get; set; } = string.Empty;
         public DateTime RequestedAt { get; set; }
+        public string Reason { get; set; } = string.Empty;
+        public string QuestionNumber { get; set; } = string.Empty;
     }
     public class SubmitVoteDTO
     {

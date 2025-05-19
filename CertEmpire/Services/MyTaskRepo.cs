@@ -28,9 +28,10 @@ namespace CertEmpire.Services
                                    SuggestedExplanation = report.Explanation ?? "",
                                    QuestionId = question.QuestionId.ToString(),
                                    ReportType = report.Type.ToString(),
-                                   RequestedAt = report.Created
+                                   RequestedAt = report.Created,
+                                   QuestionNumber = report.QuestionNumber,
+                                   Reason = report.Reason ?? "",
                                }).ToListAsync();
-
             if (tasks.Count() > 0)
             {
                 response = new Response<List<ReviewTaskDto>>(true, "Pending Tasks", "", tasks);

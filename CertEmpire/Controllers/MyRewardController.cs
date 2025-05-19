@@ -1,7 +1,6 @@
 ﻿using CertEmpire.DTOs.RewardsDTO;
 using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
-using CertEmpire.Middlewares;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CertEmpire.Controllers

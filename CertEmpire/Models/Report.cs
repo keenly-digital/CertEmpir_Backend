@@ -19,5 +19,6 @@ namespace CertEmpire.Models
         public string ExamName { get; set; } = string.Empty;
         public string AdminExplanation { get; set; } = string.Empty;
         public List<int>? CorrectAnswerIndices { get; set; } = [];
+        public string QuestionNumber { get; set; } = string.Empty;
     }
 }
