@@ -98,7 +98,15 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 app.UseStaticFiles();
-
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(Path.GetTempPath(), "uploads", "QuestionImages")
+    ),
+    RequestPath = "/uploads/QuestionImages",
+    ServeUnknownFileTypes = true,
+    DefaultContentType = "application/octet-stream"
+});
 app.UseSwagger();
 app.UseSwaggerUI();
 

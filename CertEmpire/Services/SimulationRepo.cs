@@ -394,18 +394,18 @@ namespace CertEmpire.Services
                             continue;
 
                         // Save to your server
-                        string folderPath = Path.Combine(_rootPath, "uploads", "QuestionImages", fileId.ToString());
-                        if (!Directory.Exists(folderPath))
-                            Directory.CreateDirectory(folderPath);
+                        string tempFolder = Path.Combine(Path.GetTempPath(), "uploads", "QuestionImages", fileId.ToString());
+                        if (!Directory.Exists(tempFolder))
+                            Directory.CreateDirectory(tempFolder);
 
                         string newFileName = $"{Guid.NewGuid()}{fileExtension}";
-                        string fullFilePath = Path.Combine(folderPath, newFileName);
+                        string fullFilePath = Path.Combine(tempFolder, newFileName);
                         await File.WriteAllBytesAsync(fullFilePath, imageBytes);
 
                         // Generate public image URL
                         var request = _httpContextAccessor.HttpContext.Request;
                         string newImageUrl = $"https://{request.Host}/uploads/QuestionImages/{fileId}/{newFileName}";
-
+                        Console.WriteLine($"Saving image to: {fullFilePath}");
 
                         // Replace the entire <img> tag with just the new hosted URL
                         html = html.Replace(match.Value, newImageUrl);
