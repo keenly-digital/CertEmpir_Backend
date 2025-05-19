@@ -395,8 +395,7 @@ namespace CertEmpire.Services
 
                         // Save to your server
                         string tempFolder = Path.Combine(Path.GetTempPath(), "uploads", "QuestionImages", fileId.ToString());
-                        if (!Directory.Exists(tempFolder))
-                            Directory.CreateDirectory(tempFolder);
+                        Directory.CreateDirectory(tempFolder);
 
                         string newFileName = $"{Guid.NewGuid()}{fileExtension}";
                         string fullFilePath = Path.Combine(tempFolder, newFileName);

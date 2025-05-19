@@ -95,7 +95,8 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
-
+string tempRoot = Path.Combine(Path.GetTempPath(), "uploads", "QuestionImages");
+Directory.CreateDirectory(tempRoot);
 // Configure the HTTP request pipeline.
 app.UseStaticFiles();
 app.UseStaticFiles(new StaticFileOptions
