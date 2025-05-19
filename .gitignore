@@ -22,3 +22,15 @@ obj/
 *.bak
 *.zip
 *.vsidx
+/CertEmpire/bin/Debug/net8.0/CertEmpire.exe
+/CertEmpire/bin/Debug/net8.0/CertEmpire.dll
+/CertEmpire/bin/Debug/net8.0/CertEmpire.pdb
+/CertEmpire/obj/Debug/net8.0/ref/CertEmpire.dll
+/CertEmpire/obj/Debug/net8.0/refint/CertEmpire.dll
+/CertEmpire/obj/Debug/net8.0/apphost.exe
+/CertEmpire/obj/Debug/net8.0/CertEmpire.AssemblyInfo.cs
+/CertEmpire/obj/Debug/net8.0/CertEmpire.AssemblyInfoInputs.cache
+/CertEmpire/obj/Debug/net8.0/CertEmpire.csproj.CoreCompileInputs.cache
+/CertEmpire/obj/Debug/net8.0/CertEmpire.dll
+/CertEmpire/obj/Debug/net8.0/CertEmpire.pdb
+/CertEmpire/obj/Debug/net8.0/CertEmpire.sourcelink.json
