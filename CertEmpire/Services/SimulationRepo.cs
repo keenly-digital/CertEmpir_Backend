@@ -404,7 +404,7 @@ namespace CertEmpire.Services
 
                         // Generate public image URL
                         var request = _httpContextAccessor.HttpContext.Request;
-                        string newImageUrl = $"{request.Scheme}://{request.Host}/uploads/QuestionImages/{fileId}/{newFileName}";
+                        string newImageUrl = $"https://{request.Host}/uploads/QuestionImages/{fileId}/{newFileName}";
 
 
                         // Replace the entire <img> tag with just the new hosted URL
