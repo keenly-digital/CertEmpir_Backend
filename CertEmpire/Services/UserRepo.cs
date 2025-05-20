@@ -79,19 +79,18 @@ namespace CertEmpire.Services
             return response;
         }
 
-        public async Task<Response<AddUserResponse>> LoginResponse(LoginRequest request)
+        public async Task<Response<LoginResponse>> LoginResponse(LoginRequest request)
         {
-            var response = new Response<AddUserResponse>();
-            var FileObj = new List<FileResponseObject>();
+            var response = new Response<LoginResponse>();
             string fileUrl = string.Empty;
             if (request == null)
             {
-                return new Response<AddUserResponse>(false, "Request can't be null", "", default);
+                return new Response<LoginResponse>(false, "Request can't be null", "", default);
             }
             var user = _context.Users.FirstOrDefault(u => u.Email == request.Email && u.Password == request.Password);
             if (user == null)
             {
-                return new Response<AddUserResponse>(false, "Invalid email or password", "", default);
+                return new Response<LoginResponse>(false, "Invalid email or password", "", default);
             }
             if (request.File != null && request.File.Count != 0)
             {
@@ -139,19 +138,16 @@ namespace CertEmpire.Services
                         .Where(u => u.FileId == fileId && u.UserId != user.UserId)
                         .Select(u => u.UserId)
                         .ToListAsync();
-                    fileUrl = GenerateFileURL(user.UserId, fileId);
-                    FileObj.Add(new FileResponseObject
-                    {
-                        FileUrl = fileUrl,
-                    });
+                    //fileUrl = GenerateFileURL(user.UserId, fileId);
+                   
                 }
             }
             var jwtToken = await _jwtService.generateJwtToken(user);
-            return new Response<AddUserResponse>(
+            return new Response<LoginResponse>(
                 true,
                 "User logged in successfully",
                 "",
-                new AddUserResponse { FileObj = FileObj, JwtToken = jwtToken });
+                new LoginResponse { UserId = user.UserId, JwtToken = jwtToken });
         }
 
         public async Task<Response<string>> UpdatePassword(UpdatePasswordRequest request)
@@ -197,22 +193,5 @@ namespace CertEmpire.Services
                 return new Response<string>(false, "User not found", "", default);
             }
         }
-
-        #region Helper Functions
-        public string GenerateFileURL(Guid userId, Guid fileId)
-        {
-            var data = new
-            {
-                userId = userId,
-                fileId = fileId
-            };
-            string json = JsonSerializer.Serialize(data);
-            byte[] bytes = Encoding.UTF8.GetBytes(json);
-            string base64 = Convert.ToBase64String(bytes);
-            string baseUrl = _configuration["CertEmpire-WebURL:BaseUrl"];
-            string fullUrl = $"{baseUrl}?data={base64}#/{PageType.Simulation.ToString()}";
-            return fullUrl;
-        }
-        #endregion
     }
 }
