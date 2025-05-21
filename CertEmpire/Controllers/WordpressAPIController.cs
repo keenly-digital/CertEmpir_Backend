@@ -2,6 +2,7 @@
 using CertEmpire.DTOs.WordpressDTO;
 using CertEmpire.Helpers.Enums;
 using CertEmpire.Helpers.ResponseWrapper;
+using CertEmpire.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.IO;
@@ -39,7 +40,16 @@ namespace CertEmpire.Controllers
                     var fileInDb = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileURL.Equals(request.FileURL));
                     if (fileInDb == null)
                     {
-                        response = new Response<string>(false, "File not found", "", null);
+                        var uploadFile = new UploadedFile()
+                        {
+                            FileId = Guid.NewGuid(),
+                            FileName = "",
+                            FilePrice = 0,
+                            FileURL = request.FileURL
+                        };
+                        await _context.UploadedFiles.AddAsync(uploadFile);
+                        await _context.SaveChangesAsync();
+
                     }
                     else
                     {
