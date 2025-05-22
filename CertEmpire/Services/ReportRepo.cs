@@ -56,6 +56,12 @@ namespace CertEmpire.Services
                     }
                     else
                     {
+                        var existingReport = await _context.Reports.FirstOrDefaultAsync(x => x.UserId == request.UserId && x.TargetId == request.TargetId && x.fileId == request.FileId);
+                        if (existingReport != null)
+                        {
+                            response = new Response<string>(false, "You have already submitted a report for this question.", "", default);
+                            return response;
+                        }
                         var report = new Report
                         {
                             Type = request.Type,
@@ -140,6 +146,12 @@ namespace CertEmpire.Services
                                     options.Add(option);
                                 }
                             }
+                        }
+                        var existingReport = await _context.Reports.FirstOrDefaultAsync(x => x.UserId == request.UserId && x.TargetId == request.TargetId && x.fileId == request.FileId);
+                        if (existingReport != null)
+                        {
+                            response = new Response<string>(false, "You have already submitted a report for this question.", "", default);
+                            return response;
                         }
                         var report = new Report
                         {
