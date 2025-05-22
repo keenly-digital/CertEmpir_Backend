@@ -60,6 +60,7 @@ namespace CertEmpire.Services
                              RequestedAt = report.Created,
                              QuestionNumber = report.QuestionNumber,
                              Reason = report.Reason ?? "",
+                             Options = report.Options ?? new List<string>()
                          }).ToList();
 
             if (tasks.Count() > 0)

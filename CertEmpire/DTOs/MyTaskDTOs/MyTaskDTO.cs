@@ -16,6 +16,7 @@ namespace CertEmpire.DTOs.MyTaskDTOs
         public DateTime RequestedAt { get; set; }
         public string Reason { get; set; } = string.Empty;
         public string QuestionNumber { get; set; } = string.Empty;
+        public List<string> Options { get; set; } = new List<string>();
     }
     public class SubmitVoteDTO
     {

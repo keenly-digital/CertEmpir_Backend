@@ -75,7 +75,7 @@ namespace CertEmpire.Services
                         if (result != null)
                         {
                             var buyerIds = await _context.UserFilePrices.Where(x => x.FileId == request.FileId && x.UserId != request.UserId).Select(x => x.UserId).ToListAsync();
-                            if(buyerIds.Count>0)
+                            if (buyerIds.Count > 0)
                                 foreach (var buyerId in buyerIds)
                                 {
                                     var task = new ReviewTask
@@ -124,6 +124,23 @@ namespace CertEmpire.Services
                     }
                     else
                     {
+                        List<string> options = new List<string>();
+                        var questionData = await _context.Questions.FirstOrDefaultAsync(x => x.Id == request.TargetId);
+                        if (questionData == null)
+                        {
+                            response = new Response<string>(false, "Question not found.", "", default);
+                        }
+                        else
+                        {
+                            foreach (var index in request.CorrectAnswerIndices)
+                            {
+                                if (index > 0 && index < questionData.Options.Count)
+                                {
+                                    var option = questionData.Options[index];
+                                    options.Add(option);
+                                }
+                            }
+                        }
                         var report = new Report
                         {
                             Type = request.Type,
@@ -137,7 +154,8 @@ namespace CertEmpire.Services
                             fileId = request.FileId,
                             Status = ReportStatus.Pending,
                             ReportName = request.Reason + " " + request.TargetId,
-                            CorrectAnswerIndices = request.CorrectAnswerIndices
+                            CorrectAnswerIndices = request.CorrectAnswerIndices,
+                            Options = options,
                         };
                         var result = await AddAsync(report);
                         if (result != null)
@@ -174,8 +192,8 @@ namespace CertEmpire.Services
             var query = _context.Reports.AsQueryable();
             if (query.Any())
             {
-                int totalCount = query.Where(x=>x.UserId.Equals(request.UserId)).Count();
-                var reports = await query.OrderByDescending(a => a.Created).Where(x=>x.UserId.Equals(request.UserId)).Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize)
+                int totalCount = query.Where(x => x.UserId.Equals(request.UserId)).Count();
+                var reports = await query.OrderByDescending(a => a.Created).Where(x => x.UserId.Equals(request.UserId)).Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize)
                     .Select(x => new ReportViewDto
                     {
                         Id = x.ReportId,

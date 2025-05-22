@@ -453,21 +453,31 @@ namespace CertEmpire.Services
                 // Remove existing content
                 // Step 1: Delete Questions first
                 var questionsList = await _context.Questions.Where(q => q.FileId == existingFile.FileId).ToListAsync();
-                if (questionsList.Any())
+                int questionCount = questionsList.Count;
+                int newQuestionCount = exam.Topics.Sum(t => t.Questions.Count);
+                if(newQuestionCount.Equals(questionCount))
                 {
-                    _context.Questions.RemoveRange(questionsList);
-                    await _context.SaveChangesAsync();
+                    return new Response<UploadedFile>(true, "File updated successfully.", "", existingFile);
                 }
+                else
+                {
+                    if (questionsList.Any())
+                    {
+                        _context.Questions.RemoveRange(questionsList);
+                        await _context.SaveChangesAsync();
+                    }
 
-                // Step 2: Delete Topics
-                var topicData = await _context.Topics.Where(t => t.FileId == existingFile.FileId).ToListAsync();
-                if (topicData.Any())
-                {
-                    _context.Topics.RemoveRange(topicData);
-                    await _context.SaveChangesAsync();
+                    // Step 2: Delete Topics
+                    var topicData = await _context.Topics.Where(t => t.FileId == existingFile.FileId).ToListAsync();
+                    if (topicData.Any())
+                    {
+                        _context.Topics.RemoveRange(topicData);
+                        await _context.SaveChangesAsync();
+                    }
+                    // Add new content
+                    await AddExamContent(exam, existingFile.FileId, userId);
+
                 }
-                // Add new content
-                await AddExamContent(exam, existingFile.FileId, userId);
 
                 return new Response<UploadedFile>(true, "File updated successfully.", "", existingFile);
             }
