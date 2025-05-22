@@ -40,3 +40,7 @@ obj/
 /CertEmpire/obj/Debug/net8.0/CertEmpire.assets.cache
 /CertEmpire/obj/Debug/net8.0/CertEmpire.csproj.FileListAbsolute.txt
 /CertEmpire/obj/project.assets.json
+/CertEmpire/bin/Debug/net8.0/CertEmpire.staticwebassets.endpoints.json
+/CertEmpire/obj/Debug/net8.0/staticwebassets.build.endpoints.json
+/CertEmpire/obj/Debug/net8.0/staticwebassets.build.json
+/CertEmpire/obj/Debug/net8.0/staticwebassets.removed.txt
