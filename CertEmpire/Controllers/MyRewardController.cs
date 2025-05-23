@@ -16,11 +16,11 @@ namespace CertEmpire.Controllers
             _rewardRepo = rewardRepo;
         }
         [HttpGet("GetUserRewards")]
-        public async Task<IActionResult> GetUserRewards(Guid userId)
+        public async Task<IActionResult> GetUserRewards([FromQuery]RewardsFilterDTO request)
         {
             try
             {
-                var response = await _rewardRepo.GetUserRewardDetailsWithOrder(userId);
+                var response = await _rewardRepo.GetUserRewardDetailsWithOrder(request);
                 return Ok(response);
             }
             catch (Exception ex)

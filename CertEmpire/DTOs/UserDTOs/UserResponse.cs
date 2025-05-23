@@ -13,6 +13,8 @@
     {
         public Guid UserId { get; set; }
         public string JwtToken { get; set; } = string.Empty;
+        public bool Simulation { get; set; } = true;
+        public int ProductId { get; set; }
     }
     public class GetAllEmailResponse
     {

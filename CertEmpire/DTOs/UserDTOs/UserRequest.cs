@@ -2,10 +2,6 @@
 
 namespace CertEmpire.DTOs.UserDTOs
 {
-    public class UserRequest
-    {
-    }
-
     public class AddUserRequest
     {
         public string Email { get; set; } = string.Empty;
@@ -17,17 +13,12 @@ namespace CertEmpire.DTOs.UserDTOs
         public string Password { get; set; } = string.Empty;
         public List<LoginFileUploadDTO>? File { get; set; }
     }
-
     public class LoginFileUploadDTO
     {
         public string? FileUrl { get; set; }
         public decimal FilePrice { get; set; }
+        public int ProductId { get; set; }
     }
-    //public class LoginResponse
-    //{
-    //    public List<FileResponse> FileResponses { get; set; } = new List<FileResponse>();
-    //    public string JwtToken { get; set; } = string.Empty;
-    //}
     public class FileResponse
     {
         public string? FileUrl { get; set; }

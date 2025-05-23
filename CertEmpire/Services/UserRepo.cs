@@ -83,6 +83,8 @@ namespace CertEmpire.Services
         {
             var response = new Response<LoginResponse>();
             string fileUrl = string.Empty;
+            bool simulation = false;
+            int productId = 0;
             if (request == null)
             {
                 return new Response<LoginResponse>(false, "Request can't be null", "", default);
@@ -94,25 +96,27 @@ namespace CertEmpire.Services
             }
             if (request.File != null && request.File.Count != 0)
             {
-
                 foreach (var file in request.File)
                 {
-
                     var fileExist = await _context.UploadedFiles
-                        .FirstOrDefaultAsync(x => x.FileURL == file.FileUrl);
+                        .FirstOrDefaultAsync(x => x.ProductId == file.ProductId);
                     Guid fileId;
                     if (fileExist == null)
                     {
                         var uploadedFile = new UploadedFile
                         {
-                            FileURL = file.FileUrl,
+                            FileURL = file.FileUrl??"",
                             FilePrice = file.FilePrice,
                             FileId = Guid.NewGuid(),
-                            FileName = file.FileUrl.Split('/').Last()
+                            FileName = file.FileUrl.Split('/').Last(),
+                            ProductId = file.ProductId,
+                            Simulation = true
                         };
                         await _context.UploadedFiles.AddAsync(uploadedFile);
                         await _context.SaveChangesAsync();
                         fileId = uploadedFile.FileId;
+                        simulation = uploadedFile.Simulation;
+                        productId = uploadedFile.ProductId;
                     }
                     else
                     {
@@ -132,14 +136,11 @@ namespace CertEmpire.Services
                         await _context.UserFilePrices.AddAsync(filePrice);
                         await _context.SaveChangesAsync();
                     }
-
                     // Get all buyers (excluding current user optionally)
                     var buyers = await _context.UserFilePrices
                         .Where(u => u.FileId == fileId && u.UserId != user.UserId)
                         .Select(u => u.UserId)
                         .ToListAsync();
-                    //fileUrl = GenerateFileURL(user.UserId, fileId);
-                   
                 }
             }
             var jwtToken = await _jwtService.generateJwtToken(user);
@@ -147,7 +148,7 @@ namespace CertEmpire.Services
                 true,
                 "User logged in successfully",
                 "",
-                new LoginResponse { UserId = user.UserId, JwtToken = jwtToken });
+                new LoginResponse { UserId = user.UserId, Simulation = simulation, JwtToken = jwtToken, ProductId = productId });
         }
 
         public async Task<Response<string>> UpdatePassword(UpdatePasswordRequest request)

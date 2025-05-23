@@ -10,5 +10,7 @@ namespace CertEmpire.Models
         public string FileName { get; set; } = string.Empty;
         public string FileURL { get; set; } = string.Empty;
         public decimal FilePrice { get; set; }
+        public int ProductId { get; set; }
+        public bool Simulation { get; set; } = true;
     }
 }
