@@ -30,6 +30,7 @@ namespace CertEmpire.Services
         {
             Response<object> response = new();
             ExamDTO examDTO = new();
+            //Getting file information from the database
             var fileInfo = await _context.UploadedFiles.FindAsync(fileId);
             if (fileInfo == null)
             {
@@ -38,8 +39,7 @@ namespace CertEmpire.Services
             }
             else
             {
-                // Check if the file is already processed
-
+                //Get content of the file through AI API
                 var result = await UploadPdfFromUrlToThirdPartyApiAsync(fileInfo.FileURL);
                 if (result == null)
                 {
@@ -55,6 +55,7 @@ namespace CertEmpire.Services
                     }
                     else
                     {
+                        //Get User Information from the database
                         var userFile = await _context.UserFilePrices.FirstOrDefaultAsync(x => x.FileId.Equals(fileId));
                         if (userFile != null)
                         {
@@ -311,7 +312,7 @@ namespace CertEmpire.Services
                 Topics = new List<Topic>()
             };
 
-            foreach (var topicItem in rootexam.topics)
+            foreach (var topicItem in rootexam.result.topics)
             {
                 var topic = topicItem.Value;
                 var caseStudyText = await ReplaceImageSrcWithAbsoluteUrl(topic.case_study, fileId, "QuestionImages");

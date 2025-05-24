@@ -13,4 +13,9 @@
         Unapproved,
         Voted
     }
+    public enum WithdrawalMethod
+    {
+        Cash,
+        Coupon
+    }
 }

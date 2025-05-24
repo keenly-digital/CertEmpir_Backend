@@ -21,4 +21,9 @@
         public int PageNumber { get; set; } = 1;
         public int PageSize { get; set; } = 10;
     }
+    public class GetCouponCodeDTO
+    {
+        public Guid UserId { get; set; }
+        public Guid FileId { get; set; }
+    }
 }

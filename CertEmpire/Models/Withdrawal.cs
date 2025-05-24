@@ -1,4 +1,5 @@
-﻿using CertEmpire.Models.CommonModel;
+﻿using CertEmpire.Helpers.Enums;
+using CertEmpire.Models.CommonModel;
 
 namespace CertEmpire.Models
 {
@@ -9,5 +10,7 @@ namespace CertEmpire.Models
         public Guid FileId { get; set; }
         public decimal Amount { get; set; }
         public DateTime Date { get; set; } = DateTime.UtcNow;
+        public WithdrawalMethod Method { get; set; }
+        public string? CouponCode { get; set; }
     }
 }

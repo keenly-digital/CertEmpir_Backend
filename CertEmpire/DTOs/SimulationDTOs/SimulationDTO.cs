@@ -4,6 +4,10 @@ namespace CertEmpire.DTOs.SimulationDTOs
 {
     public class Root
     {
+        public Result result { get; set; } = new Result();
+    }
+    public class Result
+    {
         public Dictionary<string, Topics> topics { get; set; } = new Dictionary<string, Topics>();
     }
 

@@ -57,6 +57,20 @@ namespace CertEmpire.Controllers
                 return StatusCode(500, response);
             }
         }
+        [HttpGet("ApplyForCouponCode")]
+        public async Task<IActionResult> CouponCode([FromQuery]GetCouponCodeDTO request)
+        {
+            try
+            {
+                var response = await _rewardRepo.GetCouponCode(request);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                var response = new Response<object>(false, ex.Message, "", null);
+                return StatusCode(500, response);
+            }
+        }
 
     }
 }

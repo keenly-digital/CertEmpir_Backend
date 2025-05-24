@@ -4,7 +4,6 @@ using CertEmpire.Helpers.Enums;
 using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using CertEmpire.Models;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace CertEmpire.Services
@@ -156,7 +155,46 @@ namespace CertEmpire.Services
 
             return new Response<object>(true, "Reward details with order retrieved", "", result);
         }
+        public async Task<Response<object>> GetCouponCode(GetCouponCodeDTO request)
+        {
+            var filePrice = await _context.UploadedFiles
+                .Where(x => x.FileId == request.FileId)
+                .Select(x => x.FilePrice)
+                .FirstOrDefaultAsync();
 
+            if (filePrice == 0)
+                return new Response<object>(true, "No reward on free files.", "", null);
 
+            var alreadyWithdrawn = await _context.Withdrawals
+                .AnyAsync(x => x.UserId == request.UserId && x.FileId == request.FileId);
+
+            if (alreadyWithdrawn)
+                return new Response<object>(true, "Reward already withdrawn for this file.", "", null);
+
+            var approvedReportsCount = await _context.Reports
+                .CountAsync(x => x.UserId == request.UserId && x.fileId == request.FileId && x.Status == ReportStatus.Approved);
+
+            decimal reward = Math.Min(filePrice, approvedReportsCount * 0.33m);
+
+            var withdrawal = new Withdrawal
+            {
+                WithdrawalId = Guid.NewGuid(),
+                UserId = request.UserId,
+                FileId = request.FileId,
+                Amount = reward,
+                Date = DateTime.UtcNow,
+                Method = WithdrawalMethod.Coupon, // e.g. enum value
+                CouponCode = null // to be assigned manually
+            };
+
+            await _context.Withdrawals.AddAsync(withdrawal);
+            await _context.SaveChangesAsync();
+
+            return new Response<object>(true, "A coupon will be sent to your email shortly.", "", new
+            {
+                Amount = reward,
+                Method = "Coupon"
+            });
+        }
     }
 }
