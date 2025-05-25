@@ -44,3 +44,4 @@ obj/
 /CertEmpire/obj/Debug/net8.0/staticwebassets.build.endpoints.json
 /CertEmpire/obj/Debug/net8.0/staticwebassets.build.json
 /CertEmpire/obj/Debug/net8.0/staticwebassets.removed.txt
+/CertEmpire/obj/Debug/net8.0/EndpointInfo/CertEmpire.OpenApiFiles.cache
