@@ -206,7 +206,7 @@ namespace CertEmpire.Services
             {
                 int pageSize = request.PageNumber * 10;
                 int totalCount = query.Where(x => x.UserId.Equals(request.UserId)).Count();
-                var reports = await query.OrderByDescending(a => a.Created).Where(x => x.UserId.Equals(request.UserId)).Skip((request.PageNumber - 1) * request.PageSize).Take(pageSize)
+                var reports = await query.OrderByDescending(a => a.Created).Where(x => x.UserId.Equals(request.UserId)).Take(pageSize)
                     .Select(x => new ReportViewDto
                     {
                         Id = x.ReportId,

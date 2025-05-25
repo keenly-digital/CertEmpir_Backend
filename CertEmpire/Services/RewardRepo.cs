@@ -108,7 +108,7 @@ namespace CertEmpire.Services
                     FileId = g.Key,
                     TotalUnwithdrawn = g.Sum(r => r.Amount),
                     ApprovedReports = g.Count()
-                }).ToList().Skip((request.PageNumber - 1) * request.PageSize).Take(pageSize);
+                }).ToList().Take(pageSize);
 
             var fileInfo = await _context.UserFilePrices
                 .Where(u => u.UserId == request.UserId)
