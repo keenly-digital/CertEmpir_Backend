@@ -1,22 +1,28 @@
-﻿using CertEmpire.Helpers.ResponseWrapper;
+﻿using CertEmpire.DTOs.MyTaskDTOs;
+using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CertEmpire.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    //[Authorize]
-    public class SimulationController(ISimulationRepo simulationRepo) : ControllerBase
+    [ApiExplorerSettings(GroupName = "v1")]
+    // [Authorize]
+    public class MyTaskController : ControllerBase
     {
-        private readonly ISimulationRepo _simulationRepo = simulationRepo;
-
-        [HttpGet("PracticeOnline")]
-        public async Task<IActionResult> PracticeOnline(Guid fileId)
+        private readonly IMyTaskRepo _myTaskRepo;
+        public MyTaskController(IMyTaskRepo myTaskRepo)
+        {
+            _myTaskRepo = myTaskRepo;
+        }
+        [HttpGet("GetAllTasks")]
+        public async Task<IActionResult> GetAllTasks(Guid userId)
         {
             try
             {
-                var response = await _simulationRepo.PracticeOnline(fileId);
+                var response = await _myTaskRepo.GetPendingTasks(userId);
                 return Ok(response);
             }
             catch (Exception ex)
@@ -25,12 +31,12 @@ namespace CertEmpire.Controllers
                 return StatusCode(500, response);
             }
         }
-        [HttpGet("GetAllFiles")]
-        public async Task<IActionResult> GetAllFiles(string email)
+        [HttpPost("SubmitVote")]
+        public async Task<IActionResult> SubitVote(SubmitVoteDTO request)
         {
             try
             {
-                var response = await _simulationRepo.GetAllFiles(email);
+                var response = await _myTaskRepo.SubmitVote(request);
                 return Ok(response);
             }
             catch (Exception ex)

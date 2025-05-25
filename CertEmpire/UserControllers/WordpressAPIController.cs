@@ -13,6 +13,7 @@ namespace CertEmpire.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [ApiExplorerSettings(GroupName = "v1")]
     public class WordpressAPIController : ControllerBase
     {
         private readonly IConfiguration _configuration;

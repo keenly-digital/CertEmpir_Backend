@@ -100,7 +100,7 @@ namespace CertEmpire.Services
             var rewards = await _context.Rewards
                 .Where(r => r.UserId == request.UserId && !r.Withdrawn)
                 .ToListAsync();
-
+            int pageSize = request.PageNumber * 10;
             var rewardGroups = rewards
                 .GroupBy(r => r.FileId)
                 .Select(g => new
@@ -108,7 +108,7 @@ namespace CertEmpire.Services
                     FileId = g.Key,
                     TotalUnwithdrawn = g.Sum(r => r.Amount),
                     ApprovedReports = g.Count()
-                }).ToList().Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize);
+                }).ToList().Skip((request.PageNumber - 1) * request.PageSize).Take(pageSize);
 
             var fileInfo = await _context.UserFilePrices
                 .Where(u => u.UserId == request.UserId)
@@ -140,7 +140,6 @@ namespace CertEmpire.Services
 
                     result.Add(new
                     {
-                        results = totalCount,
                         OrderNumber = $"#{orderSeed + index++}",
                         FileName = fileObj.FileName,
                         FilePrice = fileObj.FilePrice,
@@ -150,6 +149,11 @@ namespace CertEmpire.Services
                         VotedReportsApproved = votedReportsApproved,
                         CurrentBalance = Math.Min(rg.TotalUnwithdrawn, fileObj.FilePrice)
                     });
+                    object obj = new
+                    {
+                        results = totalCount,
+                        data = result,
+                    };
                 }
             }
 

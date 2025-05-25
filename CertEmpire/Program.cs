@@ -5,10 +5,13 @@ using CertEmpire.Interfaces.IJwtService;
 using CertEmpire.Services;
 using CertEmpire.Services.JwtService;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using System.Reflection;
 using System.Text;
 using System.Text.Json.Serialization;
 
@@ -60,6 +63,22 @@ builder.Services.AddSwaggerGen(swagger =>
         Title = "CertEmpire API",
         Description = "ASP.NET Core Web API"
     });
+    swagger.SwaggerDoc("admin-v1", new OpenApiInfo
+    {
+        Title = "CertEmpire Admin API",
+        Version = "v1"
+    });
+    swagger.DocInclusionPredicate((docName, apiDesc) =>
+    {
+        if (!apiDesc.TryGetMethodInfo(out MethodInfo methodInfo)) return false;
+
+        var groupName = methodInfo.DeclaringType
+            .GetCustomAttributes(true)
+            .OfType<ApiExplorerSettingsAttribute>()
+            .FirstOrDefault()?.GroupName;
+
+        return groupName == docName;
+    });
     //To Enable authorization using Swagger (JWT)
     swagger.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme()
     {
@@ -109,7 +128,11 @@ app.UseStaticFiles(new StaticFileOptions
     DefaultContentType = "application/octet-stream"
 });
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(c=>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "CertEmpire API V1");
+    c.SwaggerEndpoint("/swagger/admin-v1/swagger.json", "CertEmpire Admin API V1");
+});
 
 app.UseCors("AllowAll");
 

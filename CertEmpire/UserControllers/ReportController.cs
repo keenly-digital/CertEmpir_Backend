@@ -8,7 +8,8 @@ namespace CertEmpire.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-   // [Authorize]
+    [ApiExplorerSettings(GroupName = "v1")]
+    // [Authorize]
     public class ReportController : ControllerBase
     {
         private readonly IReportRepo _reportRepo;
