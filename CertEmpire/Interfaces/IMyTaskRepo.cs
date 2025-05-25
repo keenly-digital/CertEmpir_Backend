@@ -6,7 +6,7 @@ namespace CertEmpire.Interfaces
 {
     public interface IMyTaskRepo
     {
-        Task<Response<List<ReviewTaskDto>>> GetPendingTasks(Guid userId);
+        Task<Response<object>> GetPendingTasks(TaskFilterDTO request);
         Task<Response<string>> SubmitVote(SubmitVoteDTO request);
     }
 }

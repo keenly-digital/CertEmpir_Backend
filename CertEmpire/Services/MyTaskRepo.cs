@@ -1,5 +1,6 @@
 ﻿using CertEmpire.Data;
 using CertEmpire.DTOs.MyTaskDTOs;
+using CertEmpire.DTOs.SimulationDTOs;
 using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using CertEmpire.Models;
@@ -9,16 +10,16 @@ namespace CertEmpire.Services
 {
     public class MyTaskRepo(ApplicationDbContext context) : Repository<ReviewTask>(context), IMyTaskRepo
     {
-        public async Task<Response<List<ReviewTaskDto>>> GetPendingTasks(Guid userId)
+        public async Task<Response<object>> GetPendingTasks(TaskFilterDTO request)
         {
-            Response<List<ReviewTaskDto>> response;
+            Response<object> response;
             // 1. Fetch review tasks for the reviewer
             var reviewTasks = await _context.ReviewTasks
-                .Where(rt => rt.ReviewerUserId == userId && rt.Status == Helpers.Enums.ReportStatus.Pending)
+                .Where(rt => rt.ReviewerUserId == request.UserId && rt.Status == Helpers.Enums.ReportStatus.Pending)
                 .ToListAsync();
 
             if (!reviewTasks.Any())
-                return new Response<List<ReviewTaskDto>>();
+                return new Response<object>();
 
             // 2. Get ReportIds from the tasks
             var reportIds = reviewTasks.Select(rt => rt.ReportId).Distinct().ToList();
@@ -40,36 +41,43 @@ namespace CertEmpire.Services
             var questions = await _context.Questions
                 .Where(q => questionIds.Contains(q.Id))
                 .ToListAsync();
-
+            int pageSize = request.PageNumber * 10;
             // 6. Join all in memory
-            var tasks = (from rt in reviewTasks
-                         join report in reports on rt.ReportId equals report.ReportId
-                         join file in files on report.fileId equals file.FileId
-                         join question in questions on report.TargetId equals question.Id
-                         select new ReviewTaskDto
-                         {
-                             TaskId = rt.ReviewTaskId,
-                             ExamName = file.FileName,
-                             QuestionContent = question.QuestionText ?? "",
-                             CurrentAnswer = question.CorrectAnswerIndices,
-                             CurrentExplanation = question.Explanation ?? "",
-                             SuggestedAnswer = report.CorrectAnswerIndices,
-                             SuggestedExplanation = report.Explanation ?? "",
-                             QuestionId = question.QuestionId.ToString(),
-                             ReportType = report.Type.ToString(),
-                             RequestedAt = report.Created,
-                             QuestionNumber = report.QuestionNumber,
-                             Reason = report.Reason ?? "",
-                             Options = report.Options ?? new List<string>()
-                         }).ToList();
-
-            if (tasks.Count() > 0)
+            var data = (from rt in reviewTasks
+                        join report in reports on rt.ReportId equals report.ReportId
+                        join file in files on report.fileId equals file.FileId
+                        join question in questions on report.TargetId equals question.Id
+                        select new ReviewTaskDto
+                        {
+                            TaskId = rt.ReviewTaskId,
+                            ExamName = file.FileName,
+                            QuestionContent = question.QuestionText ?? "",
+                            CurrentAnswer = question.CorrectAnswerIndices,
+                            CurrentExplanation = question.Explanation ?? "",
+                            SuggestedAnswer = report.CorrectAnswerIndices,
+                            SuggestedExplanation = report.Explanation ?? "",
+                            QuestionId = question.QuestionId.ToString(),
+                            ReportType = report.Type.ToString(),
+                            RequestedAt = report.Created,
+                            QuestionNumber = report.QuestionNumber,
+                            Reason = report.Reason ?? "",
+                            Options = report.Options ?? new List<string>()
+                        }).ToList();
+            int totalCount = data.Count;
+            var tasks = data.Take(pageSize).ToList();
+            object obj = new
             {
-                response = new Response<List<ReviewTaskDto>>(true, "Pending Tasks", "", tasks);
+                results = totalCount,
+                data = tasks,
+            };
+
+            if (tasks.Any())
+            {
+                response = new Response<object>(true, "Pending Tasks", "", obj);
             }
             else
             {
-                response = new Response<List<ReviewTaskDto>>(false, "No Pending Tasks", "", null);
+                response = new Response<object>(false, "No Pending Tasks", "", null);
             }
             return response;
         }

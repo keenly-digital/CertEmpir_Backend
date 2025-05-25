@@ -18,11 +18,11 @@ namespace CertEmpire.Controllers
             _myTaskRepo = myTaskRepo;
         }
         [HttpGet("GetAllTasks")]
-        public async Task<IActionResult> GetAllTasks(Guid userId)
+        public async Task<IActionResult> GetAllTasks([FromQuery]TaskFilterDTO request)
         {
             try
             {
-                var response = await _myTaskRepo.GetPendingTasks(userId);
+                var response = await _myTaskRepo.GetPendingTasks(request);
                 return Ok(response);
             }
             catch (Exception ex)
