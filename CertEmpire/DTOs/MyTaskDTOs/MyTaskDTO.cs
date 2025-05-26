@@ -24,6 +24,7 @@ namespace CertEmpire.DTOs.MyTaskDTOs
         public ReportStatus Decision {  get; set; }
         public string Explanation { get; set; } = string.Empty;
     }
+
     public class TaskFilterDTO
     {
         public Guid UserId { get; set; }
