@@ -1,4 +1,5 @@
-﻿using CertEmpire.Helpers.ResponseWrapper;
+﻿
+using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
