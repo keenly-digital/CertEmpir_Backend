@@ -45,3 +45,9 @@ obj/
 /CertEmpire/obj/Debug/net8.0/staticwebassets.build.json
 /CertEmpire/obj/Debug/net8.0/staticwebassets.removed.txt
 /CertEmpire/obj/Debug/net8.0/EndpointInfo/CertEmpire.OpenApiFiles.cache
+/CertEmpire/bin/Debug/net8.0/CertEmpire.deps.json
+/CertEmpire/obj/Debug/net8.0/CertEmpire.csproj.AssemblyReference.cache
+/CertEmpire/obj/CertEmpire.csproj.nuget.dgspec.json
+/CertEmpire/obj/CertEmpire.csproj.nuget.g.targets
+*.pubxml
+*.jpg
