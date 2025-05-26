@@ -1,4 +1,4 @@
-﻿using CertEmpire.DTOs.SimulationDTOs;
+﻿using CertEmpire.DTOs.QuizDTOs;
 using CertEmpire.Helpers.ResponseWrapper;
 
 namespace CertEmpire.Interfaces
@@ -7,5 +7,9 @@ namespace CertEmpire.Interfaces
     {
         Task<Response<object>> PracticeOnline(Guid fileId);
         Task<Response<object>> GetAllFiles(string email);
+        Task<Response<object>> Create(IFormFile file, string email);
+        Task<Response<object>> CreateQuiz(CreateQuizRequest request);
+        Task<Response<string>> ExportQuizPdf(Guid quizId);
+        Task<Response<string>> ExportFile(Guid quizId);
     }
 }

@@ -3,8 +3,11 @@ using CertEmpire.Helpers.JwtSettings;
 using CertEmpire.Interfaces;
 using CertEmpire.Interfaces.IJwtService;
 using CertEmpire.Services;
+using CertEmpire.Services.FileService;
 using CertEmpire.Services.JwtService;
+using EncryptionDecryptionUsingSymmetricKey;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
@@ -29,6 +32,10 @@ builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 builder.Services.AddSingleton<HttpClient>();
 builder.Services.AddScoped<IRewardRepo, RewardRepo>();
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IFileService, FileService>();
+builder.Services.AddScoped<ITopicRepo, TopicRepo>();
+builder.Services.AddScoped<AesOperation>();
+builder.Services.AddScoped<IQuestionRepo, QuestionRepo>();
 builder.Services.Configure<JwtSetting>(builder.Configuration.GetSection("Jwt"));
 builder.Services.AddControllers();
 builder.Services.AddControllers()
@@ -104,7 +111,18 @@ builder.Services.AddSwaggerGen(swagger =>
             }
     });
 });
-
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 104857600;
+});
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 104857600; // 100 MB
+});
+builder.Services.Configure<IISServerOptions>(options =>
+{
+    options.MaxRequestBodySize = 104857600; // 100 MB
+});
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
@@ -126,6 +144,11 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/uploads/QuestionImages",
     ServeUnknownFileTypes = true,
     DefaultContentType = "application/octet-stream"
+});
+app.Use(async (context, next) =>
+{
+    context.Features.Get<IHttpMaxRequestBodySizeFeature>()!.MaxRequestBodySize = 524288000;
+    await next.Invoke();
 });
 app.UseSwagger();
 app.UseSwaggerUI(c=>

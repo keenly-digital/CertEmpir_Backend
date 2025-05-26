@@ -12,5 +12,6 @@ namespace CertEmpire.Models
         public decimal FilePrice { get; set; }
         public int ProductId { get; set; }
         public bool Simulation { get; set; } = true;
+        public int NumberOfQuestions { get; set; } = 0;
     }
 }

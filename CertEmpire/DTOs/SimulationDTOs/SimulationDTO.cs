@@ -62,5 +62,7 @@ namespace CertEmpire.DTOs.SimulationDTOs
         [JsonPropertyName("timeTaken")]
         public Guid fileId { get; set; }
         public int q { get; set; }
+        public Guid TopicId { get; set; }
+        public Guid CaseStudyId { get; set; } = Guid.Empty;
     }
 }

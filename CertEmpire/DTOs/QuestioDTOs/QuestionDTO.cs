@@ -1,0 +1,31 @@
+﻿using System.Text.Json.Serialization;
+
+namespace CertEmpire.DTOs.QuestioDTOs
+{
+    public class AddQuestionRequest
+    {
+        [JsonPropertyName("id")]
+        public int id { get; set; }
+        [JsonPropertyName("fileId")]
+        public Guid fileId { get; set; }
+        [JsonPropertyName("questionText")]
+        public string? questionText { get; set; } = string.Empty;
+        [JsonPropertyName("questionDescription")]
+        public string? questionDescription { get; set; } = string.Empty;
+        [JsonPropertyName("options")]
+        public List<string> options { get; set; }
+        [JsonPropertyName("correctAnswerIndices")]
+        public List<int> correctAnswerIndices { get; set; }
+        [JsonPropertyName("answerDescription")]
+        public string? answerDescription { get; set; } = string.Empty;
+        [JsonPropertyName("answerExplanation")]
+        public string? answerExplanation { get; set; } = string.Empty;
+        [JsonPropertyName("showAnswer")]
+        public bool? showAnswer { get; set; }
+        [JsonPropertyName("imageURL")]
+        public string? imageURL { get; set; } = string.Empty;
+        [JsonPropertyName("timeTaken")]
+        public Guid? TopicId { get; set; }
+        public Guid? CaseStudyId { get; set; }
+    }
+}
