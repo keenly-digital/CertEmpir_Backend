@@ -41,6 +41,10 @@ namespace CertEmpire.Services
                     {
                         Email = request.Email,
                         Password = request.Password,
+                        Fullname = "User Name",
+                        UserRole = "User",
+                        ImageUrl = "",
+                        IsAdmin = false,
                         UserId = Guid.NewGuid()
                     };
                     var result = await AddAsync(user);
