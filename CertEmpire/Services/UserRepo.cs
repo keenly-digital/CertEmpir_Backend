@@ -1,13 +1,10 @@
 ﻿using CertEmpire.Data;
 using CertEmpire.DTOs.UserDTOs;
-using CertEmpire.Helpers.Enums;
 using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using CertEmpire.Interfaces.IJwtService;
 using CertEmpire.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Text;
-using System.Text.Json;
 
 namespace CertEmpire.Services
 {

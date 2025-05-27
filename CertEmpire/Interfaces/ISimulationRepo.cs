@@ -11,5 +11,6 @@ namespace CertEmpire.Interfaces
         Task<Response<object>> CreateQuiz(CreateQuizRequest request);
         Task<Response<string>> ExportQuizPdf(Guid quizId);
         Task<Response<string>> ExportFile(Guid quizId);
+        Task<List<QuizFileInfoResponse>> GetQuizById(Guid userId, int pageNumber, int pageSize);
     }
 }

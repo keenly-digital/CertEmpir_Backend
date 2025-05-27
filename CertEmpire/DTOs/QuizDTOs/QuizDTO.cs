@@ -17,4 +17,11 @@ namespace CertEmpire.DTOs.QuizDTOs
         public DateTime dateModified { get; set; }
         public List<object> questions { get; set; }
     }
+    public class QuizFileInfoResponse
+    {
+        public Guid FileId { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public int QuestionCount { get; set; }
+        public DateTime UploadedAt { get; set; }
+    }
 }

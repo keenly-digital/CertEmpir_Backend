@@ -1,6 +1,7 @@
 ﻿using CertEmpire.Data;
 using CertEmpire.DTOs.QuestioDTOs;
 using CertEmpire.DTOs.QuizDTOs;
+using CertEmpire.DTOs.SimulationDTOs;
 using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using CertEmpire.Models;
@@ -329,6 +330,38 @@ namespace CertEmpire.Services
                 return string.Empty;
             }
         }
+        public async Task<Response<object>> GetAllQuestion(Guid fileId, int pageNumber, int pageSize)
+        {
+            var allQuestions = await _context.Questions.Where(x=>x.FileId.Equals(fileId)).ToListAsync();
+            if (allQuestions == null || !allQuestions.Any())
+            {
+                return new Response<object>(false, "No questions found in the file", "", "");
+            }
 
+            var orderedQuestions = allQuestions.OrderBy(q => q.Created).ToList();
+
+            var paginatedQuestions = orderedQuestions
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            var Questions = paginatedQuestions.Select(q => new QuestionObject
+            {
+                correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
+                answerExplanation = q.Explanation ?? "",
+                id = q.Id,
+                questionImageURL = q.questionImageURL ?? "",
+                answerImageURL = q.answerImageURL ?? "",
+                options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
+                questionDescription = q.QuestionDescription ?? "",
+                questionText = q.QuestionText ?? "",
+                showAnswer = false,
+                fileId = q.FileId,
+                TopicId = q.TopicId ?? Guid.Empty,
+                CaseStudyId = q.CaseStudyId ?? Guid.Empty
+            }).ToList();
+
+            return new Response<object>(true, "", "", Questions);
+        }
     }
 }

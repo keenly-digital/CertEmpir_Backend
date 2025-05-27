@@ -1214,6 +1214,36 @@ namespace CertEmpire.Services
 
             return new Response<object>(true, "Files", "", files);
         }
+        public async Task<List<QuizFileInfoResponse>> GetQuizById(Guid userId, int pageNumber, int pageSize)
+        {
+            List<QuizFileInfoResponse> list = new();
+            var allQuizzes = await _context.UploadedFiles.ToListAsync(); // FIX HERE
+
+            foreach (var item in allQuizzes)
+            {
+                var userFiles = await _context.UserFilePrices
+                    .FirstOrDefaultAsync(x => x.UserId == userId && x.FileId == item.FileId); // FIX: x.FileId.Equals(item.FileId)
+
+                if (userFiles != null)
+                {
+                    QuizFileInfoResponse quizFileInfo = new QuizFileInfoResponse
+                    {
+                        FileId = item.FileId,
+                        Title = item.FileName,
+                        QuestionCount = item.NumberOfQuestions,
+                        UploadedAt = item.Created
+                    };
+                    list.Add(quizFileInfo);
+                }
+            }
+
+            var paginatedResponse = list
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return paginatedResponse;
+        }
 
         #endregion
     }
