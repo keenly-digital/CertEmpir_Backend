@@ -7,13 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CertEmpire.Services
 {
-    public class TopicRepo : ITopicRepo
+    public class TopicRepo(ApplicationDbContext context) : Repository<TopicEntity>(context), ITopicRepo
     {
-        private readonly ApplicationDbContext _context;
-        public TopicRepo(ApplicationDbContext context)
-        {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
-        }
 
         public async Task<Response<AddCaseStudyDTOResponse>> AddCaseStudy(AddCaseStudyDTO request)
         {
@@ -32,9 +27,7 @@ namespace CertEmpire.Services
                 Description = request.Description ?? "",
                 CaseStudyTopicId = request.TopicId ?? Guid.Empty,
             };
-            await _context.Topics.AddAsync(topic);
-            await _context.SaveChangesAsync();
-            var result = await _context.Topics.FirstOrDefaultAsync(x => x.TopicId.Equals(topic.TopicId));
+            var result = await AddAsync(topic);
             if (result != null)
             {
                 AddCaseStudyDTOResponse res = new()
@@ -74,9 +67,7 @@ namespace CertEmpire.Services
                 Description = "",
                 CaseStudyTopicId = Guid.Empty
             };
-            await _context.Topics.AddAsync(topic);
-            await _context.SaveChangesAsync();
-            var result = await _context.Topics.FirstOrDefaultAsync(x => x.TopicId.Equals(topic.TopicId));
+            var result = await AddAsync(topic);
             if (result != null)
             {
                 AddCaseStudyDTOResponse res = new()
@@ -119,8 +110,7 @@ namespace CertEmpire.Services
             }
 
             // Remove the topic record that represents the case study
-            _context.Topics.Remove(topicData);
-            await _context.SaveChangesAsync();
+            await DeleteAsync(topicData);
 
             // Optionally, clean up CaseStudyTopicId references in other topics if needed
             var childTopicsLinkedToThisCaseStudy = allTopics
@@ -130,8 +120,7 @@ namespace CertEmpire.Services
             foreach (var linkedTopic in childTopicsLinkedToThisCaseStudy)
             {
                 linkedTopic.CaseStudyTopicId = null; // Unlink the case study
-                _context.Topics.Update(linkedTopic);
-                await _context.SaveChangesAsync();
+                await UpdateAsync(linkedTopic);
             }
             AddCaseStudyDTOResponse res = new()
             {
@@ -162,8 +151,7 @@ namespace CertEmpire.Services
                         await _context.SaveChangesAsync();
                     }
                 }
-                _context.Topics.Remove(topicData);
-                await _context.SaveChangesAsync();
+                await DeleteAsync(topicData);
                 AddCaseStudyDTOResponse res = new()
                 {
                     CaseStudyId = topicData.CaseStudyId,
@@ -191,8 +179,7 @@ namespace CertEmpire.Services
 
                 topicData.CaseStudy = request.CaseStudy ?? topicData.CaseStudy;
                 topicData.Description = request.Description ?? topicData.Description;
-                _context.Topics.Update(topicData);
-                await _context.SaveChangesAsync();
+                await UpdateAsync(topicData);
                 var topicData1 = await _context.Topics.FirstOrDefaultAsync(x => x.CaseStudyId.Equals(request.CaseStudyId));
                 if (topicData1 == null)
                 {
@@ -223,8 +210,7 @@ namespace CertEmpire.Services
             if (topicData != null)
             {
                 topicData.TopicName = request.TopicName ?? topicData.TopicName;
-                _context.Topics.Update(topicData);
-                await _context.SaveChangesAsync();
+                await UpdateAsync(topicData);
                 var topicData1 = await _context.Topics.FirstOrDefaultAsync(x => x.TopicId.Equals(request.TopicId));
                 if (topicData1 != null)
                 {

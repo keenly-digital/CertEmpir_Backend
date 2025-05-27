@@ -403,7 +403,7 @@ namespace CertEmpire.Services
         {
             if (string.IsNullOrWhiteSpace(html)) return html;
 
-            string domain = "https://exam-ai-production-2bdc.up.railway.app/static/images";
+            string domain = "https://exam-ai-production-2bdc.up.railway.app/";
             var matches = Regex.Matches(html, "<img[^>]*src=['\"]([^'\"]+)['\"][^>]*>", RegexOptions.IgnoreCase);
 
             foreach (Match match in matches)
@@ -414,7 +414,7 @@ namespace CertEmpire.Services
                     string fileName = Path.GetFileName(relativePath);
 
                     // Ensure image is from AI domain
-                    string aiImageUrl = $"{domain}/{AifileName}/{"images"}/{fileName}";
+                    string aiImageUrl = $"{domain}";
                     if (!aiImageUrl.StartsWith(domain)) continue;
 
                     try
@@ -849,10 +849,10 @@ namespace CertEmpire.Services
             ExamDTO examDTO = new();
             //Getting file information from the database
             var fileInfo = await _context.UploadedFiles.FindAsync(fileId);
-            if (fileInfo == null)
+            if (fileInfo != null)
             {
                 var fileCotent = await GetFileContent(fileId);
-                response = new Response<object>(false, "No data found.", "", fileCotent);
+                response = new Response<object>(false, "File Content", "", fileCotent);
             }
             else
             {
@@ -1010,24 +1010,16 @@ namespace CertEmpire.Services
         {
             try
             {
-                // Get the file first
                 var uploadedFile = await _context.UploadedFiles.FindAsync(quizId);
                 if (uploadedFile == null)
-                {
                     return new Response<object>(false, "File not found", "", null);
-                }
 
-                // Get all data sequentially
-                var allTopics = _context.Topics.AsQueryable()
-                    .Where(t => t.FileId == quizId)
-                    .ToList();
-
-                var allQuestions = _context.Questions.AsQueryable()
+                var allTopics = _context.Topics.Where(t => t.FileId == quizId).ToList();
+                var allQuestions = _context.Questions
                     .Where(q => q.FileId == quizId)
                     .OrderBy(q => q.Created)
                     .ToList();
 
-                // Organize data
                 var caseStudies = allTopics
                     .Where(t => !string.IsNullOrWhiteSpace(t.Description))
                     .ToList();
@@ -1039,70 +1031,62 @@ namespace CertEmpire.Services
                 var responseItems = new List<object>();
                 int questionIndex = 1;
 
-                // Process standalone questions first
-                var standaloneQuestions = allQuestions
-                    .Where(q => (q.TopicId == null || q.TopicId == Guid.Empty) &&
-                               (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty))
-                    .OrderBy(q => q.Created)
-                    .Select(q => new
-                    {
-                        type = "question",
-                        question = MapToQuestionObject(q, questionIndex++)
-                    })
-                    .ToList();
-
-                responseItems.AddRange(standaloneQuestions);
-
-                // Process topics and their contents
-                foreach (var topic in topics)
-                {
-                    var topicContent = new List<object>();
-
-                    // 1. Add questions directly under topic (not in case studies)
-                    var topicQuestions = allQuestions
-                        .Where(q => q.TopicId == topic.TopicId &&
-                                  (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty))
-                        .OrderBy(q => q.Created)
+                // --- Standalone Questions ---
+                responseItems.AddRange(
+                    allQuestions
+                        .Where(q => q.TopicId == null || q.TopicId == Guid.Empty)
+                        .Where(q => q.CaseStudyId == null || q.CaseStudyId == Guid.Empty)
                         .Select(q => new
                         {
                             type = "question",
                             question = MapToQuestionObject(q, questionIndex++)
                         })
-                        .ToList();
+                        .ToList()
+                );
 
-                    topicContent.AddRange(topicQuestions);
+                // --- Topic with Questions & Case Studies ---
+                foreach (var topic in topics)
+                {
+                    var topicItems = new List<object>();
 
-                    // 2. Add case studies under this topic
-                    var topicCaseStudies = caseStudies
-                        .Where(cs => cs.TopicId == topic.TopicId)
-                        .Select(cs =>
-                        {
-                            // Get questions for this case study
-                            var caseStudyQuestions = allQuestions
-                                .Where(q => q.CaseStudyId == cs.TopicId) // Changed from cs.CaseStudyId to cs.TopicId
-                                .OrderBy(q => q.Created)
-                                .Select(q => MapToQuestionObject(q, questionIndex++))
-                                .ToList();
+                    // Questions under topic (not in a case study)
+                    topicItems.AddRange(
+                        allQuestions
+                            .Where(q => q.TopicId == topic.TopicId &&
+                                       (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty))
+                            .Select(q => new
+                            {
+                                type = "question",
+                                question = MapToQuestionObject(q, questionIndex++)
+                            })
+                            .ToList()
+                    );
 
-                            return new
+                    // Case Studies under this topic
+                    topicItems.AddRange(
+                        caseStudies
+                            .Where(cs => cs.CaseStudyTopicId == topic.TopicId)
+                            .Select(cs => new
                             {
                                 type = "caseStudy",
                                 caseStudy = new
                                 {
-                                    id = cs.TopicId, // Using TopicId as identifier
+                                    id = cs.CaseStudyId,
                                     title = cs.CaseStudy,
                                     description = cs.Description,
                                     fileId = cs.FileId,
                                     topicId = topic.TopicId,
-                                    questions = caseStudyQuestions
+                                    questions = allQuestions
+                                        .Where(q => q.CaseStudyId == cs.CaseStudyId)
+                                        .OrderBy(q => q.Created)
+                                        .Select(q => MapToQuestionObject(q, questionIndex++))
+                                        .ToList()
                                 }
-                            };
-                        })
-                        .ToList();
+                            })
+                            .ToList()
+                    );
 
-                    topicContent.AddRange(topicCaseStudies);
-
-                    // Add the topic with its content to the main response
+                    // Add topic with its items
                     responseItems.Add(new
                     {
                         type = "topic",
@@ -1111,41 +1095,36 @@ namespace CertEmpire.Services
                             id = topic.TopicId,
                             fileId = quizId,
                             title = topic.TopicName,
-                            topicItems = topicContent
+                            topicItems = topicItems
                         }
                     });
                 }
 
-                // Process standalone case studies (not linked to any topic)
-                var standaloneCaseStudies = caseStudies
-                    .Where(cs => cs.TopicId == null || cs.TopicId == Guid.Empty)
-                    .Select(cs =>
-                    {
-                        var questions = allQuestions
-                            .Where(q => q.CaseStudyId == cs.TopicId) // Changed from cs.CaseStudyId to cs.TopicId
-                            .OrderBy(q => q.Created)
-                            .Select(q => MapToQuestionObject(q, questionIndex++))
-                            .ToList();
-
-                        return new
+                // --- Standalone Case Studies ---
+                responseItems.AddRange(
+                    caseStudies
+                        .Where(cs => cs.CaseStudyTopicId == null || cs.CaseStudyTopicId == Guid.Empty)
+                        .Select(cs => new
                         {
                             type = "caseStudy",
                             caseStudy = new
                             {
-                                id = cs.TopicId, // Using TopicId as identifier
+                                id = cs.CaseStudyId,
                                 title = cs.CaseStudy,
                                 description = cs.Description,
                                 fileId = cs.FileId,
                                 topicId = (Guid?)null,
-                                questions = questions
+                                questions = allQuestions
+                                    .Where(q => q.CaseStudyId == cs.CaseStudyId)
+                                    .OrderBy(q => q.Created)
+                                    .Select(q => MapToQuestionObject(q, questionIndex++))
+                                    .ToList()
                             }
-                        };
-                    })
-                    .ToList();
+                        })
+                        .ToList()
+                );
 
-                responseItems.AddRange(standaloneCaseStudies);
-
-                // Build final response
+                // --- Final Output ---
                 var response = new
                 {
                     fileId = quizId,
@@ -1157,10 +1136,10 @@ namespace CertEmpire.Services
             }
             catch (Exception ex)
             {
-                // Log the exception
                 return new Response<object>(false, "Error retrieving file content", ex.Message, null);
             }
         }
+
         private async Task<Response<UploadedFile>> CreateNewFileContent(ExamDTO exam, Guid userId)
         {
             try

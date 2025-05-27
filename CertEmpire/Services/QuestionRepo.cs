@@ -304,7 +304,7 @@ namespace CertEmpire.Services
                 string fileExtension = Path.GetExtension(file.FileName).ToLower();
 
                 // Save to your server
-                string folderPath = Path.Combine(Path.GetTempFileName(), "uploads", "QuestionImages", fileId.ToString());
+                string folderPath = Path.Combine(Path.GetTempPath(), "uploads", "QuestionImages", fileId.ToString());
                 Directory.CreateDirectory(folderPath);
 
                 string newFileName = $"{Guid.NewGuid()}{fileExtension}";
