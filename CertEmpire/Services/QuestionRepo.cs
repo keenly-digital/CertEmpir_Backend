@@ -279,7 +279,7 @@ namespace CertEmpire.Services
 
         public async Task<Response<string>> ImageUpload(IFormFile image, Guid fileId)
         {
-            var file = await _context.UploadedFiles.FirstOrDefaultAsync(x=>x.FileId.Equals(fileId));
+            var file = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId.Equals(fileId));
             if (file == null)
             {
                 return new Response<string>(false, "File not found", "", "");
@@ -304,9 +304,8 @@ namespace CertEmpire.Services
                 string fileExtension = Path.GetExtension(file.FileName).ToLower();
 
                 // Save to your server
-                string folderPath = Path.Combine(_rootPath, "uploads", "QuestionImages", fileId.ToString());
-                if (!Directory.Exists(folderPath))
-                    Directory.CreateDirectory(folderPath);
+                string folderPath = Path.Combine(Path.GetTempFileName(), "uploads", "QuestionImages", fileId.ToString());
+                Directory.CreateDirectory(folderPath);
 
                 string newFileName = $"{Guid.NewGuid()}{fileExtension}";
                 string fullFilePath = Path.Combine(folderPath, newFileName);
@@ -332,7 +331,7 @@ namespace CertEmpire.Services
         }
         public async Task<Response<object>> GetAllQuestion(Guid fileId, int pageNumber, int pageSize)
         {
-            var allQuestions = await _context.Questions.Where(x=>x.FileId.Equals(fileId)).ToListAsync();
+            var allQuestions = await _context.Questions.Where(x => x.FileId.Equals(fileId)).ToListAsync();
             if (allQuestions == null || !allQuestions.Any())
             {
                 return new Response<object>(false, "No questions found in the file", "", "");
