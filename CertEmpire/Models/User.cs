@@ -10,5 +10,9 @@ namespace CertEmpire.Models
         [Required]
         public string Email { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
+        public bool IsAdmin { get; set; }
+        public string UserRole { get; set; } = string.Empty;
+        public string Fullname { get; set; } = string.Empty;
+        public string ImageUrl { get; set; } = string.Empty;
     }
 }

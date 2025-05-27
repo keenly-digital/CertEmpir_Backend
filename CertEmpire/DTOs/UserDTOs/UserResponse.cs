@@ -20,4 +20,12 @@
     {
         public List<Dictionary<string, string>>? Data { get; set; }
     }
+    public class AdminLoginResponse
+    {
+        public Guid UserId { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string JWToken { get; set; } = string.Empty;
+        public string UserRole { get; set; } = string.Empty;
+    }
 }

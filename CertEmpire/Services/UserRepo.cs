@@ -19,6 +19,8 @@ namespace CertEmpire.Services
             this._jwtService = jwtService;
             _configuration = configuration;
         }
+
+        #region User Auth Module
         public async Task<Response<string>> AddUser(AddUserRequest request)
         {
             Response<string> response = new();
@@ -102,7 +104,7 @@ namespace CertEmpire.Services
                     {
                         var uploadedFile = new UploadedFile
                         {
-                            FileURL = file.FileUrl??"",
+                            FileURL = file.FileUrl ?? "",
                             FilePrice = file.FilePrice,
                             FileId = Guid.NewGuid(),
                             FileName = file.FileUrl.Split('/').Last(),
@@ -191,5 +193,34 @@ namespace CertEmpire.Services
                 return new Response<string>(false, "User not found", "", default);
             }
         }
+        #endregion
+
+        #region Admin Auth Module
+        public async Task<Response<AdminLoginResponse>> AdminLoginResponse(AdminLoginRequest request)
+        {
+            Response<AdminLoginResponse> response = new();
+            var admin = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email && u.Password == request.Password && u.IsAdmin.Equals(true));
+            if (admin == null)
+            {
+                return new Response<AdminLoginResponse>(false, "Invalid email or password", "", default);
+            }
+            else
+            {
+                var jwtToken = await _jwtService.generateJwtToken(admin);
+                return new Response<AdminLoginResponse>(
+                    true,
+                    "Admin logged in successfully",
+                    "",
+                    new AdminLoginResponse
+                    {
+                        UserId = admin.UserId,
+                        Email = admin.Email,
+                        FullName = admin.Fullname,
+                        UserRole = admin.UserRole,
+                        JWToken = jwtToken
+                    });
+            }
+        }
+        #endregion
     }
 }
