@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using CertEmpire.DTOs.SimulationDTOs;
+using System.Text.Json.Serialization;
 
 namespace CertEmpire.DTOs.QuizDTOs
 {
@@ -23,5 +24,13 @@ namespace CertEmpire.DTOs.QuizDTOs
         public string Title { get; set; } = string.Empty;
         public int QuestionCount { get; set; }
         public DateTime UploadedAt { get; set; }
+    }
+    public class CreateQuizResponse
+    {
+        public Guid FileId { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public int QuestionCount { get; set; }
+        public DateTime UploadedAt { get; set; }
+        public List<QuestionObject> Questions { get; set; } = new List<QuestionObject>();
     }
 }

@@ -65,31 +65,27 @@ namespace CertEmpire.Services
             ExamDTO exam;
             // Check if file already exists for this user
 
-            var fileInfo = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileName.Equals(file.FileName));
-            if (fileInfo != null)
+            var existingFile = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileName.Equals(file.FileName) && x.UserId.Equals(userResult.UserId));
+            if (existingFile != null)
             {
-                var existingFile = await _context.UserFilePrices.FirstOrDefaultAsync(x => x.FileId.Equals(fileInfo.FileId) && x.UserId.Equals(userResult.UserId));
-                if (existingFile != null)
+                string folderPath = Path.Combine(_rootPath, "uploads", "QuestionImages", existingFile.FileId.ToString());
+                if (Directory.Exists(folderPath))
                 {
-                    string folderPath = Path.Combine(_rootPath, "uploads", "QuestionImages", existingFile.FileId.ToString());
-                    if (Directory.Exists(folderPath))
+                    var filesListDir = Directory.GetFiles(folderPath);
+                    if (filesListDir.Any())
                     {
-                        var filesListDir = Directory.GetFiles(folderPath);
-                        if (filesListDir.Any())
+                        foreach (var imageFiles in Directory.GetFiles(folderPath))
                         {
-                            foreach (var imageFiles in Directory.GetFiles(folderPath))
-                            {
-                                try { File.Delete(imageFiles); }
-                                catch (Exception ex) { Console.WriteLine($"Error deleting file {imageFiles}: {ex.Message}"); }
-                            }
+                            try { File.Delete(imageFiles); }
+                            catch (Exception ex) { Console.WriteLine($"Error deleting file {imageFiles}: {ex.Message}"); }
                         }
                     }
-                    exam = await ParseExamFile(file, fileExtension, existingFile.FileId);
-                    if (exam == null || exam.Topics.Count == 0)
-                        return new Response<object>(false, "Invalid file content or empty exam.", "", null);
-                    // Update existing file
-                    return await UpdateFileContent(fileInfo, exam, userResult.UserId);
                 }
+                exam = await ParseExamFile(file, fileExtension, existingFile.FileId);
+                if (exam == null || exam.Topics.Count == 0)
+                    return new Response<object>(false, "Invalid file content or empty exam.", "", null);
+                // Update existing file
+                return await UpdateFileContent(existingFile, exam, userResult.UserId);
             }
             var fileId = Guid.NewGuid();
             exam = await ParseExamFile(file, fileExtension, fileId);
@@ -585,25 +581,40 @@ namespace CertEmpire.Services
             }
         }
         //Create Quiz File
-        public async Task<Response<object>> CreateQuiz(CreateQuizRequest request)
+        public async Task<Response<CreateQuizResponse>> CreateQuiz(CreateQuizRequest request)
         {
-            Response<object> response = new Response<object>();
+            Response<CreateQuizResponse> response = new Response<CreateQuizResponse>();
             if (request != null)
             {
                 UploadedFile file = new UploadedFile
                 {
                     FileId = Guid.NewGuid(),
                     FileName = request.title,
-                    FileURL = ""
+                    FileURL = "",
+                    UserId = request.UserId
                 };
                 await _context.UploadedFiles.AddAsync(file);
                 await _context.SaveChangesAsync();
-                response = new Response<object>(true, "Quiz file created successfully.", "", file.FileId);
+                var fileData = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId.Equals(file.FileId));
+                if (fileData == null)
+                {
+                    response = new Response<CreateQuizResponse>(false, "Error while creating quiz file.", "", null);
+                    return response;
+                }
+                CreateQuizResponse res = new()
+                {
+                    FileId = fileData.FileId,
+                    QuestionCount = fileData.NumberOfQuestions,
+                    Questions = new List<QuestionObject>(),
+                    Title = fileData.FileName,
+                    UploadedAt = fileData.Created
+                };
+                response = new Response<CreateQuizResponse>(true, "Quiz file created successfully.", "", res);
                 return response;
             }
             else
             {
-                return new Response<object>(false, "Error while creating quiz.", "", "");
+                return new Response<CreateQuizResponse>(false, "Error while creating quiz.", "", default);
             }
         }
         public async Task<Response<string>> ExportFile(Guid quizId)
@@ -1196,32 +1207,27 @@ namespace CertEmpire.Services
         public async Task<List<QuizFileInfoResponse>> GetQuizById(Guid userId, int pageNumber, int pageSize)
         {
             List<QuizFileInfoResponse> list = new();
-            var allQuizzes = await _context.UploadedFiles.ToListAsync(); // FIX HERE
-
-            foreach (var item in allQuizzes)
+            int questionCount = 0;
+            var allQuizzes = _context.UploadedFiles.AsQueryable();
+            var userQuizzes = allQuizzes
+                .Where(x => x.UserId == userId)
+                .ToList();
+            var paginatedResponse = userQuizzes.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
+            foreach (var quiz in paginatedResponse)
             {
-                var userFiles = await _context.UserFilePrices
-                    .FirstOrDefaultAsync(x => x.UserId == userId && x.FileId == item.FileId); // FIX: x.FileId.Equals(item.FileId)
-
-                if (userFiles != null)
+                var questionList = await _context.Questions.Where(x => x.FileId.Equals(quiz.FileId)).ToListAsync();
+                questionCount = questionList.Count();
+                list.Add(new QuizFileInfoResponse
                 {
-                    QuizFileInfoResponse quizFileInfo = new QuizFileInfoResponse
-                    {
-                        FileId = item.FileId,
-                        Title = item.FileName,
-                        QuestionCount = item.NumberOfQuestions,
-                        UploadedAt = item.Created
-                    };
-                    list.Add(quizFileInfo);
-                }
+                    FileId = quiz.FileId,
+                    Title = quiz.FileName,
+                    QuestionCount = questionCount,
+                    UploadedAt = quiz.Created
+                });
             }
 
-            var paginatedResponse = list
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
 
-            return paginatedResponse;
+            return list;
         }
 
         #endregion

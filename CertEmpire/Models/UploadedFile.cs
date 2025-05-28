@@ -13,5 +13,6 @@ namespace CertEmpire.Models
         public int ProductId { get; set; }
         public bool Simulation { get; set; } = true;
         public int NumberOfQuestions { get; set; } = 0;
+        public Guid UserId { get; set; }
     }
 }

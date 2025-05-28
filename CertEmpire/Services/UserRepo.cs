@@ -41,7 +41,8 @@ namespace CertEmpire.Services
                     {
                         Email = request.Email,
                         Password = request.Password,
-                        Fullname = "User Name",
+                        FirstName = "User",
+                        LastName = "",
                         UserRole = "User",
                         ImageUrl = "",
                         IsAdmin = false,
@@ -219,7 +220,8 @@ namespace CertEmpire.Services
                     {
                         UserId = admin.UserId,
                         Email = admin.Email,
-                        FullName = admin.Fullname,
+                        FirstName = admin.FirstName,
+                        LastName = admin.LastName,
                         UserRole = admin.UserRole,
                         JWToken = jwtToken
                     });
