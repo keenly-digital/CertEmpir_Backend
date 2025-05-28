@@ -113,7 +113,7 @@ namespace CertEmpire.AdminControllers
             }
             return Ok(response);
         }
-        [HttpDelete("[action]")]
+        [HttpDelete("{fileId}")]
         public async Task<IActionResult> Delete(Guid fileId)
         {
             var files = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId.Equals(fileId));
