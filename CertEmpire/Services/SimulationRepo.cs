@@ -564,7 +564,8 @@ namespace CertEmpire.Services
                     FileId = fileId,
                     FileName = exam.ExamTitle,
                     FileURL = "",
-                    NumberOfQuestions = exam.Topics.Sum(t => t.Questions.Count)
+                    NumberOfQuestions = exam.Topics.Sum(t => t.Questions.Count),
+                    UserId = userId
                 };
                 await _context.UploadedFiles.AddAsync(uploadedFile);
                 await _context.SaveChangesAsync();
