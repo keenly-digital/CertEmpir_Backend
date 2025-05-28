@@ -1,4 +1,4 @@
-﻿using CertEmpire.DTOs.UserDTOs;
+﻿using CertEmpire.DTOs.DomainDTOs;
 using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -8,19 +8,47 @@ namespace CertEmpire.AdminControllers
     [ApiController]
     [Route("api/[controller]")]
     [ApiExplorerSettings(GroupName = "admin-v1")]
-    public class AuthController : ControllerBase
+    public class DomainController : ControllerBase
     {
-        private readonly IUserRepo _userRepo;
-        public AuthController(IUserRepo userRepo)
+        private readonly IDomainRepo _domainRepo;
+        public DomainController(IDomainRepo domainRepo)
         {
-            _userRepo = userRepo;
+            _domainRepo = domainRepo;
         }
-        [HttpPost("[action]")]
-        public async Task<IActionResult> Login(AdminLoginRequest request)
+        [HttpGet("[action]")]
+        public async Task<IActionResult> GetAllDomains(int pageNumber, int pageSize)
         {
             try
             {
-                var response = await _userRepo.AdminLoginResponse(request);
+                var response = await _domainRepo.GetAllDomain(pageNumber, pageSize);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                var response = new Response<object>(false, "Error", ex.Message, "");
+                return StatusCode(500, response);
+            }
+        }
+        [HttpGet("[action]")]
+        public async Task<IActionResult> GetDomainById(Guid DomainId)
+        {
+            try
+            {
+                var response = await _domainRepo.GetDomainById(DomainId);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                var response = new Response<object>(false, "Error", ex.Message, "");
+                return StatusCode(500, response);
+            }
+        }
+        [HttpGet("[action]")]
+        public async Task<IActionResult> GetDomainByName(string DomainName)
+        {
+            try
+            {
+                var response = await _domainRepo.GetDomainByName(DomainName);
                 return Ok(response);
             }
             catch (Exception ex)
@@ -30,11 +58,11 @@ namespace CertEmpire.AdminControllers
             }
         }
         [HttpPost("[action]")]
-        public async Task<IActionResult> ChangeEmail(ChangeEmailAsync request)
+        public async Task<IActionResult> CreateDomain(AddDomainRequest request)
         {
             try
             {
-                var response = await _userRepo.ChangeEmailAsync(request);
+                var response = await _domainRepo.AddDomain(request);
                 return Ok(response);
             }
             catch (Exception ex)
@@ -43,12 +71,12 @@ namespace CertEmpire.AdminControllers
                 return StatusCode(500, response);
             }
         }
-        [HttpPost("[action]")]
-        public async Task<IActionResult> ChangePassword(ChangePasswordAsync request)
+        [HttpPut("[action]")]
+        public async Task<IActionResult> UpdateDomain(EditDomainRequest request)
         {
             try
             {
-                var response = await _userRepo.ChangePasswordAsync(request);
+                var response = await _domainRepo.EditDomain(request);
                 return Ok(response);
             }
             catch (Exception ex)
@@ -57,26 +85,12 @@ namespace CertEmpire.AdminControllers
                 return StatusCode(500, response);
             }
         }
-        [HttpPost("[action]")]
-        public async Task<IActionResult> ChangeName(ChangeFirstOrLastName request)
+        [HttpDelete("[action]")]
+        public async Task<IActionResult> DeleteDomain(Guid DomainId)
         {
             try
             {
-                var response = await _userRepo.ChangeNameAsync(request);
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                var response = new Response<object>(false, "Error", ex.Message, "");
-                return StatusCode(500, response);
-            }
-        }
-        [HttpPost("[action]")]
-        public async Task<IActionResult> ChangeProfilePic(ChangeProfilePic request)
-        {
-            try
-            {
-                var response = await _userRepo.ChangeProfilePicAsync(request);
+                var response = await _domainRepo.DeletDomain(DomainId);
                 return Ok(response);
             }
             catch (Exception ex)

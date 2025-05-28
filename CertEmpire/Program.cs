@@ -36,6 +36,7 @@ builder.Services.AddScoped<IFileService, FileService>();
 builder.Services.AddScoped<ITopicRepo, TopicRepo>();
 builder.Services.AddScoped<AesOperation>();
 builder.Services.AddScoped<IQuestionRepo, QuestionRepo>();
+builder.Services.AddScoped<IDomainRepo, DomainRepo>();
 builder.Services.Configure<JwtSetting>(builder.Configuration.GetSection("Jwt"));
 builder.Services.AddControllers();
 builder.Services.AddControllers()

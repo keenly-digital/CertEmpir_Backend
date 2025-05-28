@@ -4,6 +4,7 @@ using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using CertEmpire.Interfaces.IJwtService;
 using CertEmpire.Models;
+using CertEmpire.Services.FileService;
 using Microsoft.EntityFrameworkCore;
 
 namespace CertEmpire.Services
@@ -13,11 +14,14 @@ namespace CertEmpire.Services
         private readonly IUploadedFileRepo _uploadFileRepo;
         private readonly IJwtService _jwtService;
         private readonly IConfiguration _configuration;
-        public UserRepo(ApplicationDbContext context, IUploadedFileRepo _uploadFileRepo, IJwtService jwtService, IConfiguration configuration) : base(context)
+        private readonly IFileService _fileService;
+        public UserRepo(ApplicationDbContext context, IUploadedFileRepo _uploadFileRepo, IJwtService jwtService, IConfiguration configuration,
+            IFileService fileService) : base(context)
         {
             this._uploadFileRepo = _uploadFileRepo;
             this._jwtService = jwtService;
             _configuration = configuration;
+            _fileService = fileService;
         }
 
         #region User Auth Module
@@ -201,6 +205,7 @@ namespace CertEmpire.Services
         #endregion
 
         #region Admin Auth Module
+        /// Admin Login
         public async Task<Response<AdminLoginResponse>> AdminLoginResponse(AdminLoginRequest request)
         {
             Response<AdminLoginResponse> response = new();
@@ -226,6 +231,119 @@ namespace CertEmpire.Services
                         JWToken = jwtToken
                     });
             }
+        }
+        //Change Email for Admin, Super Admin, Owner or for other roles except User
+        public async Task<Response<string>> ChangeEmailAsync(ChangeEmailAsync request)
+        {
+            Response<string> response = new();
+            if (request == null)
+            {
+                response = new Response<string>(false, "Request can't be null", "", default);
+            }
+            else
+            {
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.OldEmail);
+                if (user != null)
+                {
+                    user.Email = request.NewEmail;
+                    await UpdateAsync(user);
+                    response = new Response<string>(true, "Email updated successfully", "", default);
+                }
+                else
+                {
+                    response = new Response<string>(false, "User not found", "", default);
+                }
+            }
+            return response;
+        }
+        //Change First Name/Last Name for Admin, Super Admin, Owner or for other roles except User
+        public async Task<Response<string>> ChangeNameAsync(ChangeFirstOrLastName request)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == request.UserId);
+            if (user == null)
+            {
+                return new Response<string>(false, "User not found.", "", "");
+            }
+            bool isUpdated = false;
+            if (!string.IsNullOrWhiteSpace(request.FirstName))
+            {
+                user.FirstName = request.FirstName.Trim();
+                isUpdated = true;
+            }
+            if (!string.IsNullOrWhiteSpace(request.LastName))
+            {
+                user.LastName = request.LastName.Trim();
+                isUpdated = true;
+            }
+            if (!isUpdated)
+            {
+                return new Response<string>(false, "No name provided to update.", "", "");
+            }
+            await UpdateAsync(user);
+            return new Response<string>(true, "Name updated successfully", "", "");
+        }
+        //Change password for Admin, Super Admin, Owner or for other roles except User
+        public async Task<Response<string>> ChangePasswordAsync(ChangePasswordAsync request)
+        {
+            Response<string> response = new();
+            if (request == null)
+            {
+                response = new Response<string>(false, "Request can't be null", "", default);
+            }
+            else
+            {
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == request.UserId);
+                if (user != null)
+                {
+                    if (user.Password.Equals(request.OldPassword))
+                    {
+                        user.Password = request.NewPassword;
+                        await UpdateAsync(user);
+                        response = new Response<string>(true, "Password updated successfully", "", default);
+                    }
+                    else
+                    {
+                        response = new Response<string>(false, "Old password is incorrect", "", default);
+                    }
+                }
+                else
+                {
+                    response = new Response<string>(false, "User not found", "", default);
+                }
+            }
+            return response;
+        }
+        // Change Profile Picture for Admin, Super Admin, Owner or for other roles except User
+        public async Task<Response<string>> ChangeProfilePicAsync(ChangeProfilePic request)
+        {
+            Response<string> response = new();
+            if (request == null)
+            {
+                response = new Response<string>(false, "Request can't be null", "", default);
+            }
+            else
+            {
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == request.UserId);
+                if (user != null)
+                {
+                    if (request.Image != null)
+                    {
+                        var fileUrl = await _fileService.ChangeProfilePic(request);
+                        user.ImageUrl = fileUrl;
+                        await UpdateAsync(user);
+                        response = new Response<string>(true, "Profile picture updated successfully", "", default);
+                    }
+                    else
+                    {
+                        response = new Response<string>(false, "Image can't be null", "", default);
+                    }
+                }
+                else
+                {
+                    response = new Response<string>(false, "User not found", "", default);
+                }
+            }
+            return response;
         }
         #endregion
     }
