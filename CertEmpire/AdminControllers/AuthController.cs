@@ -16,6 +16,20 @@ namespace CertEmpire.AdminControllers
             _userRepo = userRepo;
         }
         [HttpPost("[action]")]
+        public async Task<IActionResult> AddNewUser(AddNewUserRequest request)
+        {
+            try
+            {
+                var response = await _userRepo.AddNewUserAsync(request);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                var response = new Response<object>(false, "Error", ex.Message, "");
+                return StatusCode(500, response);
+            }
+        }
+        [HttpPost("[action]")]
         public async Task<IActionResult> Login(AdminLoginRequest request)
         {
             try
@@ -77,6 +91,20 @@ namespace CertEmpire.AdminControllers
             try
             {
                 var response = await _userRepo.ChangeProfilePicAsync(request);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                var response = new Response<object>(false, "Error", ex.Message, "");
+                return StatusCode(500, response);
+            }
+        }
+        [HttpDelete("[action]")]
+        public async Task<IActionResult> DeleteUser(Guid userId)
+        {
+            try
+            {
+                var response = await _userRepo.DeleteUser(userId);
                 return Ok(response);
             }
             catch (Exception ex)

@@ -47,7 +47,7 @@ namespace CertEmpire.Services
                         Password = request.Password,
                         FirstName = "User",
                         LastName = "",
-                        UserRole = "User",
+                        UserRoleId = Guid.Empty,
                         ImageUrl = "",
                         IsAdmin = false,
                         UserId = Guid.NewGuid()
@@ -205,6 +205,75 @@ namespace CertEmpire.Services
         #endregion
 
         #region Admin Auth Module
+        public async Task<Response<AddNewUserResponse>> AddNewUserAsync(AddNewUserRequest request)
+        {
+            Response<AddNewUserResponse> response = new();
+            var user = await _context.Users.FirstOrDefaultAsync(x => x.Email.Equals(request.Email));
+            if (user != null)
+            {
+                AddNewUserResponse res = new()
+                {
+                    Email = user.Email,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Password = user.Password,
+                    UserId = user.UserId,
+                    UserName = user.UserName,
+                    UserRoleId = user.UserRoleId
+                };
+                response = new Response<AddNewUserResponse>(true, "User already exist.", "", res);
+            }
+            else
+            {
+                var userRole = await _context.UserRoles.FirstOrDefaultAsync(x => x.UserRoleId.Equals(request.UserRoleId));
+                if (userRole == null)
+                {
+                    return new Response<AddNewUserResponse>(false, "User role does not exist.", "", default);
+                }
+                bool isAdmin;
+                if (userRole.UserRoleName.Equals("Admin") || userRole.UserRoleName.Equals("SuperAdmin"))
+                {
+                    isAdmin = true;
+                }
+                else
+                {
+                    isAdmin = false;
+                }
+                User newUser = new()
+                {
+                    Email = request.Email,
+                    FirstName = request.FirstName,
+                    LastName = request.LastName,
+                    ImageUrl = "",
+                    IsAdmin = isAdmin,
+                    UserRoleId = userRole.UserRoleId,
+                    Password = request.Password,
+                    UserName = request.UserName,
+                    UserId = Guid.NewGuid()
+                };
+                var result = await AddAsync(newUser);
+                if (result != null)
+                {
+                    AddNewUserResponse res = new()
+                    {
+                        Email = result.Email,
+                        FirstName = result.FirstName,
+                        LastName = result.LastName,
+                        Password = result.Password,
+                        UserId = result.UserId,
+                        UserName = result.UserName,
+                        UserRoleId = result.UserRoleId
+                    };
+                    response = new Response<AddNewUserResponse>(true, "User already exist.", "", res);
+                }
+                else
+                {
+                    response = new Response<AddNewUserResponse>(false, "Error while adding user.", "", default);
+                }
+            }
+            return response;
+        }
+
         /// Admin Login
         public async Task<Response<AdminLoginResponse>> AdminLoginResponse(AdminLoginRequest request)
         {
@@ -216,6 +285,11 @@ namespace CertEmpire.Services
             }
             else
             {
+                var userRole = await _context.UserRoles.FirstOrDefaultAsync(x => x.UserRoleId.Equals(admin.UserRoleId));
+                if (userRole == null)
+                {
+
+                }
                 var jwtToken = await _jwtService.generateJwtToken(admin);
                 return new Response<AdminLoginResponse>(
                     true,
@@ -227,7 +301,7 @@ namespace CertEmpire.Services
                         Email = admin.Email,
                         FirstName = admin.FirstName,
                         LastName = admin.LastName,
-                        UserRole = admin.UserRole,
+                        UserRole = userRole.UserRoleName,
                         JWToken = jwtToken
                     });
             }
@@ -342,6 +416,21 @@ namespace CertEmpire.Services
                 {
                     response = new Response<string>(false, "User not found", "", default);
                 }
+            }
+            return response;
+        }
+        public async Task<Response<string>> DeleteUser(Guid userId)
+        {
+            Response<string> response = new();
+            var user = await _context.Users.FirstOrDefaultAsync(x => x.UserId.Equals(userId));
+            if (user == null)
+            {
+                response = new Response<string>(true, "User not found or already deleted.", "", "");
+            }
+            else
+            {
+                await DeleteAsync(user);
+                response = new Response<string>(true, "User deleted.", "", "");
             }
             return response;
         }

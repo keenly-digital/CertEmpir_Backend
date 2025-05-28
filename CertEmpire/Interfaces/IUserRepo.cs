@@ -15,11 +15,13 @@ namespace CertEmpire.Interfaces
         #endregion
 
         #region Admin Auth Interfaces
+        Task<Response<AddNewUserResponse>> AddNewUserAsync(AddNewUserRequest request);
         Task<Response<AdminLoginResponse>> AdminLoginResponse(AdminLoginRequest request);
         Task<Response<string>> ChangeEmailAsync(ChangeEmailAsync request);
         Task<Response<string>> ChangeNameAsync(ChangeFirstOrLastName request);
         Task<Response<string>> ChangePasswordAsync(ChangePasswordAsync request);
         Task<Response<string>> ChangeProfilePicAsync(ChangeProfilePic request);
+        Task<Response<string>> DeleteUser(Guid userId);
         #endregion
     }
 }
