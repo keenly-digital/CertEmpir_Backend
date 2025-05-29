@@ -400,8 +400,7 @@ namespace CertEmpire.Services
             if (string.IsNullOrWhiteSpace(html)) return html;
 
             string domain = "https://exam-ai-production-2bdc.up.railway.app";
-            var matches = Regex.Matches(html, "<img[^>]*src=['\"]([^'\"]+)['\"][^>]*>", RegexOptions.IgnoreCase);
-
+            var matches = Regex.Matches(html, @"(/static/images/[^""']+\.(jpg|jpeg|png|gif))", RegexOptions.IgnoreCase);
             foreach (Match match in matches)
             {
                 if (match.Groups.Count > 1)
@@ -410,7 +409,7 @@ namespace CertEmpire.Services
                     string fileName = Path.GetFileName(relativePath);
 
                     // Ensure image is from AI domain
-                    string aiImageUrl = $"{domain}";
+                    string aiImageUrl = $"{domain}{relativePath}";
                     if (!aiImageUrl.StartsWith(domain)) continue;
 
                     try
@@ -472,6 +471,7 @@ namespace CertEmpire.Services
 
             try
             {
+                Response<object> response = new();
                 // Remove existing content
                 // Step 1: Delete Questions first
                 var questionsList = await _context.Questions.Where(q => q.FileId == existingFile.FileId).ToListAsync();
@@ -479,7 +479,7 @@ namespace CertEmpire.Services
                 int newQuestionCount = exam.Topics.Sum(t => t.Questions.Count);
                 if (newQuestionCount.Equals(questionCount))
                 {
-                    return new Response<object>(true, "File updated successfully.", "", existingFile);
+                    response = new Response<object>(true, "File updated successfully.", "", existingFile);
                 }
                 else
                 {
@@ -498,10 +498,10 @@ namespace CertEmpire.Services
                     }
                     // Add new content
                     await AddExamContent(exam, existingFile.FileId, userId);
-
+                    response = new Response<object>(true, "File updated successfully.", "", existingFile);
                 }
-
-                return new Response<object>(true, "File updated successfully.", "", existingFile);
+                return response;
+               
             }
             catch (Exception ex)
             {

@@ -6,6 +6,7 @@ using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using CertEmpire.Models;
 using Microsoft.EntityFrameworkCore;
+using static ReportAnswerDTO;
 
 namespace CertEmpire.Services
 {

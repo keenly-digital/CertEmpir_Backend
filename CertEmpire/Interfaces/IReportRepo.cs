@@ -2,6 +2,7 @@
 using CertEmpire.DTOs.ReportRequestDTOs;
 using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Models;
+using static ReportAnswerDTO;
 
 namespace CertEmpire.Interfaces
 {

@@ -1,8 +1,8 @@
 ﻿using CertEmpire.DTOs.ReportRequestDTOs;
 using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
-using CertEmpire.Middlewares;
 using Microsoft.AspNetCore.Mvc;
+using static ReportAnswerDTO;
 
 namespace CertEmpire.Controllers
 {
