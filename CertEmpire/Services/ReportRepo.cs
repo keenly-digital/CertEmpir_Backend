@@ -63,6 +63,15 @@ namespace CertEmpire.Services
                             response = new Response<string>(false, "You have already submitted a report for this question.", "", default);
                             return response;
                         }
+                        string reportName;
+                        if (request.Type.Equals(ReportType.Question))
+                        {
+                            reportName = request.Reason + " " + request.QuestionNumber;
+                        }
+                        else
+                        {
+                            reportName = request.Reason;
+                        }
                         var report = new Report
                         {
                             Type = request.Type,
@@ -75,7 +84,7 @@ namespace CertEmpire.Services
                             ExamName = fileInfo.FileName,
                             fileId = request.FileId,
                             Status = ReportStatus.Pending,
-                            ReportName = request.Reason + " " + request.TargetId,
+                            ReportName = reportName,
                             QuestionNumber = request.QuestionNumber
                         };
                         var result = await AddAsync(report);
@@ -159,7 +168,7 @@ namespace CertEmpire.Services
                             ExamName = fileInfo.FileName,
                             fileId = request.FileId,
                             Status = ReportStatus.Pending,
-                            ReportName = request.Reason + " " + request.TargetId,
+                            ReportName = request.Reason,
                             CorrectAnswerIndices = request.CorrectAnswerIndices,
                             Options = options,
                         };
