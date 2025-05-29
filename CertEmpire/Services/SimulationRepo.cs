@@ -515,12 +515,13 @@ namespace CertEmpire.Services
                 var hasTopic = !string.IsNullOrWhiteSpace(topic.TopicName);
                 var hasCaseStudy = !string.IsNullOrWhiteSpace(topic.CaseStudy);
                 var topicId = Guid.NewGuid();
+                var caseStudyId = Guid.NewGuid();
 
                 // Create topic/case study entity
                 var topicEntity = new TopicEntity
                 {
                     TopicId = hasTopic ? topicId : Guid.Empty,
-                    CaseStudyId = hasCaseStudy ? Guid.NewGuid() : Guid.Empty,
+                    CaseStudyId = hasCaseStudy ? caseStudyId : Guid.Empty,
                     TopicName = topic.TopicName ?? "",
                     Description = topic.CaseStudy ?? "",
                     CaseStudyTopicId = (hasTopic && hasCaseStudy) ? topicId : Guid.Empty,
@@ -545,7 +546,7 @@ namespace CertEmpire.Services
                         answerImageURL = question.answerImageURL,
                         ShowAnswer = false,
                         TopicId = hasTopic ? topicId : Guid.Empty,
-                        CaseStudyId = hasCaseStudy ? topicId : Guid.Empty,
+                        CaseStudyId = hasCaseStudy ? caseStudyId : Guid.Empty,
                         FileId = fileId
                     };
                     await _context.Questions.AddAsync(questionEntity);
