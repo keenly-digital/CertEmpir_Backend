@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -1145,12 +1146,12 @@ namespace CertEmpire.Services
                         })
                         .ToList()
                 );
-
+                var encodedName = WebUtility.UrlDecode(uploadedFile.FileName);
                 // --- Final Output ---
                 var response = new
                 {
                     fileId = quizId,
-                    fileName = uploadedFile.FileName,
+                    fileName = encodedName,
                     items = responseItems
                 };
 
