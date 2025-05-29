@@ -145,7 +145,13 @@ app.UseStaticFiles(new StaticFileOptions
     ),
     RequestPath = "/uploads/QuestionImages",
     ServeUnknownFileTypes = true,
-    DefaultContentType = "application/octet-stream"
+    DefaultContentType = "application/octet-stream",
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Headers", "*");
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Methods", "GET,OPTIONS");
+    }
 });
 app.Use(async (context, next) =>
 {
