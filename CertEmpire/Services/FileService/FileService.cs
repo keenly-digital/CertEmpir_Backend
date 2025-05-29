@@ -42,7 +42,7 @@ namespace CertEmpire.Services.FileService
             string fileExtension = Path.GetExtension(file.FileName).ToLower();
             // Restrict uploads to .qzs files only
 
-            string folderPath = Path.Combine(Path.GetTempPath(), subDirectory);
+            string folderPath = Path.Combine(Path.GetTempPath(), "uploads", "QuizFiles");
             if (!Directory.Exists(folderPath))
                 Directory.CreateDirectory(folderPath);
 

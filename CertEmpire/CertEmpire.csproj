@@ -32,6 +32,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="wwwroot\uploads\QuizFiles\" />
+    <Folder Include="wwwroot\uploads\ProfilePics\" />
     <Folder Include="wwwroot\uploads\QuestionImages\" />
   </ItemGroup>
 
