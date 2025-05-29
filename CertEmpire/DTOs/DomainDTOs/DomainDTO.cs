@@ -7,6 +7,7 @@
         public bool IncludeAnswers { get; set; }
         public bool IncludeExplanations { get; set; }
         public bool IncludeComments { get; set; }
+        public bool IsActive { get; set; } = true;
     }
     public class EditDomainRequest
     {
@@ -16,6 +17,7 @@
         public bool? IncludeAnswers { get; set; }
         public bool? IncludeExplanations { get; set; }
         public bool? IncludeComments { get; set; }
+        public bool IsActive { get; set; } = true;
     }
     public class AddDomainResponse
     {
@@ -25,5 +27,6 @@
         public bool IncludeAnswers { get; set; }
         public bool IncludeExplanations { get; set; }
         public bool IncludeComments { get; set; }
+        public bool IsActive { get; set; }
     }
 }

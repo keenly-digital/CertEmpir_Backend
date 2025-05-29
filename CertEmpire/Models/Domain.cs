@@ -12,5 +12,6 @@ namespace CertEmpire.Models
         public bool IncludeAnswers { get; set; }
         public bool IncludeExplanations { get; set; }
         public bool IncludeComments { get; set; }
+        public bool IsActive {  get; set; }
     }
 }

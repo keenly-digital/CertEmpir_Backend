@@ -399,7 +399,7 @@ namespace CertEmpire.Services
         {
             if (string.IsNullOrWhiteSpace(html)) return html;
 
-            string domain = "https://exam-ai-production-2bdc.up.railway.app/";
+            string domain = "https://exam-ai-production-2bdc.up.railway.app";
             var matches = Regex.Matches(html, "<img[^>]*src=['\"]([^'\"]+)['\"][^>]*>", RegexOptions.IgnoreCase);
 
             foreach (Match match in matches)

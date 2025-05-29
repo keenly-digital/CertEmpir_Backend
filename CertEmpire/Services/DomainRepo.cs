@@ -23,7 +23,8 @@ namespace CertEmpire.Services
                     IncludeAnswers = item.IncludeAnswers,
                     IncludeComments = item.IncludeComments,
                     IncludeExplanations = item.IncludeExplanations,
-                    IncludeQuestions = item.IncludeQuestions
+                    IncludeQuestions = item.IncludeQuestions,
+                    IsActive = item.IsActive
                 };
                 list.Add(domainResponse);
             }
@@ -43,7 +44,8 @@ namespace CertEmpire.Services
                     IncludeAnswers = domain.IncludeAnswers,
                     IncludeComments = domain.IncludeComments,
                     IncludeExplanations = domain.IncludeExplanations,
-                    IncludeQuestions = domain.IncludeQuestions
+                    IncludeQuestions = domain.IncludeQuestions,
+                    IsActive = domain.IsActive
                 };
                 response = new Response<AddDomainResponse>(true, "Domain found.", "", domainResponse);
             }
@@ -66,7 +68,8 @@ namespace CertEmpire.Services
                     IncludeAnswers = domain.IncludeAnswers,
                     IncludeComments = domain.IncludeComments,
                     IncludeExplanations = domain.IncludeExplanations,
-                    IncludeQuestions = domain.IncludeQuestions
+                    IncludeQuestions = domain.IncludeQuestions,
+                    IsActive = domain.IsActive
                 };
                 response = new Response<AddDomainResponse>(true, "Domain found.", "", domainResponse);
             }
@@ -95,7 +98,8 @@ namespace CertEmpire.Services
                         IncludeAnswers = domain.IncludeAnswers,
                         IncludeComments = domain.IncludeComments,
                         IncludeExplanations = domain.IncludeExplanations,
-                        IncludeQuestions = domain.IncludeQuestions
+                        IncludeQuestions = domain.IncludeQuestions,
+                        IsActive = domain.IsActive
                     };
                     response = new Response<AddDomainResponse>(true, "Domain is already exist.", "", domainResponse);
                 }
@@ -108,7 +112,8 @@ namespace CertEmpire.Services
                         IncludeAnswers = request.IncludeAnswers,
                         IncludeComments = request.IncludeComments,
                         IncludeExplanations = request.IncludeExplanations,
-                        IncludeQuestions = request.IncludeQuestions
+                        IncludeQuestions = request.IncludeQuestions,
+                        IsActive = request.IsActive
                     };
                     var result = await AddAsync(data);
                     if (result != null)
@@ -120,7 +125,8 @@ namespace CertEmpire.Services
                             IncludeAnswers = result.IncludeAnswers,
                             IncludeComments = result.IncludeComments,
                             IncludeExplanations = result.IncludeExplanations,
-                            IncludeQuestions = result.IncludeQuestions
+                            IncludeQuestions = result.IncludeQuestions,
+                            IsActive = result.IsActive
                         };
                         response = new Response<AddDomainResponse>(true, "Domain is already exist.", "", domainResponse);
                     }
@@ -155,6 +161,9 @@ namespace CertEmpire.Services
 
             if (request.IncludeComments.HasValue)
                 domain.IncludeComments = request.IncludeComments.Value;
+            
+            if(request.IsActive)
+                domain.IsActive = request.IsActive;
 
             await UpdateAsync(domain);
 
