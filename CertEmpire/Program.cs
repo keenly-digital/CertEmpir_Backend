@@ -138,6 +138,7 @@ string tempRoot = Path.Combine(Path.GetTempPath(), "uploads", "QuestionImages");
 Directory.CreateDirectory(tempRoot);
 // Configure the HTTP request pipeline.
 app.UseStaticFiles();
+// Serve QuestionImages
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(
@@ -153,6 +154,41 @@ app.UseStaticFiles(new StaticFileOptions
         ctx.Context.Response.Headers.Append("Access-Control-Allow-Methods", "GET,OPTIONS");
     }
 });
+
+// Serve ProfilePics
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(Path.GetTempPath(),"uploads" ,"ProfilePics")
+    ),
+    RequestPath = "/uploads/ProfilePics",
+    ServeUnknownFileTypes = true,
+    DefaultContentType = "application/octet-stream",
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Headers", "*");
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Methods", "GET,OPTIONS");
+    }
+});
+
+// Serve QuizFiles
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(Path.GetTempPath(), "uploads", "QuizFiles")
+    ),
+    RequestPath = "/uploads/QuizFiles",
+    ServeUnknownFileTypes = true,
+    DefaultContentType = "application/octet-stream",
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Headers", "*");
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Methods", "GET,OPTIONS");
+    }
+});
+
 app.Use(async (context, next) =>
 {
     context.Features.Get<IHttpMaxRequestBodySizeFeature>()!.MaxRequestBodySize = 524288000;

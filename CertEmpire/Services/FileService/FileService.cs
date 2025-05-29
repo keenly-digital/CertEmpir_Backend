@@ -4,7 +4,6 @@ namespace CertEmpire.Services.FileService
 {
     public class FileService : IFileService
     {
-        private readonly string _rootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads");
         private readonly IHttpContextAccessor _httpContextAccessor;
         public FileService(IHttpContextAccessor httpContextAccessor)
         {
@@ -20,7 +19,7 @@ namespace CertEmpire.Services.FileService
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
             // Restrict uploads to .qzs files only
 
-            string folderPath = Path.Combine(Path.GetTempPath(), "ProfilePics");
+            string folderPath = Path.Combine(Path.GetTempPath(), "uploads", "ProfilePics");
             if (!Directory.Exists(folderPath))
                 Directory.CreateDirectory(folderPath);
 
