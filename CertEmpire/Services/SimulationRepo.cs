@@ -1009,7 +1009,6 @@ namespace CertEmpire.Services
                     }
                     // Add new content
                     await AddExamContent(exam, existingFile.FileId, userId);
-
                 }
 
                 return new Response<UploadedFile>(true, "File updated successfully.", "", existingFile);
@@ -1152,7 +1151,6 @@ namespace CertEmpire.Services
                 return new Response<object>(false, "Error retrieving file content", ex.Message, null);
             }
         }
-
         private async Task<Response<UploadedFile>> CreateNewFileContent(ExamDTO exam, Guid userId)
         {
             try
@@ -1227,8 +1225,6 @@ namespace CertEmpire.Services
                     UploadedAt = quiz.Created
                 });
             }
-
-
             return list;
         }
 
