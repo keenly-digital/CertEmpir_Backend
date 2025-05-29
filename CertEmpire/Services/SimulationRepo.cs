@@ -875,7 +875,7 @@ namespace CertEmpire.Services
             if (fileInfo != null)
             {
                 var fileCotent = await GetFileContent(fileId);
-                response = new Response<object>(false, "File Content", "", fileCotent);
+                response = new Response<object>(true, "File Content", "", fileCotent);
             }
             else
             {

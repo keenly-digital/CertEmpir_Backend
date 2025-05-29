@@ -131,16 +131,16 @@ namespace CertEmpire.Services
                     }
                     else
                     {
-                        //List<string> options = new List<string>();
+                        List<string> options = new List<string>();
 
-                        //foreach (var index in request.CorrectAnswerIndices)
-                        //{
-                        //    if (index > 0 && index < questionInfo.Options.Count)
-                        //    {
-                        //        var option = questionInfo.Options[index];
-                        //        options.Add(option);
-                        //    }
-                        //}
+                        foreach (var index in request.CorrectAnswerIndices)
+                        {
+                            if (index > 0 && index < questionInfo.Options.Count)
+                            {
+                                var option = questionInfo.Options[index];
+                                options.Add(option);
+                            }
+                        }
                         var existingReport = await _context.Reports.FirstOrDefaultAsync(x => x.UserId == request.UserId && x.TargetId == request.TargetId && x.fileId == request.FileId);
                         if (existingReport != null)
                         {
@@ -161,7 +161,7 @@ namespace CertEmpire.Services
                             Status = ReportStatus.Pending,
                             ReportName = request.Reason + " " + request.TargetId,
                             CorrectAnswerIndices = request.CorrectAnswerIndices,
-                            Options = questionInfo.Options,
+                            Options = options,
                         };
                         var result = await AddAsync(report);
                         if (result != null)

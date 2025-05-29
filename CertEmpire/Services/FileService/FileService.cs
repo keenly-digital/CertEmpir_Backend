@@ -19,7 +19,7 @@ namespace CertEmpire.Services.FileService
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
             // Restrict uploads to .qzs files only
 
-            string folderPath = Path.Combine(Path.GetTempPath(), "uploads", "ProfilePics");
+            string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "ProfilePics");
             if (!Directory.Exists(folderPath))
                 Directory.CreateDirectory(folderPath);
 
@@ -42,7 +42,7 @@ namespace CertEmpire.Services.FileService
             string fileExtension = Path.GetExtension(file.FileName).ToLower();
             // Restrict uploads to .qzs files only
 
-            string folderPath = Path.Combine(Path.GetTempPath(), "uploads", "QuizFiles");
+            string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "QuizFiles");
             if (!Directory.Exists(folderPath))
                 Directory.CreateDirectory(folderPath);
 
