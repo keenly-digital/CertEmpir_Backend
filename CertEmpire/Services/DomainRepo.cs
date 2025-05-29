@@ -162,8 +162,8 @@ namespace CertEmpire.Services
             if (request.IncludeComments.HasValue)
                 domain.IncludeComments = request.IncludeComments.Value;
             
-            if(request.IsActive)
-                domain.IsActive = request.IsActive;
+            if(request.IsActive.HasValue)
+                domain.IsActive = request.IsActive.Value;
 
             await UpdateAsync(domain);
 
