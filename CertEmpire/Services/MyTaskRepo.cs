@@ -5,6 +5,7 @@ using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using CertEmpire.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
 
 namespace CertEmpire.Services
 {
@@ -13,6 +14,7 @@ namespace CertEmpire.Services
         public async Task<Response<object>> GetPendingTasks(TaskFilterDTO request)
         {
             Response<object> response;
+            List<UploadedFile> list = new List<UploadedFile>();
             // 1. Fetch review tasks for the reviewer
             var reviewTasks = await _context.ReviewTasks
                 .Where(rt => rt.ReviewerUserId == request.UserId && rt.Status == Helpers.Enums.ReportStatus.Pending)
@@ -37,6 +39,16 @@ namespace CertEmpire.Services
             var files = await _context.UploadedFiles
                 .Where(f => fileIds.Contains(f.FileId))
                 .ToListAsync();
+            foreach (var item in files)
+            {
+                string encodedName = WebUtility.UrlDecode(item.FileName);
+                UploadedFile filesData = new()
+                {
+                    FileId = item.FileId,
+                    FileName = encodedName,
+                };
+                list.Add(filesData);
+            }
 
             var questions = await _context.Questions
                 .Where(q => questionIds.Contains(q.Id))
@@ -45,7 +57,7 @@ namespace CertEmpire.Services
             // 6. Join all in memory
             var data = (from rt in reviewTasks
                         join report in reports on rt.ReportId equals report.ReportId
-                        join file in files on report.fileId equals file.FileId
+                        join file in list on report.fileId equals file.FileId
                         join question in questions on report.TargetId equals question.Id
                         select new ReviewTaskDto
                         {

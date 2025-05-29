@@ -6,6 +6,7 @@ using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using CertEmpire.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
 using static ReportAnswerDTO;
 
 namespace CertEmpire.Services
@@ -204,23 +205,32 @@ namespace CertEmpire.Services
         public async Task<Response<object>> GetAllReports(ReportFilterDTO request)
         {
             Response<object> response = new();
+            List<object> list = new List<object>();
             var query = _context.Reports.AsQueryable();
             if (query.Any())
             {
                 int pageSize = request.PageNumber * 10;
                 int totalCount = query.Where(x => x.UserId.Equals(request.UserId)).Count();
-                var reports = await query.OrderByDescending(a => a.Created).Where(x => x.UserId.Equals(request.UserId)).Take(pageSize)
-                    .Select(x => new ReportViewDto
+                var reports = await query.OrderByDescending(a => a.Created).Where(x => x.UserId.Equals(request.UserId)).Take(pageSize).ToListAsync();
+                if (reports.Any())
+                {
+                    foreach (var item in reports)
                     {
-                        Id = x.ReportId,
-                        ReportName = x.ReportName,
-                        ExamName = x.ExamName,
-                        Status = x.Status.ToString(),
-                    }).ToListAsync();
+                        var encodedName = WebUtility.UrlDecode(item.ExamName);
+                        ReportViewDto reportData = new()
+                        {
+                            Id = item.ReportId,
+                            ReportName = item.ReportName,
+                            ExamName = encodedName,
+                            Status = item.Status.ToString(),
+                        };
+                        list.Add(reportData);
+                    }
+                }
                 object obj = new
                 {
                     results = totalCount,
-                    data = reports,
+                    data = list
                 };
                 response = new Response<object>(true, "Reports found.", "", obj);
             }
