@@ -23,11 +23,11 @@ namespace CertEmpire.AdminControllers
             _context = context;
         }
         [HttpGet("[action]")]
-        public async Task<IActionResult> ExportFile(Guid fileId)
+        public async Task<IActionResult> ExportFile(string domainName,Guid fileId)
         {
             try
             {
-                var response = await _simulationRepo.ExportFile(fileId);
+                var response = await _simulationRepo.ExportFile(domainName,fileId);
                 return Ok(response);
             }
             catch (Exception ex)
@@ -37,11 +37,11 @@ namespace CertEmpire.AdminControllers
             }
         }
         [HttpGet("[action]")]
-        public async Task<IActionResult> ExportQuizPdfFile(Guid fileId)
+        public async Task<IActionResult> ExportQuizPdfFile(string domainName, Guid fileId)
         {
             try
             {
-                var response = await _simulationRepo.ExportQuizPdf(fileId);
+                var response = await _simulationRepo.ExportQuizPdf(domainName,fileId);
                 return Ok(response);
             }
             catch (Exception ex)

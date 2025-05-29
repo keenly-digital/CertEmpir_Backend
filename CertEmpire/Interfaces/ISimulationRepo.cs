@@ -9,8 +9,8 @@ namespace CertEmpire.Interfaces
         Task<Response<object>> GetAllFiles(string email);
         Task<Response<object>> Create(IFormFile file, string email);
         Task<Response<CreateQuizResponse>> CreateQuiz(CreateQuizRequest request);
-        Task<Response<string>> ExportQuizPdf(Guid quizId);
-        Task<Response<string>> ExportFile(Guid quizId);
+        Task<Response<string>> ExportQuizPdf(string domainName, Guid quizId);
+        Task<Response<string>> ExportFile(string domainName, Guid quizId);
         Task<List<QuizFileInfoResponse>> GetQuizById(Guid userId, int pageNumber, int pageSize);
     }
 }

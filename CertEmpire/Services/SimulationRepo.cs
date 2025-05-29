@@ -619,8 +619,11 @@ namespace CertEmpire.Services
                 return new Response<CreateQuizResponse>(false, "Error while creating quiz.", "", default);
             }
         }
-        public async Task<Response<string>> ExportFile(Guid quizId)
+        public async Task<Response<string>> ExportFile(string domainName, Guid quizId)
         {
+            var domainExist = await _context.Domains.FirstOrDefaultAsync(x=>x.DomainName.Equals(domainName));
+            if (domainExist == null)
+                return new Response<string>(false, "Quiz file not found.", "", "");
             var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
             if (quiz == null)
                 return new Response<string>(false, "Quiz file not found.", "", "");
@@ -743,12 +746,17 @@ namespace CertEmpire.Services
             // Convert to IFormFile and Upload
             using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
             var formFile = new FormFile(stream, 0, stream.Length, "file", fileName);
-            var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
-
+            var uploadedPath = await _fileService.ExportFileAsync(domainName ,formFile, "QuizFiles");
+            quiz.FileURL = uploadedPath;
+            _context.UploadedFiles.Update(quiz);
+            await _context.SaveChangesAsync();
             return new Response<string>(true, "File exported successfully.", "", uploadedPath);
         }
-        public async Task<Response<string>> ExportQuizPdf(Guid quizId)
+        public async Task<Response<string>> ExportQuizPdf(string domainName, Guid quizId)
         {
+            var domainExist = await _context.Domains.FirstOrDefaultAsync(x => x.DomainName.Equals(domainName));
+            if (domainExist == null)
+                return new Response<string>(false, "Quiz file not found.", "", "");
             var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
             if (quiz == null)
                 return new Response<string>(false, "Quiz file not found.", "", "");
@@ -822,8 +830,10 @@ namespace CertEmpire.Services
             // Upload and return URL
             using var stream = new FileStream(pdfPath, FileMode.Open, FileAccess.Read);
             var formFile = new FormFile(stream, 0, stream.Length, "file", Path.GetFileName(pdfPath));
-            var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
-
+            var uploadedPath = await _fileService.ExportFileAsync(domainName, formFile, "QuizFiles");
+            quiz.FileURL = uploadedPath;
+            _context.UploadedFiles.Update(quiz);
+            await _context.SaveChangesAsync();
             return new Response<string>(true, "PDF exported successfully.", "", uploadedPath);
         }
         private void AppendQuestionText(StringBuilder sb, Question q)
