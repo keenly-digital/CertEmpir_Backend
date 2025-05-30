@@ -54,7 +54,7 @@ namespace CertEmpire.AdminControllers
                 }
                 else
                 {
-                    response = new Response<object>(false, "error while adding question.", "", "");
+                    response = new Response<object>(false, "Quiz file not found.", "", "");
                 }
                 return Ok(response);
             }
