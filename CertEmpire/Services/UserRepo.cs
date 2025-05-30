@@ -405,7 +405,7 @@ namespace CertEmpire.Services
                         var fileUrl = await _fileService.ChangeProfilePic(request);
                         user.ImageUrl = fileUrl;
                         await UpdateAsync(user);
-                        response = new Response<string>(true, "Profile picture updated successfully", "", default);
+                        response = new Response<string>(true, "Profile picture updated successfully", "", fileUrl);
                     }
                     else
                     {

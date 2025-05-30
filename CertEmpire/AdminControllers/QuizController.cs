@@ -113,6 +113,21 @@ namespace CertEmpire.AdminControllers
             }
             return Ok(response);
         }
+
+        [HttpPut("[action]")]
+        public async Task<IActionResult> UpdateFileName(Guid fileId, string fileName)
+        {
+            try
+            {
+                var response = await _simulationRepo.UpdateFileName(fileId, fileName);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                var response = new Response<object>(false, ex.Message, "", null);
+                return StatusCode(500, response);
+            }
+        }
         [HttpDelete("{fileId}")]
         public async Task<IActionResult> Delete(Guid fileId)
         {

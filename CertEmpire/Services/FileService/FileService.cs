@@ -19,12 +19,11 @@ namespace CertEmpire.Services.FileService
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
             // Restrict uploads to .qzs files only
 
-            string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "ProfilePics");
-            if (!Directory.Exists(folderPath))
-                Directory.CreateDirectory(folderPath);
+            string tempFolder = Path.Combine(Path.GetTempPath(), "uploads", "ProfilePics");
+            Directory.CreateDirectory(tempFolder);
 
             string fileName = $"{Guid.NewGuid()}{fileExtension}";
-            string filePath = Path.Combine(folderPath, fileName);
+            string filePath = Path.Combine(tempFolder, fileName);
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
                 await request.Image.CopyToAsync(stream);
@@ -42,12 +41,11 @@ namespace CertEmpire.Services.FileService
             string fileExtension = Path.GetExtension(file.FileName).ToLower();
             // Restrict uploads to .qzs files only
 
-            string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "QuizFiles");
-            if (!Directory.Exists(folderPath))
-                Directory.CreateDirectory(folderPath);
+            string tempFolder = Path.Combine(Path.GetTempPath(), "uploads", "QuizFiles");
+            Directory.CreateDirectory(tempFolder);
 
             string fileName = $"{Guid.NewGuid()}{fileExtension}";
-            string filePath = Path.Combine(folderPath, fileName);
+            string filePath = Path.Combine(tempFolder, fileName);
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
                 await file.CopyToAsync(stream);

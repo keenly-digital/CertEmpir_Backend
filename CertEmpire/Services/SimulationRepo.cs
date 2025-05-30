@@ -624,7 +624,7 @@ namespace CertEmpire.Services
         {
             var domainExist = await _context.Domains.FirstOrDefaultAsync(x=>x.DomainName.Equals(domainName));
             if (domainExist == null)
-                return new Response<string>(false, "Quiz file not found.", "", "");
+                return new Response<string>(false, "Domain not found.", "", "");
             var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
             if (quiz == null)
                 return new Response<string>(false, "Quiz file not found.", "", "");
@@ -738,11 +738,11 @@ namespace CertEmpire.Services
 
             // Serialize and Encrypt
             var jsonContent = JsonConvert.SerializeObject(examDTO, Formatting.Indented);
-            var encryptedContent = _aesOperation.EncryptString(Key, jsonContent);
+           // var encryptedContent = _aesOperation.EncryptString(Key, jsonContent);
             var fileName = quiz.FileName + ".qzs";
             var filePath = Path.Combine(Path.GetTempPath(), fileName);
-            var base64Encrypted = Convert.ToBase64String(Encoding.UTF8.GetBytes(encryptedContent));
-            await File.WriteAllTextAsync(filePath, base64Encrypted);
+        //    var base64Encrypted = Convert.ToBase64String(Encoding.UTF8.GetBytes(encryptedContent));
+            await File.WriteAllTextAsync(filePath, jsonContent);
 
             // Convert to IFormFile and Upload
             using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
@@ -862,6 +862,23 @@ namespace CertEmpire.Services
 
             if (!string.IsNullOrWhiteSpace(q.Explanation))
                 sb.AppendLine($"Explanation: {q.Explanation}");
+        }
+        public async Task<Response<string>> UpdateFileName(Guid FileId, string FileName)
+        {
+            Response<string> response = new();
+            var fileInfo = await _context.UploadedFiles.FirstOrDefaultAsync(x=>x.FileId.Equals(FileId));
+            if (fileInfo == null)
+            {
+                response = new Response<string>(false, "File not found.", "", "");
+            }
+            else
+            {
+                fileInfo.FileName = FileName;
+                _context.UploadedFiles.Update(fileInfo);
+                await _context.SaveChangesAsync();
+                response = new Response<string>(true, "File name updated successfully.", "", fileInfo.FileName);
+            }
+            return response;
         }
         #endregion
 
