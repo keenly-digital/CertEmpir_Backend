@@ -171,6 +171,8 @@ namespace CertEmpire.Services
             }
             _context.Questions.Update(question);
             await _context.SaveChangesAsync();
+            
+            
             questionObjects.Add(new
             {
                 q = questionOrder++,
