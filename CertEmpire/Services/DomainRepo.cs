@@ -47,7 +47,7 @@ namespace CertEmpire.Services
                     IncludeExplanations = domain.IncludeExplanations,
                     IncludeQuestions = domain.IncludeQuestions,
                     IsActive = domain.IsActive,
-                    DomainUrl = item.DomainURL
+                    DomainUrl = domain.DomainURL
                 };
                 response = new Response<AddDomainResponse>(true, "Domain found.", "", domainResponse);
             }
@@ -72,7 +72,7 @@ namespace CertEmpire.Services
                     IncludeExplanations = domain.IncludeExplanations,
                     IncludeQuestions = domain.IncludeQuestions,
                     IsActive = domain.IsActive,
-                    DomainUrl = item.DomainURL
+                    DomainUrl = domain.DomainURL
                 };
                 response = new Response<AddDomainResponse>(true, "Domain found.", "", domainResponse);
             }
