@@ -24,7 +24,8 @@ namespace CertEmpire.Services
                     IncludeComments = item.IncludeComments,
                     IncludeExplanations = item.IncludeExplanations,
                     IncludeQuestions = item.IncludeQuestions,
-                    IsActive = item.IsActive
+                    IsActive = item.IsActive,
+                    DomainUrl = item.DomainURL
                 };
                 list.Add(domainResponse);
             }
@@ -45,7 +46,8 @@ namespace CertEmpire.Services
                     IncludeComments = domain.IncludeComments,
                     IncludeExplanations = domain.IncludeExplanations,
                     IncludeQuestions = domain.IncludeQuestions,
-                    IsActive = domain.IsActive
+                    IsActive = domain.IsActive,
+                    DomainUrl = item.DomainURL
                 };
                 response = new Response<AddDomainResponse>(true, "Domain found.", "", domainResponse);
             }
@@ -69,7 +71,8 @@ namespace CertEmpire.Services
                     IncludeComments = domain.IncludeComments,
                     IncludeExplanations = domain.IncludeExplanations,
                     IncludeQuestions = domain.IncludeQuestions,
-                    IsActive = domain.IsActive
+                    IsActive = domain.IsActive,
+                    DomainUrl = item.DomainURL
                 };
                 response = new Response<AddDomainResponse>(true, "Domain found.", "", domainResponse);
             }
