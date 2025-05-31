@@ -620,11 +620,8 @@ namespace CertEmpire.Services
                 return new Response<CreateQuizResponse>(false, "Error while creating quiz.", "", default);
             }
         }
-        public async Task<Response<string>> ExportFile(string domainName, Guid quizId)
+        public async Task<Response<string>> ExportFile(Guid quizId)
         {
-            var domainExist = await _context.Domains.FirstOrDefaultAsync(x=>x.DomainName.Equals(domainName));
-            if (domainExist == null)
-                return new Response<string>(false, "Domain not found.", "", "");
             var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
             if (quiz == null)
                 return new Response<string>(false, "Quiz file not found.", "", "");
@@ -747,17 +744,14 @@ namespace CertEmpire.Services
             // Convert to IFormFile and Upload
             using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
             var formFile = new FormFile(stream, 0, stream.Length, "file", fileName);
-            var uploadedPath = await _fileService.ExportFileAsync(domainName ,formFile, "QuizFiles");
-            quiz.FileURL = uploadedPath;
-            _context.UploadedFiles.Update(quiz);
+            var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
+          //  quiz.FileURL = uploadedPath;
+          //  _context.UploadedFiles.Update(quiz);
             await _context.SaveChangesAsync();
             return new Response<string>(true, "File exported successfully.", "", uploadedPath);
         }
-        public async Task<Response<string>> ExportQuizPdf(string domainName, Guid quizId)
+        public async Task<Response<string>> ExportQuizPdf(Guid quizId)
         {
-            var domainExist = await _context.Domains.FirstOrDefaultAsync(x => x.DomainName.Equals(domainName));
-            if (domainExist == null)
-                return new Response<string>(false, "Quiz file not found.", "", "");
             var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
             if (quiz == null)
                 return new Response<string>(false, "Quiz file not found.", "", "");
@@ -831,7 +825,7 @@ namespace CertEmpire.Services
             // Upload and return URL
             using var stream = new FileStream(pdfPath, FileMode.Open, FileAccess.Read);
             var formFile = new FormFile(stream, 0, stream.Length, "file", Path.GetFileName(pdfPath));
-            var uploadedPath = await _fileService.ExportFileAsync(domainName, formFile, "QuizFiles");
+            var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
             quiz.FileURL = uploadedPath;
             _context.UploadedFiles.Update(quiz);
             await _context.SaveChangesAsync();
@@ -877,6 +871,39 @@ namespace CertEmpire.Services
                 _context.UploadedFiles.Update(fileInfo);
                 await _context.SaveChangesAsync();
                 response = new Response<string>(true, "File name updated successfully.", "", fileInfo.FileName);
+            }
+            return response;
+        }
+        public async Task<Response<string>> GenerateFileUrl(string domainName, Guid fileId)
+        {
+            Response<string> response = new();
+            var domainInfo = await _context.Domains.FirstOrDefaultAsync(x=>x.DomainName.Equals(domainName));
+            if (domainInfo != null)
+            {
+                var fileInfo = await _context.UploadedFiles.FirstOrDefaultAsync(x=>x.FileId.Equals(fileId));
+                if (fileInfo != null)
+                {
+                    var fileUrl = await _fileService.GenerateFileUrlAsync(domainInfo.DomainURL,fileInfo.FileId, fileInfo.FileName);
+                    if (!string.IsNullOrEmpty(fileUrl))
+                    {
+                        fileInfo.FileURL = fileUrl;
+                        _context.UploadedFiles.Update(fileInfo);
+                        await _context.SaveChangesAsync();
+                        response = new Response<string>(true, "URL generated successfully.", "", fileUrl);
+                    }
+                    else
+                    {
+                        response = new Response<string>(false, "Error while generating URL.", "", "");
+                    }
+                }
+                else
+                {
+                    response = new Response<string>(false, "File not found.", "", "");
+                }
+            }
+            else
+            {
+                response = new Response<string>(false, $"No domain found with this {domainName}.", "","");
             }
             return response;
         }
