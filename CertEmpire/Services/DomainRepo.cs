@@ -99,7 +99,8 @@ namespace CertEmpire.Services
                         IncludeComments = domain.IncludeComments,
                         IncludeExplanations = domain.IncludeExplanations,
                         IncludeQuestions = domain.IncludeQuestions,
-                        IsActive = domain.IsActive
+                        IsActive = domain.IsActive,
+                        DomainUrl = domain.DomainURL
                     };
                     response = new Response<AddDomainResponse>(true, "Domain is already exist.", "", domainResponse);
                 }
@@ -113,7 +114,8 @@ namespace CertEmpire.Services
                         IncludeComments = request.IncludeComments,
                         IncludeExplanations = request.IncludeExplanations,
                         IncludeQuestions = request.IncludeQuestions,
-                        IsActive = request.IsActive
+                        IsActive = request.IsActive,
+                        DomainURL = request.DomainURL
                     };
                     var result = await AddAsync(data);
                     if (result != null)
@@ -126,7 +128,8 @@ namespace CertEmpire.Services
                             IncludeComments = result.IncludeComments,
                             IncludeExplanations = result.IncludeExplanations,
                             IncludeQuestions = result.IncludeQuestions,
-                            IsActive = result.IsActive
+                            IsActive = result.IsActive,
+                            DomainUrl = result.DomainURL
                         };
                         response = new Response<AddDomainResponse>(true, "Domain is already exist.", "", domainResponse);
                     }
@@ -148,7 +151,10 @@ namespace CertEmpire.Services
                 return new Response<string>(false, "Domain not found.", "", "");
 
             if (!string.IsNullOrWhiteSpace(request.DomainName) && request.DomainName != domain.DomainName)
-                domain.DomainName = request.DomainName;
+                domain.DomainName = request.DomainName;   
+            
+            if (!string.IsNullOrWhiteSpace(request.DomainURL) && request.DomainURL != domain.DomainURL)
+                domain.DomainURL = request.DomainURL;
 
             if (request.IncludeQuestions.HasValue)
                 domain.IncludeQuestions = request.IncludeQuestions.Value;
