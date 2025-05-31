@@ -64,5 +64,7 @@ namespace CertEmpire.DTOs.SimulationDTOs
         public int q { get; set; }
         public Guid TopicId { get; set; }
         public Guid CaseStudyId { get; set; } = Guid.Empty;
+        public bool IsVerified { get; set; } = false;
+        public string Verified { get; set; } = string.Empty;
     }
 }

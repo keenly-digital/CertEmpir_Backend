@@ -118,7 +118,7 @@ namespace CertEmpire.Services
                         IncludeExplanations = request.IncludeExplanations,
                         IncludeQuestions = request.IncludeQuestions,
                         IsActive = request.IsActive,
-                        DomainURL = request.DomainURL
+                        DomainURL = request.DomainUrl
                     };
                     var result = await AddAsync(data);
                     if (result != null)
@@ -156,8 +156,8 @@ namespace CertEmpire.Services
             if (!string.IsNullOrWhiteSpace(request.DomainName) && request.DomainName != domain.DomainName)
                 domain.DomainName = request.DomainName;   
             
-            if (!string.IsNullOrWhiteSpace(request.DomainURL) && request.DomainURL != domain.DomainURL)
-                domain.DomainURL = request.DomainURL;
+            if (!string.IsNullOrWhiteSpace(request.DomainUrl) && request.DomainUrl != domain.DomainURL)
+                domain.DomainURL = request.DomainUrl;
 
             if (request.IncludeQuestions.HasValue)
                 domain.IncludeQuestions = request.IncludeQuestions.Value;

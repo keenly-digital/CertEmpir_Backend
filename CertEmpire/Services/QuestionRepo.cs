@@ -1,4 +1,5 @@
-﻿using CertEmpire.Data;
+﻿using CertEmpire.APIServiceExtension;
+using CertEmpire.Data;
 using CertEmpire.DTOs.QuestioDTOs;
 using CertEmpire.DTOs.QuizDTOs;
 using CertEmpire.DTOs.SimulationDTOs;
@@ -15,11 +16,14 @@ namespace CertEmpire.Services
         private readonly ApplicationDbContext _context;
         private readonly string _rootPath;
         private readonly IHttpContextAccessor _httpContextAccessor;
-        public QuestionRepo(ApplicationDbContext context, IWebHostEnvironment webHostEnvironment, IHttpContextAccessor httpContextAccessor)
+        private readonly APIService _apiService;
+        public QuestionRepo(ApplicationDbContext context, IWebHostEnvironment webHostEnvironment, IHttpContextAccessor httpContextAccessor,
+            APIService apiService)
         {
             _context = context;
             _rootPath = webHostEnvironment.WebRootPath;
             _httpContextAccessor = httpContextAccessor;
+            _apiService = apiService;
         }
         public async Task<Response<object>> AddQuestion(AddQuestionRequest request, UploadedFile quiz)
         {
@@ -99,7 +103,6 @@ namespace CertEmpire.Services
             }
             return response;
         }
-
         public async Task DeleteByFileId(Guid fileId)
         {
             var response = await _context.Questions.Where(x => x.FileId.Equals(fileId)).ToListAsync();
@@ -109,7 +112,6 @@ namespace CertEmpire.Services
                 await _context.SaveChangesAsync();
             }
         }
-
         public async Task<Response<object>> EditQuestion(AddQuestionRequest request, UploadedFile quiz)
         {
             int questionOrder = 1;
@@ -171,8 +173,8 @@ namespace CertEmpire.Services
             }
             _context.Questions.Update(question);
             await _context.SaveChangesAsync();
-            
-            
+
+
             questionObjects.Add(new
             {
                 q = questionOrder++,
@@ -200,7 +202,6 @@ namespace CertEmpire.Services
             };
             return new Response<object>(true, "Question updated successfully.", "", respObj);
         }
-
         public async Task<Response<Question>> GetByQuestionId(int questionId)
         {
             Response<Question> response = new Response<Question>();
@@ -215,7 +216,6 @@ namespace CertEmpire.Services
             }
             return response;
         }
-
         public async Task<List<Question>> GetQuestionsByFileId(Guid fileId)
         {
             Response<object> response = new Response<object>();
@@ -236,7 +236,6 @@ namespace CertEmpire.Services
             }
             return list;
         }
-
         public async Task<List<Question>> GetQuestionsByFileId(Guid fileId, int pageNumber, int pageSize)
         {
             Response<object> response = new Response<object>();
@@ -257,7 +256,6 @@ namespace CertEmpire.Services
             }
             return list;
         }
-
         public async Task<List<Question>> GetQuestionsByTopicId(Guid topicId)
         {
             Response<object> response = new Response<object>();
@@ -278,7 +276,6 @@ namespace CertEmpire.Services
             }
             return list;
         }
-
         public async Task<Response<string>> ImageUpload(IFormFile image, Guid fileId)
         {
             var file = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId.Equals(fileId));
@@ -363,6 +360,58 @@ namespace CertEmpire.Services
             }).ToList();
 
             return new Response<object>(true, "", "", Questions);
+        }
+        public async Task<Response<QuestionObject>> ValidateQuestion(int questionId)
+        {
+            var response = new Response<QuestionObject>();
+            if (questionId == 0)
+            {
+                return new Response<QuestionObject>(false, "Question id cannot be null.", "", null);
+            }
+
+            var questionInfo = await _context.Questions.FirstOrDefaultAsync(x => x.Id.Equals(questionId));
+            if (questionInfo != null)
+            {
+                //ValidateQuestionObject ques = new()
+                //{
+                //    answerDescription = questionInfo.AnswerDescription,
+                //    answerExplanation = questionInfo.Explanation,
+                //    correctAnswerIndices = questionInfo.CorrectAnswerIndices,
+                //    options = questionInfo.Options,
+                //    QuestionDescription = questionInfo.QuestionDescription ?? "",
+                //    QuestionText = questionInfo.QuestionText ?? ""
+                //};
+                string options = string.Join(", ", questionInfo.Options);
+                string correctAnswer = string.Join(", ", questionInfo.CorrectAnswerIndices);
+
+                string text = $"Question: {questionInfo.QuestionText}\n" +
+                                  $"Description: {questionInfo.AnswerDescription}\n" +
+                                  $"Options: {options}\n" +
+                                  $"CorrectAnswerindex: {correctAnswer}" + 
+                                  $"Explanation: {questionInfo.Explanation}";
+                var validationResponse = await _apiService.ValidateText(text);
+                if (string.IsNullOrEmpty(validationResponse))
+                {
+                    return new Response<QuestionObject>(false, "Validation failed.", "", null);
+                }
+                questionInfo.IsVerified = true;
+                questionInfo.Verification = validationResponse;
+                _context.Questions.Update(questionInfo);
+                await _context.SaveChangesAsync();
+                // Assuming the API returns a valid QuestionObject
+
+
+                if (validationResponse == null)
+                {
+                    return new Response<QuestionObject>(false, "Invalid response from validation API.", "", null);
+                }
+                response = new Response<QuestionObject>(true, "Question validated successfully.", "", default);
+            }
+            else
+            {
+                response = new Response<QuestionObject>(true, "Question not found.", "", default);
+            }
+            return response;
         }
     }
 }

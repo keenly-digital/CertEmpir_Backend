@@ -1,5 +1,6 @@
 ﻿using CertEmpire.Data;
 using CertEmpire.DTOs.QuestioDTOs;
+using CertEmpire.DTOs.SimulationDTOs;
 using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using CertEmpire.Models;
@@ -20,7 +21,20 @@ namespace CertEmpire.AdminControllers
             _questionRepo = questionRepo;
             _context = context;
         }
-
+        [HttpPost("VelidateQuestion")]
+        public async Task<IActionResult> VelidateQuestion(int questionId)
+        {
+            try
+            {
+                var response = await _questionRepo.ValidateQuestion(questionId);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                var response = new Response<string>(false, "Error", ex.Message, "");
+                return StatusCode(500, response);
+            }
+        }
         [HttpPost("ImageUpload")]
         public async Task<IActionResult> ImageUpload(IFormFile image, Guid fileId)
         {

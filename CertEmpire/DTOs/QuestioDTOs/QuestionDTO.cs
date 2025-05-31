@@ -28,4 +28,13 @@ namespace CertEmpire.DTOs.QuestioDTOs
         public Guid? TopicId { get; set; }
         public Guid? CaseStudyId { get; set; }
     }
+    public class ValidateQuestionObject
+    {
+        public string QuestionText { get; set; } = string.Empty;
+        public string QuestionDescription { get; set; } = string.Empty;
+        public List<string> options { get; set; }
+        public List<int> correctAnswerIndices { get; set; }
+        public string? answerExplanation { get; set; } = string.Empty;
+        public string? answerDescription { get; set; } = string.Empty;
+    }
 }

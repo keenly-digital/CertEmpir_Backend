@@ -1,3 +1,4 @@
+using CertEmpire.APIServiceExtension;
 using CertEmpire.Data;
 using CertEmpire.Helpers.JwtSettings;
 using CertEmpire.Interfaces;
@@ -37,6 +38,7 @@ builder.Services.AddScoped<ITopicRepo, TopicRepo>();
 builder.Services.AddScoped<AesOperation>();
 builder.Services.AddScoped<IQuestionRepo, QuestionRepo>();
 builder.Services.AddScoped<IDomainRepo, DomainRepo>();
+builder.Services.AddScoped<APIService>();
 builder.Services.AddScoped<IUserRoleRepo, UserRoleRepo>();
 builder.Services.Configure<JwtSetting>(builder.Configuration.GetSection("Jwt"));
 builder.Services.AddControllers();

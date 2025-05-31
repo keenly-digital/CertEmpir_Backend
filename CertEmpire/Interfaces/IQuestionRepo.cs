@@ -1,4 +1,5 @@
 ﻿using CertEmpire.DTOs.QuestioDTOs;
+using CertEmpire.DTOs.SimulationDTOs;
 using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Models;
 
@@ -15,5 +16,6 @@ namespace CertEmpire.Interfaces
         Task DeleteByFileId(Guid fileId);
         Task<Response<string>> ImageUpload(IFormFile image, Guid fileId);
         Task<Response<object>> GetAllQuestion(Guid fileId, int pageNumber, int pageSize);
+        Task<Response<QuestionObject>> ValidateQuestion(int questionId);
     }
 }
