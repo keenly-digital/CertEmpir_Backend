@@ -621,58 +621,88 @@ namespace CertEmpire.Services
                 return new Response<CreateQuizResponse>(false, "Error while creating quiz.", "", default);
             }
         }
-        public async Task<Response<string>> ExportFile(Guid quizId)
+        public async Task<Response<string>> ExportFile(Guid quizId, string type)
         {
-            var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
-            if (quiz == null)
-                return new Response<string>(false, "Quiz file not found.", "", "");
-
-            var topicsRaw = await _context.Topics.Where(x => x.FileId.Equals(quiz)).ToListAsync();
-            var questionsRaw = await _context.Questions.Where(q => q.FileId == quizId).ToListAsync();
-
-            var topicDtos = new List<Topic>();
-
-            // Real topics (TopicName filled, CaseStudy empty)
-            var realTopics = topicsRaw.Where(t => !string.IsNullOrWhiteSpace(t.TopicName) && string.IsNullOrWhiteSpace(t.CaseStudy)).ToList();
-
-            // Case studies (CaseStudy filled, TopicName empty)
-            var caseStudies = topicsRaw.Where(t => !string.IsNullOrWhiteSpace(t.CaseStudy) && string.IsNullOrWhiteSpace(t.TopicName)).ToList();
-
-            // Map Topics
-            foreach (var topic in realTopics)
+            if (type.Equals("qzs"))
             {
-                var relatedQuestions = questionsRaw
-                    .Where(q => q.TopicId == topic.TopicId)
-                    .Select(q => new QuestionObject
-                    {
-                        id = q.Id,
-                        questionText = q.QuestionText ?? "",
-                        questionDescription = q.QuestionDescription ?? "",
-                        options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
-                        correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
-                        answerExplanation = q.Explanation ?? "",
-                        questionImageURL = q.questionImageURL ?? "",
-                        answerImageURL = q.answerImageURL ?? "",
-                        showAnswer = false,
-                        TopicId = q.TopicId ?? Guid.Empty,
-                        CaseStudyId = Guid.Empty
-                    }).ToList();
+                var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
+                if (quiz == null)
+                    return new Response<string>(false, "Quiz file not found.", "", "");
 
-                topicDtos.Add(new Topic
+                var topicsRaw = await _context.Topics.Where(x => x.FileId.Equals(quiz)).ToListAsync();
+                var questionsRaw = await _context.Questions.Where(q => q.FileId == quizId).ToListAsync();
+
+                var topicDtos = new List<Topic>();
+
+                // Real topics (TopicName filled, CaseStudy empty)
+                var realTopics = topicsRaw.Where(t => !string.IsNullOrWhiteSpace(t.TopicName) && string.IsNullOrWhiteSpace(t.CaseStudy)).ToList();
+
+                // Case studies (CaseStudy filled, TopicName empty)
+                var caseStudies = topicsRaw.Where(t => !string.IsNullOrWhiteSpace(t.CaseStudy) && string.IsNullOrWhiteSpace(t.TopicName)).ToList();
+
+                // Map Topics
+                foreach (var topic in realTopics)
                 {
-                    TopicId = topic.TopicId ?? Guid.Empty,
-                    TopicName = topic.TopicName ?? "",
-                    CaseStudy = topic.CaseStudy ?? "",
-                    description = topic.Description ?? "",
-                    Questions = relatedQuestions
-                });
-            }
+                    var relatedQuestions = questionsRaw
+                        .Where(q => q.TopicId == topic.TopicId)
+                        .Select(q => new QuestionObject
+                        {
+                            id = q.Id,
+                            questionText = q.QuestionText ?? "",
+                            questionDescription = q.QuestionDescription ?? "",
+                            options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
+                            correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
+                            answerExplanation = q.Explanation ?? "",
+                            questionImageURL = q.questionImageURL ?? "",
+                            answerImageURL = q.answerImageURL ?? "",
+                            showAnswer = false,
+                            TopicId = q.TopicId ?? Guid.Empty,
+                            CaseStudyId = Guid.Empty
+                        }).ToList();
 
-            // Map Case Studies
-            foreach (var cs in caseStudies)
-            {
-                var relatedQuestions = questionsRaw
-                    .Where(q => q.TopicId == cs.TopicId)
+                    topicDtos.Add(new Topic
+                    {
+                        TopicId = topic.TopicId ?? Guid.Empty,
+                        TopicName = topic.TopicName ?? "",
+                        CaseStudy = topic.CaseStudy ?? "",
+                        description = topic.Description ?? "",
+                        Questions = relatedQuestions
+                    });
+                }
+
+                // Map Case Studies
+                foreach (var cs in caseStudies)
+                {
+                    var relatedQuestions = questionsRaw
+                        .Where(q => q.TopicId == cs.TopicId)
+                        .Select(q => new QuestionObject
+                        {
+                            id = q.Id,
+                            questionText = q.QuestionText ?? "",
+                            questionDescription = q.QuestionDescription ?? "",
+                            options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
+                            correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
+                            answerExplanation = q.Explanation ?? "",
+                            questionImageURL = q.questionImageURL ?? "",
+                            answerImageURL = q.answerImageURL ?? "",
+                            showAnswer = false,
+                            TopicId = Guid.Empty,
+                            CaseStudyId = q.TopicId ?? Guid.Empty
+                        }).ToList();
+
+                    topicDtos.Add(new Topic
+                    {
+                        TopicId = cs.TopicId ?? Guid.Empty,
+                        TopicName = "",
+                        CaseStudy = cs.CaseStudy ?? "",
+                        description = "",
+                        Questions = relatedQuestions
+                    });
+                }
+
+                // Map unlinked questions (no topic or invalid topic reference)
+                var unlinkedQuestions = questionsRaw
+                    .Where(q => q.TopicId == Guid.Empty || !topicsRaw.Any(t => t.TopicId == q.TopicId))
                     .Select(q => new QuestionObject
                     {
                         id = q.Id,
@@ -685,71 +715,50 @@ namespace CertEmpire.Services
                         answerImageURL = q.answerImageURL ?? "",
                         showAnswer = false,
                         TopicId = Guid.Empty,
-                        CaseStudyId = q.TopicId ?? Guid.Empty
+                        CaseStudyId = Guid.Empty
                     }).ToList();
 
-                topicDtos.Add(new Topic
+                if (unlinkedQuestions.Any())
                 {
-                    TopicId = cs.TopicId ?? Guid.Empty,
-                    TopicName = "",
-                    CaseStudy = cs.CaseStudy ?? "",
-                    description = "",
-                    Questions = relatedQuestions
-                });
+                    topicDtos.Add(new Topic
+                    {
+                        TopicId = Guid.Empty,
+                        TopicName = "General",
+                        CaseStudy = "",
+                        description = "",
+                        Questions = unlinkedQuestions
+                    });
+                }
+
+                var examDTO = new ExamDTO
+                {
+                    ExamTitle = quiz.FileName,
+                    Topics = topicDtos
+                };
+
+                // Serialize and Encrypt
+                var jsonContent = JsonConvert.SerializeObject(examDTO, Formatting.Indented);
+                // var encryptedContent = _aesOperation.EncryptString(Key, jsonContent);
+                var fileName = quiz.FileName + ".qzs";
+                var filePath = Path.Combine(Path.GetTempPath(), fileName);
+                //    var base64Encrypted = Convert.ToBase64String(Encoding.UTF8.GetBytes(encryptedContent));
+                await File.WriteAllTextAsync(filePath, jsonContent);
+
+                // Convert to IFormFile and Upload
+                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                var formFile = new FormFile(stream, 0, stream.Length, "file", fileName);
+                var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
+                //  quiz.FileURL = uploadedPath;
+                //  _context.UploadedFiles.Update(quiz);
+                await _context.SaveChangesAsync();
+                return new Response<string>(true, "File exported successfully.", "", uploadedPath);
             }
-
-            // Map unlinked questions (no topic or invalid topic reference)
-            var unlinkedQuestions = questionsRaw
-                .Where(q => q.TopicId == Guid.Empty || !topicsRaw.Any(t => t.TopicId == q.TopicId))
-                .Select(q => new QuestionObject
-                {
-                    id = q.Id,
-                    questionText = q.QuestionText ?? "",
-                    questionDescription = q.QuestionDescription ?? "",
-                    options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
-                    correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
-                    answerExplanation = q.Explanation ?? "",
-                    questionImageURL = q.questionImageURL ?? "",
-                    answerImageURL = q.answerImageURL ?? "",
-                    showAnswer = false,
-                    TopicId = Guid.Empty,
-                    CaseStudyId = Guid.Empty
-                }).ToList();
-
-            if (unlinkedQuestions.Any())
+            else
             {
-                topicDtos.Add(new Topic
-                {
-                    TopicId = Guid.Empty,
-                    TopicName = "General",
-                    CaseStudy = "",
-                    description = "",
-                    Questions = unlinkedQuestions
-                });
+                var result = await ExportQuizPdf(quizId);
+                return result;
             }
-
-            var examDTO = new ExamDTO
-            {
-                ExamTitle = quiz.FileName,
-                Topics = topicDtos
-            };
-
-            // Serialize and Encrypt
-            var jsonContent = JsonConvert.SerializeObject(examDTO, Formatting.Indented);
-           // var encryptedContent = _aesOperation.EncryptString(Key, jsonContent);
-            var fileName = quiz.FileName + ".qzs";
-            var filePath = Path.Combine(Path.GetTempPath(), fileName);
-        //    var base64Encrypted = Convert.ToBase64String(Encoding.UTF8.GetBytes(encryptedContent));
-            await File.WriteAllTextAsync(filePath, jsonContent);
-
-            // Convert to IFormFile and Upload
-            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-            var formFile = new FormFile(stream, 0, stream.Length, "file", fileName);
-            var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
-          //  quiz.FileURL = uploadedPath;
-          //  _context.UploadedFiles.Update(quiz);
-            await _context.SaveChangesAsync();
-            return new Response<string>(true, "File exported successfully.", "", uploadedPath);
+            
         }
         public async Task<Response<string>> ExportQuizPdf(Guid quizId)
         {

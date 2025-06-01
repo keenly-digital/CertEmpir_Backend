@@ -23,11 +23,11 @@ namespace CertEmpire.AdminControllers
             _context = context;
         }
         [HttpGet("[action]")]
-        public async Task<IActionResult> ExportFile(Guid fileId)
+        public async Task<IActionResult> ExportFile(Guid fileId, string type)
         {
             try
             {
-                var response = await _simulationRepo.ExportFile(fileId);
+                var response = await _simulationRepo.ExportFile(fileId,type);
                 return Ok(response);
             }
             catch (Exception ex)

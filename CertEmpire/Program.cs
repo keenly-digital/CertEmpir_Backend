@@ -134,7 +134,7 @@ builder.Services.AddCors(options =>
                           .AllowAnyMethod()
                           .AllowAnyHeader());
 });
-
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 var app = builder.Build();
 string QuestionImages = Path.Combine(Path.GetTempPath(), "uploads", "QuestionImages");
 Directory.CreateDirectory(QuestionImages);
