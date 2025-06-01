@@ -913,14 +913,170 @@ namespace CertEmpire.Services
         //Practice online for user
         public async Task<Response<object>> PracticeOnline(Guid fileId)
         {
+            var fileContent = (dynamic)null;
             Response<object> response = new();
             ExamDTO examDTO = new();
             //Getting file information from the database
             var fileInfo = await _context.UploadedFiles.FindAsync(fileId);
             if (fileInfo != null)
             {
-                var fileCotent = await GetFileContent(fileId);
-                response = new Response<object>(true, "File Content", "", fileCotent);
+                var topics = await _context.Topics.Where(x => x.FileId.Equals(fileId)).ToListAsync();
+                if (topics.Count>0)
+                {
+                    var questions = await _context.Questions.Where(x => x.FileId.Equals(fileId)).ToListAsync();
+                    if(questions.Count() > 0)
+                    {
+                        fileContent = await GetFileContent(fileId);
+                        response = new Response<object>(true, "File Content", "", fileContent);
+                        return response;
+                    }
+                    else
+                    {
+                        var result1 = await UploadPdfFromUrlToThirdPartyApiAsync(fileInfo.FileURL);
+                        if (result1 == null)
+                        {
+                            response = new Response<object>(false, "No data found.", "", default);
+                            return response;
+                        }
+                        else
+                        {
+                            // Map the API response to ExamDTO
+                            examDTO = await MapApiResponseToExamDTO(result1, fileInfo.FileName, fileId);
+                            if (examDTO == null)
+                            {
+                                response = new Response<object>(false, "No data found.", "", default);
+                                return response;
+                            }
+                            else
+                            {
+                                //Get User Information from the database
+                                var userFile = await _context.UserFilePrices.FirstOrDefaultAsync(x => x.FileId.Equals(fileId));
+                                if (userFile != null)
+                                {
+                                    if (userFile == null)
+                                    {
+                                        response = new Response<object>(false, "No data found.", "", default);
+                                        return response;
+                                    }
+                                    else
+                                    {
+                                        // Update existing file content
+                                        string folderPath = Path.Combine(_rootPath, "uploads", "QuestionImages", userFile.FileId.ToString());
+                                        if (Directory.Exists(folderPath))
+                                        {
+                                            var filesListDir = Directory.GetFiles(folderPath);
+                                            if (filesListDir.Any())
+                                            {
+                                                foreach (var imageFiles in Directory.GetFiles(folderPath))
+                                                {
+                                                    try { File.Delete(imageFiles); }
+                                                    catch (Exception ex) { Console.WriteLine($"Error deleting file {imageFiles}: {ex.Message}"); }
+                                                }
+                                            }
+                                        }
+                                        var updateResponse = await UpdateFileContentForUser(fileInfo, examDTO, userFile.UserId);
+                                        if (updateResponse.Data != null)
+                                        {
+                                            fileContent = await GetFileContent(updateResponse.Data.FileId);
+                                            response = new Response<object>(true, "File updated successfully.", "", fileContent);
+                                            return response;
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    // Create a new file content
+                                    var createResponse = await CreateNewFileContent(examDTO, userFile.UserId);
+                                    if (createResponse.Data == null)
+                                    {
+                                        response = new Response<object>(false, "No data found.", "", default);
+                                        return response;
+                                    }
+                                    else
+                                    {
+                                        fileContent = await GetFileContent(createResponse.Data.FileId);
+                                        if (fileContent == null)
+                                        {
+                                            response = new Response<object>(false, "No data found.", "", default);
+                                            return response;
+                                        }
+                                        response = new Response<object>(true, "File uploaded successfully.", "", fileContent);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                var result = await UploadPdfFromUrlToThirdPartyApiAsync(fileInfo.FileURL);
+                if (result == null)
+                {
+                    response = new Response<object>(false, "No data found.", "", default);
+                }
+                else
+                {
+                    // Map the API response to ExamDTO
+                    examDTO = await MapApiResponseToExamDTO(result, fileInfo.FileName, fileId);
+                    if (examDTO == null)
+                    {
+                        response = new Response<object>(false, "No data found.", "", default);
+                    }
+                    else
+                    {
+                        //Get User Information from the database
+                        var userFile = await _context.UserFilePrices.FirstOrDefaultAsync(x => x.FileId.Equals(fileId));
+                        if (userFile != null)
+                        {
+                            if (userFile == null)
+                            {
+                                response = new Response<object>(false, "No data found.", "", default);
+                                return response;
+                            }
+                            else
+                            {
+                                // Update existing file content
+                                string folderPath = Path.Combine(_rootPath, "uploads", "QuestionImages", userFile.FileId.ToString());
+                                if (Directory.Exists(folderPath))
+                                {
+                                    var filesListDir = Directory.GetFiles(folderPath);
+                                    if (filesListDir.Any())
+                                    {
+                                        foreach (var imageFiles in Directory.GetFiles(folderPath))
+                                        {
+                                            try { File.Delete(imageFiles); }
+                                            catch (Exception ex) { Console.WriteLine($"Error deleting file {imageFiles}: {ex.Message}"); }
+                                        }
+                                    }
+                                }
+                                var updateResponse = await UpdateFileContentForUser(fileInfo, examDTO, userFile.UserId);
+                                if (updateResponse.Data != null)
+                                {
+                                    fileContent = await GetFileContent(updateResponse.Data.FileId);
+                                    response = new Response<object>(true, "File updated successfully.", "", fileContent);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // Create a new file content
+                            var createResponse = await CreateNewFileContent(examDTO, userFile.UserId);
+                            if (createResponse.Data == null)
+                            {
+                                response = new Response<object>(false, "No data found.", "", default);
+                                return response;
+                            }
+                            else
+                            {
+                                fileContent = await GetFileContent(createResponse.Data.FileId);
+                                if (fileContent == null)
+                                {
+                                    response = new Response<object>(false, "No data found.", "", default);
+                                    return response;
+                                }
+                                response = new Response<object>(true, "File uploaded successfully.", "", fileContent);
+                            }
+                        }
+                    }
+                }
             }
             else
             {
@@ -968,7 +1124,7 @@ namespace CertEmpire.Services
                                 var updateResponse = await UpdateFileContentForUser(fileInfo, examDTO, userFile.UserId);
                                 if (updateResponse.Data != null)
                                 {
-                                    var fileContent = await GetFileContent(updateResponse.Data.FileId);
+                                    fileContent = await GetFileContent(updateResponse.Data.FileId);
                                     response = new Response<object>(true, "File updated successfully.", "", fileContent);
                                 }
                             }
@@ -984,7 +1140,7 @@ namespace CertEmpire.Services
                             }
                             else
                             {
-                                var fileContent = await GetFileContent(createResponse.Data.FileId);
+                                fileContent = await GetFileContent(createResponse.Data.FileId);
                                 if (fileContent == null)
                                 {
                                     response = new Response<object>(false, "No data found.", "", default);
