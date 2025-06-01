@@ -526,7 +526,8 @@ namespace CertEmpire.Services
                     TopicName = topic.TopicName ?? "",
                     Description = topic.CaseStudy ?? "",
                     CaseStudyTopicId = (hasTopic && hasCaseStudy) ? topicId : Guid.Empty,
-                    FileId = fileId
+                    FileId = fileId,
+                    CaseStudy = "Case Study"
                 };
                 await _context.Topics.AddAsync(topicEntity);
                 await _context.SaveChangesAsync();
