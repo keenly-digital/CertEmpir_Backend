@@ -13,7 +13,7 @@ namespace CertEmpire.Services
         {
             Response<List<AddDomainResponse>> response = new();
             List<AddDomainResponse> list = new List<AddDomainResponse>();
-            var domainList = _context.Domains.AsQueryable().Where(x=>x.IsActive.Equals(true)).Skip((PageNumber - 1) * PageSize).Take(PageSize);
+            var domainList = _context.Domains.AsQueryable().Skip((PageNumber - 1) * PageSize).Take(PageSize);
             foreach (var item in domainList)
             {
                 AddDomainResponse domainResponse = new()
