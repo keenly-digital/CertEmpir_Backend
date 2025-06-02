@@ -44,23 +44,23 @@ namespace CertEmpire.Services
                     QuestionId = Guid.NewGuid(),
                     ShowAnswer = request.showAnswer.Value,
                     FileId = request.fileId,
-                    TopicId = request.TopicId ?? Guid.Empty,
-                    CaseStudyId = request.CaseStudyId ?? Guid.Empty
+                    TopicId = request.topicId ?? Guid.Empty,
+                    CaseStudyId = request.caseStudyId ?? Guid.Empty
                 };
                 await _context.Questions.AddAsync(question);
                 await _context.SaveChangesAsync();
                 var result = await _context.Questions.FirstOrDefaultAsync(x => x.QuestionId.Equals(question.QuestionId));
                 if (result != null)
                 {
-                    if (request.TopicId.HasValue && request.TopicId != Guid.Empty)
+                    if (request.topicId.HasValue && request.topicId != Guid.Empty)
                     {
                         // Count existing questions in the same topic
-                        questionOrder = await _context.Questions.CountAsync(q => q.TopicId == request.TopicId);
+                        questionOrder = await _context.Questions.CountAsync(q => q.TopicId == request.topicId);
                     }
-                    else if (request.CaseStudyId.HasValue && request.CaseStudyId != Guid.Empty)
+                    else if (request.caseStudyId.HasValue && request.caseStudyId != Guid.Empty)
                     {
                         // Count existing questions in the same case study
-                        questionOrder = await _context.Questions.CountAsync(q => q.CaseStudyId == request.CaseStudyId);
+                        questionOrder = await _context.Questions.CountAsync(q => q.CaseStudyId == request.caseStudyId);
                     }
                     else if (request.fileId != Guid.Empty)
                     {
@@ -177,7 +177,7 @@ namespace CertEmpire.Services
 
             questionObjects.Add(new
             {
-                q = questionOrder++,
+                q = request.q,
                 answerDescription = question.AnswerDescription ?? "",
                 correctAnswerIndices = question.CorrectAnswerIndices,
                 answerExplanation = question.Explanation ?? "",
@@ -356,7 +356,10 @@ namespace CertEmpire.Services
                 showAnswer = false,
                 fileId = q.FileId,
                 TopicId = q.TopicId ?? Guid.Empty,
-                CaseStudyId = q.CaseStudyId ?? Guid.Empty
+                CaseStudyId = q.CaseStudyId ?? Guid.Empty,
+                IsVerified = q.IsVerified,
+                q = orderedQuestions.IndexOf(q) + 1,
+                Verified = q.Verification ?? "",
             }).ToList();
 
             return new Response<object>(true, "", "", Questions);

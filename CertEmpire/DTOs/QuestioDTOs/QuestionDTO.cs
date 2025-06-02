@@ -25,8 +25,9 @@ namespace CertEmpire.DTOs.QuestioDTOs
         [JsonPropertyName("imageURL")]
         public string? imageURL { get; set; } = string.Empty;
         [JsonPropertyName("timeTaken")]
-        public Guid? TopicId { get; set; }
-        public Guid? CaseStudyId { get; set; }
+        public Guid? topicId { get; set; }
+        public Guid? caseStudyId { get; set; }
+        public int q { get; set; } = 0;
     }
     public class ValidateQuestionObject
     {

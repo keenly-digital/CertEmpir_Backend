@@ -1,9 +1,5 @@
 ﻿namespace CertEmpire.DTOs.ReportDTOs
 {
-    public class ReportResponseDTO
-    {
-
-    }
     public class ReportViewDto
     {
         public Guid Id { get; set; }
@@ -17,4 +13,9 @@
         public string Status { get; set; } = string.Empty;
         public string Explanation { get; set; } = string.Empty;
     }
+    //public class AdminTasksResponse
+    //{
+    //    public string Reports { get; set; } = string.Empty;
+    //    public 
+    //}
 }
