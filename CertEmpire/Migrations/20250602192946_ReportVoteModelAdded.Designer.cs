@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using CertEmpire.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CertEmpire.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250602192946_ReportVoteModelAdded")]
+    partial class ReportVoteModelAdded
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -200,41 +203,6 @@ namespace CertEmpire.Migrations
                     b.HasKey("ReportId");
 
                     b.ToTable("Reports");
-                });
-
-            modelBuilder.Entity("CertEmpire.Models.ReportVote", b =>
-                {
-                    b.Property<Guid>("ReportVoteId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime?>("LastModified")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("ReportId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("Vote")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime>("VotedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("ReportVoteId");
-
-                    b.ToTable("ReportVotes");
                 });
 
             modelBuilder.Entity("CertEmpire.Models.ReviewTask", b =>

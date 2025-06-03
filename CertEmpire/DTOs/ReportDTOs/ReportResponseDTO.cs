@@ -13,9 +13,13 @@
         public string Status { get; set; } = string.Empty;
         public string Explanation { get; set; } = string.Empty;
     }
-    //public class AdminTasksResponse
-    //{
-    //    public string Reports { get; set; } = string.Empty;
-    //    public 
-    //}
+    public class AdminTasksResponse
+    {
+        public Guid ReportId { get; set; }
+        public string Reports { get; set; } = string.Empty;
+        public string Votes {  get; set; } = string.Empty;
+        public DateTime RequestDate {  get; set; }
+        public string Status { get; set; } = string.Empty;
+    }
+
 }

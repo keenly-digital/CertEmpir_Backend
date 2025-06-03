@@ -930,6 +930,12 @@ namespace CertEmpire.Services
             var fileInfo = await _context.UploadedFiles.FindAsync(fileId);
             if (fileInfo != null)
             {
+                if(string.IsNullOrEmpty(fileInfo.FileURL))
+                {
+                    fileContent = await GetFileContent(fileId);
+                    response = new Response<object>(true, "File Content", "", fileContent);
+                    return response;
+                }
                 var topics = await _context.Topics.Where(x => x.FileId.Equals(fileId)).ToListAsync();
                 if (topics.Count>0)
                 {

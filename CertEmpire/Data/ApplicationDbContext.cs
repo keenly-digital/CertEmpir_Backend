@@ -23,6 +23,7 @@ namespace CertEmpire.Data
         public DbSet<TopicEntity> Topics { get; set; } 
         public DbSet<Domain> Domains { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }
+        public DbSet<ReportVote> ReportVotes { get; set; }
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             if (ChangeTracker.HasChanges())
