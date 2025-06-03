@@ -54,15 +54,25 @@ namespace CertEmpire.Services.FileService
             var imageLivePath = string.Concat(httpRequest.Scheme, "://", httpRequest.Host.ToUriComponent(), httpRequest.PathBase.ToUriComponent(), "/uploads/QuizFiles/", fileName);
             return imageLivePath; // Return relative path
         }
-        public async Task<string> GenerateFileUrlAsync(string domainName, Guid fileId, string fileName)
+        public async Task<string> ExportFileAsync(string domainName, IFormFile file, string subDirectory)
         {
+            if (file == null || file.Length == 0)
+                throw new ArgumentException("Invalid File");
+
+            string fileExtension = Path.GetExtension(file.FileName).ToLower();
+            // Restrict uploads to .qzs files only
+
             string tempFolder = Path.Combine(Path.GetTempPath(), "uploads", "QuizFiles");
             Directory.CreateDirectory(tempFolder);
 
-            string fullfileName = $"{fileId}_{fileName}";
-            string filePath = Path.Combine(tempFolder, fullfileName??"Quiz File");
-            var imageLivePath = string.Concat($"{domainName}/uploads/QuizFiles/", fullfileName);
-            return imageLivePath; // Return relative path
+            string fileName = $"{file.FileName}";
+            string filePath = Path.Combine(tempFolder, fileName);
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+            var imageLivePath = string.Concat($"{domainName}/uploads/QuizFiles/", fileName);
+            return imageLivePath;
         }
     }
 }

@@ -6,6 +6,7 @@ namespace CertEmpire.Services.FileService
     {
         Task<string> ExportFileAsync(IFormFile file, string subDirectory);
         Task<string> ChangeProfilePic(ChangeProfilePic request);
-        Task<string> GenerateFileUrlAsync(string domainName, Guid fileId, string fileName);
+        Task<string> ExportFileAsync(string domainName, IFormFile file, string subDirectory);
+       // Task<string> GenerateFileUrlAsync(string domainName, Guid fileId, string fileName);
     }
 }

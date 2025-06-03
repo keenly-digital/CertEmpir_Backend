@@ -842,6 +842,87 @@ namespace CertEmpire.Services
             await _context.SaveChangesAsync();
             return new Response<string>(true, "PDF exported successfully.", "", uploadedPath);
         }
+        private async Task<Response<string>> ExportQuizPdf(string domainName, Guid quizId)
+        {
+            var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
+            if (quiz == null)
+                return new Response<string>(false, "Quiz file not found.", "", "");
+
+            var topicsRaw = await _context.Topics.Where(x => x.FileId.Equals(quiz)).ToListAsync();
+            var questionsRaw = await _context.Questions.Where(q => q.FileId == quizId).ToListAsync();
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"Quiz Title: {quiz.FileName}");
+            sb.AppendLine($"Export Date: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
+            sb.AppendLine(new string('-', 100));
+
+            var realTopics = topicsRaw.Where(t => !string.IsNullOrWhiteSpace(t.TopicName)).ToList();
+            var caseStudies = topicsRaw.Where(t => !string.IsNullOrWhiteSpace(t.CaseStudy)).ToList();
+
+            foreach (var topic in realTopics)
+            {
+                sb.AppendLine($"\nTopic: {topic.TopicName}");
+                sb.AppendLine($"Description: {topic.Description}\n");
+
+                var questions = questionsRaw.Where(q => q.TopicId == topic.TopicId).ToList();
+                foreach (var q in questions)
+                {
+                    AppendQuestionText(sb, q);
+                }
+            }
+
+            foreach (var cs in caseStudies)
+            {
+                sb.AppendLine($"\nCase Study: {cs.CaseStudy}");
+                sb.AppendLine("Related Questions:");
+
+                var questions = questionsRaw.Where(q => q.TopicId == cs.TopicId).ToList();
+                foreach (var q in questions)
+                {
+                    AppendQuestionText(sb, q);
+                }
+            }
+
+            // Unlinked questions
+            var unlinked = questionsRaw
+                .Where(q => q.TopicId == Guid.Empty || !topicsRaw.Any(t => t.TopicId == q.TopicId))
+                .ToList();
+
+            if (unlinked.Any())
+            {
+                sb.AppendLine("\nGeneral Questions:");
+                foreach (var q in unlinked)
+                {
+                    AppendQuestionText(sb, q);
+                }
+            }
+
+            // Generate PDF using QuestPDF
+            var pdfPath = Path.Combine(Path.GetTempPath(), $"{quiz.FileName}_Export.pdf");
+
+            var document = QuestPDF.Fluent.Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Margin(30);
+                    page.Size(PageSizes.A4);
+                    page.DefaultTextStyle(x => x.FontSize(12));
+
+                    page.Content().PaddingVertical(10).Text(sb.ToString());
+                });
+            });
+
+            document.GeneratePdf(pdfPath);
+
+            // Upload and return URL
+            using var stream = new FileStream(pdfPath, FileMode.Open, FileAccess.Read);
+            var formFile = new FormFile(stream, 0, stream.Length, "file", Path.GetFileName(pdfPath));
+            var uploadedPath = await _fileService.ExportFileAsync(domainName,formFile, "QuizFiles");
+            quiz.FileURL = uploadedPath;
+            _context.UploadedFiles.Update(quiz);
+            await _context.SaveChangesAsync();
+            return new Response<string>(true, "PDF exported successfully.", "", uploadedPath);
+        }
         private void AppendQuestionText(StringBuilder sb, Question q)
         {
             sb.AppendLine($"\nQuestion: {q.QuestionText}");
@@ -894,18 +975,7 @@ namespace CertEmpire.Services
                 var fileInfo = await _context.UploadedFiles.FirstOrDefaultAsync(x=>x.FileId.Equals(fileId));
                 if (fileInfo != null)
                 {
-                    var fileUrl = await _fileService.GenerateFileUrlAsync(domainInfo.DomainURL,fileInfo.FileId, fileInfo.FileName);
-                    if (!string.IsNullOrEmpty(fileUrl))
-                    {
-                        fileInfo.FileURL = fileUrl;
-                        _context.UploadedFiles.Update(fileInfo);
-                        await _context.SaveChangesAsync();
-                        response = new Response<string>(true, "URL generated successfully.", "", fileUrl);
-                    }
-                    else
-                    {
-                        response = new Response<string>(false, "Error while generating URL.", "", "");
-                    }
+                    return await ExportQuizPdf(domainInfo.DomainURL,fileId);
                 }
                 else
                 {
