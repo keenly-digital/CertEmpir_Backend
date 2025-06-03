@@ -898,7 +898,7 @@ namespace CertEmpire.Services
             }
 
             // Generate PDF using QuestPDF
-            var pdfPath = Path.Combine(Path.GetTempPath(), $"{quiz.FileName}_Export.pdf");
+            var pdfPath = Path.Combine(Path.GetTempPath(), $"{quiz.FileName}");
 
             var document = QuestPDF.Fluent.Document.Create(container =>
             {
