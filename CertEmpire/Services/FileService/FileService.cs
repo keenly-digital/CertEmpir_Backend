@@ -61,7 +61,7 @@ namespace CertEmpire.Services.FileService
 
             string fullfileName = $"{fileId}_{fileName}";
             string filePath = Path.Combine(tempFolder, fullfileName??"Quiz File");
-            var imageLivePath = string.Concat($"{domainName},/uploads/QuizFiles/", fullfileName);
+            var imageLivePath = string.Concat($"{domainName}/uploads/QuizFiles/", fullfileName);
             return imageLivePath; // Return relative path
         }
     }

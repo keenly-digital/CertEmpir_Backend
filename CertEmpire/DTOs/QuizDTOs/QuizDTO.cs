@@ -33,4 +33,13 @@ namespace CertEmpire.DTOs.QuizDTOs
         public DateTime UploadedAt { get; set; }
         public List<QuestionObject> Questions { get; set; } = new List<QuestionObject>();
     }
+    public class FileInfoResponse
+    {
+        public Guid FileId { get; set; }
+        public string FileName { get; set; } = string.Empty;
+        public string FileURL { get; set; } = string.Empty;
+        public decimal FilePrice { get; set; }
+        public int ProductId { get; set; }
+        public bool Simulation { get; set; } = true;
+    }
 }

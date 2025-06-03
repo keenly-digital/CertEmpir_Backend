@@ -91,7 +91,7 @@ namespace CertEmpire.Services
         {
             var response = new Response<LoginResponse>();
             string fileUrl = string.Empty;
-            bool simulation = false;
+            bool simulation = true;
             int productId = 0;
             if (request == null)
             {
@@ -107,48 +107,28 @@ namespace CertEmpire.Services
                 foreach (var file in request.File)
                 {
                     var fileExist = await _context.UploadedFiles
-                        .FirstOrDefaultAsync(x => x.ProductId == file.ProductId);
-                    Guid fileId;
+                        .FirstOrDefaultAsync(x => x.FileURL == file.FileUrl);
                     if (fileExist == null)
                     {
-                        var uploadedFile = new UploadedFile
-                        {
-                            FileURL = file.FileUrl ?? "",
-                            FilePrice = file.FilePrice,
-                            FileId = Guid.NewGuid(),
-                            FileName = file.FileUrl.Split('/').Last(),
-                            ProductId = file.ProductId,
-                            Simulation = true
-                        };
-                        await _context.UploadedFiles.AddAsync(uploadedFile);
-                        await _context.SaveChangesAsync();
-                        fileId = uploadedFile.FileId;
-                        simulation = uploadedFile.Simulation;
-                        productId = uploadedFile.ProductId;
+                        return new Response<LoginResponse>(false, "File not found.","",default);
                     }
                     else
                     {
-                        fileId = fileExist.FileId;
-                    }
-                    // Check if user already linked to this file
-                    var alreadyLinked = await _context.UserFilePrices
-                        .AnyAsync(u => u.UserId == user.UserId && u.FileId == fileId);
-                    if (!alreadyLinked)
-                    {
-                        UserFilePrice filePrice = new()
+                        var alreadyLinked = await _context.UserFilePrices
+                       .AnyAsync(u => u.UserId == user.UserId && u.FileId == fileExist.FileId);
+                        if (!alreadyLinked)
                         {
-                            FileId = fileId,
-                            UserId = user.UserId,
-                            FilePriceId = Guid.NewGuid()
-                        };
-                        await _context.UserFilePrices.AddAsync(filePrice);
-                        await _context.SaveChangesAsync();
+                            UserFilePrice filePrice = new()
+                            {
+                                FileId = fileExist.FileId,
+                                UserId = user.UserId,
+                                FilePriceId = Guid.NewGuid()
+                            };
+                            await _context.UserFilePrices.AddAsync(filePrice);
+                            await _context.SaveChangesAsync();
+
+                        }
                     }
-                    // Get all buyers (excluding current user optionally)
-                    var buyers = await _context.UserFilePrices
-                        .Where(u => u.FileId == fileId && u.UserId != user.UserId)
-                        .Select(u => u.UserId)
-                        .ToListAsync();
                 }
             }
             var jwtToken = await _jwtService.generateJwtToken(user);

@@ -568,7 +568,8 @@ namespace CertEmpire.Services
                     FileName = exam.ExamTitle,
                     FileURL = "",
                     NumberOfQuestions = exam.Topics.Sum(t => t.Questions.Count),
-                    UserId = userId
+                    UserId = userId,
+                    Simulation = true
                 };
                 await _context.UploadedFiles.AddAsync(uploadedFile);
                 await _context.SaveChangesAsync();
@@ -1453,6 +1454,30 @@ namespace CertEmpire.Services
                 });
             }
             return list;
+        }
+
+        public async Task<Response<FileInfoResponse>> GetFileInfo(Guid fileId)
+        {
+            Response<FileInfoResponse> response = new();
+            var fileIno = await _context.UploadedFiles.FirstOrDefaultAsync(x=>x.FileId.Equals(fileId));
+            if (fileIno == null)
+            {
+                response = new Response<FileInfoResponse>(false,"No file found.","", default);
+            }
+            else
+            {
+                FileInfoResponse res = new()
+                {
+                    FileId = fileIno.FileId,
+                    FileName = fileIno.FileName,
+                    FilePrice = fileIno.FilePrice,
+                    FileURL = fileIno.FileURL,
+                    ProductId = fileIno.ProductId,
+                    Simulation = fileIno.Simulation
+                };
+                response = new Response<FileInfoResponse>(false, "file Info.", "", res);
+            }
+            return response;
         }
 
         #endregion

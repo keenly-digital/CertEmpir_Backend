@@ -14,5 +14,6 @@ namespace CertEmpire.Interfaces
         Task<List<QuizFileInfoResponse>> GetQuizById(Guid userId, int pageNumber, int pageSize);
         Task<Response<string>> UpdateFileName(Guid FileId, string FileName);
         Task<Response<string>> GenerateFileUrl(string domainName, Guid fileId);
+        Task<Response<FileInfoResponse>> GetFileInfo(Guid fileId);
     }
 }
