@@ -28,5 +28,19 @@ namespace CertEmpire.AdminControllers
                 return StatusCode(500, response);
             }
         }
+        [HttpGet("[action]")]
+        public async Task<IActionResult> ViewReport(Guid reportId)
+        {
+            try
+            {
+                var response = await _reportVoteRepo.ViewReport(reportId);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                var response = new Response<object>(false, "Error", ex.Message, "");
+                return StatusCode(500, response);
+            }
+        }
     }
 }

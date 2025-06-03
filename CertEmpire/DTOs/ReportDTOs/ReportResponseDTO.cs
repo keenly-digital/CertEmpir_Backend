@@ -21,5 +21,4 @@
         public DateTime RequestDate {  get; set; }
         public string Status { get; set; } = string.Empty;
     }
-
 }

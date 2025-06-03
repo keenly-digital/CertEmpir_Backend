@@ -7,5 +7,7 @@ namespace CertEmpire.Interfaces
     public interface IReportVoteRepo : IRepository<ReportVote>
     {
         Task<Response<List<AdminTasksResponse>>> GetPendingReports(Guid UserId);
+        Task<Response<object>> ViewReport(Guid reportId);
+
     }
 }

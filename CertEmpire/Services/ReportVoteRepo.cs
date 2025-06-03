@@ -1,21 +1,31 @@
 ﻿using CertEmpire.Data;
+using CertEmpire.DTOs.MyTaskDTOs;
 using CertEmpire.DTOs.ReportDTOs;
+using CertEmpire.Helpers.Enums;
 using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using CertEmpire.Models;
+using CertEmpire.Services.EmailService;
 using Microsoft.EntityFrameworkCore;
 
 namespace CertEmpire.Services
 {
-    public class ReportVoteRepo(ApplicationDbContext context) : Repository<ReportVote>(context), IReportVoteRepo
+    public class ReportVoteRepo : Repository<ReportVote>, IReportVoteRepo
     {
+        private readonly IEmailService _emailService;
+        private readonly ApplicationDbContext _context;
+        public ReportVoteRepo(IEmailService emailService, ApplicationDbContext context) : base(context)
+        {
+            _emailService = emailService;
+            _context = context;
+        }
         public async Task<Response<List<AdminTasksResponse>>> GetPendingReports(Guid UserId)
         {
             Response<List<AdminTasksResponse>> response = new();
             List<AdminTasksResponse> list = new();
             //Get user data with user id
-            var userInfo = await _context.Users.FirstOrDefaultAsync(x=>x.UserId.Equals(UserId));
-            if(userInfo == null)
+            var userInfo = await _context.Users.FirstOrDefaultAsync(x => x.UserId.Equals(UserId));
+            if (userInfo == null)
             {
                 response = new Response<List<AdminTasksResponse>>(false, "User not found.", "", null);
             }
@@ -57,6 +67,126 @@ namespace CertEmpire.Services
                         response = new Response<List<AdminTasksResponse>>(true, "No Pending reports found.", "", list);
                     }
                 }
+            }
+            return response;
+        }
+        public async Task<Response<object>> ViewReport(Guid reportId)
+        {
+            Response<object> response = new();
+            //Get report by id
+            var report = await _context.Reports
+     .Where(r => r.ReportId == reportId)
+     .FirstOrDefaultAsync();
+
+            if (report == null)
+                return new Response<object>(false, "No report found.", "", "");
+
+            var question = await _context.Questions.FirstOrDefaultAsync(x => x.Id.Equals(report.TargetId));
+            if (question == null)
+                return new Response<object>(false, "Question not found or deleted.", "", "");
+            var submittedBy = await _context.Users
+                .Where(u => u.UserId == report.UserId) // adjust based on Report.UserId type
+                .Select(u => new
+                {
+                    u.UserName,
+                    Explanation = report.Explanation
+                }).FirstOrDefaultAsync();
+
+            // Get all review tasks (could be community or admin)
+            var reviewTasks = await (
+                from rt in _context.ReviewTasks
+                join u in _context.Users on rt.ReviewerUserId equals u.UserId
+                where rt.ReportId == reportId
+                select new
+                {
+                    u.UserName,
+                    rt.VotedStatus,
+                    rt.ReviewedAt,
+                    rt.ReviewerExplanation,
+                    rt.IsCommunityVote
+                }).ToListAsync();
+
+            // Decide what to return
+            var votes = reviewTasks.Select(rt => new
+            {
+                rt.UserName,
+                Vote = rt.VotedStatus,
+                rt.ReviewedAt,
+                rt.ReviewerExplanation
+            }).ToList();
+
+            var result = new
+            {
+                report.ReportName,
+                report.ExamName,
+                report.QuestionNumber,
+                Question = question.QuestionText,
+                SubmittedBy = submittedBy,
+                Votes = votes
+            };
+            return new Response<object>(true, "Report Info", "", result);
+        }
+        public async Task<Response<string>> SubmitVoteByAdmin(SubmitAdminVoteDTO request, bool isCommunityVote)
+        {
+            Response<string> response = new();
+            var report = await _context.Reports.FirstOrDefaultAsync(x => x.ReportId.Equals(request.ReportId));
+            if (report == null)
+            {
+                return new Response<string>(false, "No report found.", "", "");
+            }
+            if (isCommunityVote == false)
+            {
+                report.Status = request.Decision;
+                if (request.Decision.Equals("Disapprove"))
+                {
+                    report.Explanation = request.Explanation;
+                }
+                _context.Reports.Update(report);
+                await _context.SaveChangesAsync();
+                if (request.Decision.Equals("Approve"))
+                {
+                    response = new Response<string>(true, "The request has been approved.", "", null);
+                }
+                else
+                {
+                    response = new Response<string>(true, "The request has been rejected.", "", null);
+                }
+            }
+            else
+            {
+                var purchasers = await _context.UserFilePrices.Where(x => x.FileId.Equals(report.fileId) && x.UserId != report.UserId).ToListAsync();
+                if (purchasers.Any())
+                {
+                    foreach (var item in purchasers)
+                    {
+                        var userInfo = await _context.Users.FirstOrDefaultAsync(x => x.Id.Equals(item.UserId));
+                        if (userInfo != null)
+                        {
+                            var task = new ReviewTask
+                            {
+                                ReviewTaskId = Guid.NewGuid(),
+                                ReportId = report.ReportId,
+                                ReviewerUserId = item.UserId,
+                                Status = ReportStatus.Pending
+                            };
+                            await _context.ReviewTasks.AddAsync(task);
+                            await _context.SaveChangesAsync();
+                            var email = new Email
+                            {
+                                To = userInfo.Email,
+                                Subject = "Report Review",
+                                // Body = $"Your OTP for password reset is: {otp}"
+                            };
+                            _emailService.SendEmail(email);
+                        }
+                    }
+
+                }
+                else
+                {
+
+                }
+                response = new Response<string>(true, "Community vote sent successfully.", "", null);
             }
             return response;
         }

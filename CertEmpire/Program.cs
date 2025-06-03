@@ -4,6 +4,7 @@ using CertEmpire.Helpers.JwtSettings;
 using CertEmpire.Interfaces;
 using CertEmpire.Interfaces.IJwtService;
 using CertEmpire.Services;
+using CertEmpire.Services.EmailService;
 using CertEmpire.Services.FileService;
 using CertEmpire.Services.JwtService;
 using EncryptionDecryptionUsingSymmetricKey;
@@ -40,6 +41,8 @@ builder.Services.AddScoped<IQuestionRepo, QuestionRepo>();
 builder.Services.AddScoped<IDomainRepo, DomainRepo>();
 builder.Services.AddScoped<APIService>();
 builder.Services.AddScoped<IUserRoleRepo, UserRoleRepo>();
+builder.Services.AddScoped<IReportVoteRepo, ReportVoteRepo>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.Configure<JwtSetting>(builder.Configuration.GetSection("Jwt"));
 builder.Services.AddControllers();
 builder.Services.AddControllers()

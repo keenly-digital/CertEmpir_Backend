@@ -72,7 +72,7 @@ namespace CertEmpire.Services
                     await _context.SaveChangesAsync();
                     questionObjects.Add(new
                     {
-                        q = questionOrder += 1,
+                        q = questionOrder,
                         answerDescription = result.AnswerDescription ?? "",
                         correctAnswerIndices = result.CorrectAnswerIndices,
                         answerExplanation = result.Explanation ?? "",
