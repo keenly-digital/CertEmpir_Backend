@@ -5,9 +5,13 @@ namespace CertEmpire.Services.FileService
     public class FileService : IFileService
     {
         private readonly IHttpContextAccessor _httpContextAccessor;
-        public FileService(IHttpContextAccessor httpContextAccessor)
+        private readonly IWebHostEnvironment _env;
+        public FileService(IHttpContextAccessor httpContextAccessor, IWebHostEnvironment env)
         {
-            _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
+            {
+                _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
+                _env = env;
+            }
         }
 
         public async Task<string> ChangeProfilePic(ChangeProfilePic request)
@@ -56,13 +60,14 @@ namespace CertEmpire.Services.FileService
         }
         public async Task<string> ExportFileAsync(string domainName, IFormFile file, string subDirectory)
         {
+            string webRootPath = _env.WebRootPath;
             if (file == null || file.Length == 0)
                 throw new ArgumentException("Invalid File");
 
             string fileExtension = Path.GetExtension(file.FileName).ToLower();
             // Restrict uploads to .qzs files only
 
-            string tempFolder = Path.Combine(Path.GetTempPath(), "uploads", "QuizFiles");
+            string tempFolder = Path.Combine(webRootPath, "uploads", "QuizFiles");
             Directory.CreateDirectory(tempFolder);
 
             string fileName = $"{file.FileName}";
