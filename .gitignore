@@ -51,3 +51,4 @@ obj/
 /CertEmpire/obj/CertEmpire.csproj.nuget.g.targets
 *.pubxml
 *.jpg
+*.pdf
