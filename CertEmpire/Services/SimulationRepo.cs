@@ -848,7 +848,7 @@ namespace CertEmpire.Services
             if (quiz == null)
                 return new Response<string>(false, "Quiz file not found.", "", "");
 
-            var topicsRaw = await _context.Topics.Where(x => x.FileId.Equals(quiz)).ToListAsync();
+            var topicsRaw = await _context.Topics.Where(x => x.FileId == quizId).ToListAsync();
             var questionsRaw = await _context.Questions.Where(q => q.FileId == quizId).ToListAsync();
 
             var sb = new StringBuilder();
@@ -898,7 +898,8 @@ namespace CertEmpire.Services
             }
 
             // Generate PDF using QuestPDF
-            var pdfPath = Path.Combine(Path.GetTempPath(), $"{quiz.FileName}");
+            string exportFileName = $"{Path.GetFileNameWithoutExtension(quiz.FileName)}_Export.pdf";
+            string tempPath = Path.Combine(Path.GetTempPath(), exportFileName);
 
             var document = QuestPDF.Fluent.Document.Create(container =>
             {
@@ -907,22 +908,24 @@ namespace CertEmpire.Services
                     page.Margin(30);
                     page.Size(PageSizes.A4);
                     page.DefaultTextStyle(x => x.FontSize(12));
-
                     page.Content().PaddingVertical(10).Text(sb.ToString());
                 });
             });
 
-            document.GeneratePdf(pdfPath);
+            document.GeneratePdf(tempPath);
 
-            // Upload and return URL
-            using var stream = new FileStream(pdfPath, FileMode.Open, FileAccess.Read);
-            var formFile = new FormFile(stream, 0, stream.Length, "file", Path.GetFileName(pdfPath));
-            var uploadedPath = await _fileService.ExportFileAsync(domainName,formFile, "QuizFiles");
+            // Upload the file and return URL
+            await using var stream = new FileStream(tempPath, FileMode.Open, FileAccess.Read);
+            var formFile = new FormFile(stream, 0, stream.Length, "file", exportFileName);
+            var uploadedPath = await _fileService.ExportFileAsync(domainName, formFile, "QuizFiles");
+
             quiz.FileURL = uploadedPath;
             _context.UploadedFiles.Update(quiz);
             await _context.SaveChangesAsync();
+
             return new Response<string>(true, "PDF exported successfully.", "", uploadedPath);
         }
+
         private void AppendQuestionText(StringBuilder sb, Question q)
         {
             sb.AppendLine($"\nQuestion: {q.QuestionText}");

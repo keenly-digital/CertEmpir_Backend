@@ -61,22 +61,25 @@ namespace CertEmpire.Services.FileService
         public async Task<string> ExportFileAsync(string domainName, IFormFile file, string subDirectory)
         {
             if (file == null || file.Length == 0)
-                throw new ArgumentException("Invalid File");
+                throw new ArgumentException("Invalid file");
 
-            string fileExtension = Path.GetExtension(file.FileName).ToLower();
-            // Restrict uploads to .qzs files only
-
-            string tempFolder = Path.Combine(Path.GetTempPath(), "uploads", "QuizFiles");
+            string tempFolder = Path.Combine(Path.GetTempPath(), "uploads", subDirectory);
             Directory.CreateDirectory(tempFolder);
 
-            string fileName = $"{file.FileName}";
-            string filePath = Path.Combine(tempFolder, fileName);
-            using (var stream = new FileStream(filePath, FileMode.Create))
+            string originalName = Path.GetFileName(file.FileName);
+            string filePath = Path.Combine(tempFolder, originalName);
+
+            await using (var stream = new FileStream(filePath, FileMode.Create))
             {
                 await file.CopyToAsync(stream);
             }
-            var imageLivePath = string.Concat($"{domainName}/uploads/QuizFiles/",fileName);
-            return imageLivePath;
+
+            // URL-encode filename
+            string safeFileName = Uri.EscapeDataString(originalName);
+            string fileUrl = $"{domainName}/uploads/{subDirectory}/{safeFileName}";
+
+            return fileUrl;
         }
+
     }
 }
