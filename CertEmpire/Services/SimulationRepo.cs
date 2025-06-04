@@ -1550,6 +1550,30 @@ namespace CertEmpire.Services
             return response;
         }
 
+        public async Task<Response<FileInfoResponse>> GetFileWithUrl(string fileUrl)
+        {
+            Response<FileInfoResponse> response = new();
+            var fileIno = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileURL.Equals(fileUrl));
+            if (fileIno == null)
+            {
+                response = new Response<FileInfoResponse>(false, "No file found.", "", default);
+            }
+            else
+            {
+                FileInfoResponse res = new()
+                {
+                    FileId = fileIno.FileId,
+                    FileName = fileIno.FileName,
+                    FilePrice = fileIno.FilePrice,
+                    FileURL = fileIno.FileURL,
+                    ProductId = fileIno.ProductId,
+                    Simulation = fileIno.Simulation
+                };
+                response = new Response<FileInfoResponse>(false, "file Info.", "", res);
+            }
+            return response;
+        }
+
         #endregion
     }
 }

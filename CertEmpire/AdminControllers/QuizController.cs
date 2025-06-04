@@ -23,6 +23,20 @@ namespace CertEmpire.AdminControllers
             _context = context;
         }
         [HttpGet("[action]")]
+        public async Task<IActionResult> GetFileWithUrl(string fileUrl)
+        {
+            try
+            {
+                var response = await _simulationRepo.GetFileWithUrl(fileUrl);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                var response = new Response<object>(false, "Error", ex.Message, "");
+                return StatusCode(500, response);
+            }
+        }
+         [HttpGet("[action]")]
         public async Task<IActionResult> GetFileInfo(Guid fileId)
         {
             try

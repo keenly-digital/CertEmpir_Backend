@@ -60,7 +60,7 @@ namespace CertEmpire.Services.FileService
         }
         public async Task<string> ExportFileAsync(string domainName, IFormFile file, string subDirectory)
         {
-            string webRootPath = _env.WebRootPath;
+            string webRootPath = _env.ContentRootPath;
             if (file == null || file.Length == 0)
                 throw new ArgumentException("Invalid File");
 
