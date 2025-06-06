@@ -5,6 +5,7 @@ using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using CertEmpire.Models;
 using CertEmpire.Services.FileService;
+using DocumentFormat.OpenXml.Office.SpreadSheetML.Y2023.MsForms;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using EncryptionDecryptionUsingSymmetricKey;
@@ -13,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -448,7 +450,7 @@ namespace CertEmpire.Services
 
             return html;
         }
-        private object MapToQuestionObject(Question q, int qNumber)
+        private object MapToQuestionObject(Models.Question q, int qNumber)
         {
             return new
             {
@@ -464,7 +466,9 @@ namespace CertEmpire.Services
                 questionImageURL = q.questionImageURL ?? string.Empty,
                 answerImageURL = q.answerImageURL ?? string.Empty,
                 TopicId = q.TopicId ?? Guid.Empty,
-                CaseStudyId = q.CaseStudyId ?? Guid.Empty // Optional: set properly if you're tracking CaseStudyId separately
+                CaseStudyId = q.CaseStudyId ?? Guid.Empty, // Optional: set properly if you're tracking CaseStudyId separately
+                IsVerified = q.IsVerified,
+                Verification = q.Verification
             };
         }
         private async Task<Response<object>> UpdateFileContent(UploadedFile existingFile, ExamDTO exam, Guid userId)
@@ -502,7 +506,7 @@ namespace CertEmpire.Services
                     response = new Response<object>(true, "File updated successfully.", "", existingFile);
                 }
                 return response;
-               
+
             }
             catch (Exception ex)
             {
@@ -535,7 +539,7 @@ namespace CertEmpire.Services
                 // Add questions
                 foreach (var question in topic.Questions)
                 {
-                    var questionEntity = new Question
+                    var questionEntity = new Models.Question
                     {
                         QuestionId = Guid.NewGuid(),
                         QuestionText = question.questionText,
@@ -759,10 +763,12 @@ namespace CertEmpire.Services
                 var result = await ExportQuizPdf(quizId);
                 return result;
             }
-            
+
         }
         public async Task<Response<string>> ExportQuizPdf(Guid quizId)
         {
+            int questionCount = 0;
+            var imageMap = new Dictionary<string, byte[]>();
             var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
             if (quiz == null)
                 return new Response<string>(false, "Quiz file not found.", "", "");
@@ -787,6 +793,7 @@ namespace CertEmpire.Services
                 foreach (var q in questions)
                 {
                     AppendQuestionText(sb, q);
+                    questionCount = questions.Count;
                 }
             }
 
@@ -799,6 +806,7 @@ namespace CertEmpire.Services
                 foreach (var q in questions)
                 {
                     AppendQuestionText(sb, q);
+                    questionCount = questions.Count;
                 }
             }
 
@@ -814,6 +822,22 @@ namespace CertEmpire.Services
                 {
                     AppendQuestionText(sb, q);
                 }
+                var urls = questionsRaw
+    .SelectMany(q => new[] { q.questionImageURL, q.answerImageURL })
+    .Where(url => !string.IsNullOrWhiteSpace(url))
+    .Distinct();
+                foreach (var url in urls)
+                {
+                    try
+                    {
+                        var bytes = await _httpClient.GetByteArrayAsync(url);
+                        imageMap[url] = bytes;
+                    }
+                    catch
+                    {
+                        // Optionally log errors
+                    }
+                }
             }
 
             // Generate PDF using QuestPDF
@@ -823,13 +847,86 @@ namespace CertEmpire.Services
             {
                 container.Page(page =>
                 {
-                    page.Margin(30);
                     page.Size(PageSizes.A4);
-                    page.DefaultTextStyle(x => x.FontSize(12));
+                    page.Margin(30);
+                    // page.DefaultTextStyle(x => x.FontSize(12));
 
-                    page.Content().PaddingVertical(10).Text(sb.ToString());
+                    // Title Page
+                    page.Content().AlignMiddle().Column(column =>
+                    {
+                        column.Spacing(20);
+
+                        column.Item().AlignCenter().Text(quiz.FileName)
+                            .FontSize(24).Bold().FontColor(Colors.Blue.Medium);
+
+                        column.Item().Text("Microsoft Dynamics 365\nBusiness Central Developer")
+                            .FontSize(18).SemiBold().AlignCenter();
+
+                        column.Item().Text("Exam Questions & Answers")
+              .FontSize(16).Italic().FontColor(Colors.Grey.Darken1).AlignCenter();
+
+                        column.Item().PaddingTop(150);
+
+                        column.Item().Text("CERT EMPIRE")
+                .FontSize(12).FontColor(Colors.Grey.Darken2);
+                    });
+
+                    page.Footer().AlignCenter().Text("Thank You for your purchase").FontSize(10);
+                });
+
+                // Second Page - Metadata
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.A4);
+                    page.Margin(30);
+                    //page.DefaultTextStyle(x => x.FontSize(12));
+
+                    page.Content().Column(col =>
+                    {
+                        col.Item().Text($"Quiz Title: {quiz.FileName}").Bold();
+                        col.Item().Text($"Export Date: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
+                        col.Item().Text($"Product Questions: {questionCount}");
+                        col.Item().Text($"Version: 6.6");
+                    });
+                });
+
+                // Dynamic Questions & Topics
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.A4);
+                    page.Margin(20);
+                    // page.DefaultTextStyle(x => x.FontSize(11));
+
+                    page.Content().Column(async col =>
+                    {
+                        foreach (var topic in realTopics)
+                        {
+                            col.Item().Text($"Topic: {topic.TopicName}").Bold();
+                            col.Item().Text($"Description: {topic.Description}");
+
+                            var questions = questionsRaw.Where(q => q.TopicId == topic.TopicId).ToList();
+                            foreach (var q in questions)
+                            {
+                                col.Item().Element(container =>
+                                {
+                                    col.Item().Element(RenderQuestion(q, q.questionImageURL, q.answerImageURL, imageMap));
+                                });
+                            }
+                        }
+
+                        foreach (var cs in caseStudies)
+                        {
+                            col.Item().Text($"Case Study: {cs.CaseStudy}").Bold();
+                            var questions = questionsRaw.Where(q => q.TopicId == cs.TopicId).ToList();
+                            foreach (var q in questions)
+                            {
+                                col.Item().Element(RenderQuestion(q, q.questionImageURL, q.answerImageURL, imageMap));
+                            }
+                        }
+                    });
                 });
             });
+
 
             document.GeneratePdf(pdfPath);
 
@@ -841,6 +938,21 @@ namespace CertEmpire.Services
             _context.UploadedFiles.Update(quiz);
             await _context.SaveChangesAsync();
             return new Response<string>(true, "PDF exported successfully.", "", uploadedPath);
+        }
+        public Action<IContainer> RenderQuestion(Models.Question q, string questionImageUrl, string answerImageUrl, Dictionary<string, byte[]> imageMap)
+        {
+            return container => container.Column(column =>
+            {
+                column.Item().Text($"Q: {q.QuestionText}").Bold();
+
+                if (!string.IsNullOrWhiteSpace(questionImageUrl) && imageMap.TryGetValue(questionImageUrl, out var qImg))
+                    column.Item().Image(qImg).FitArea();
+
+                column.Item().Text($"A: {q.CorrectAnswerIndices}").FontColor(Colors.Green.Medium);
+
+                if (!string.IsNullOrWhiteSpace(answerImageUrl) && imageMap.TryGetValue(answerImageUrl, out var aImg))
+                    column.Item().Image(aImg).FitArea();
+            });
         }
         private async Task<Response<string>> ExportQuizPdf(string domainName, Guid quizId)
         {
@@ -925,8 +1037,7 @@ namespace CertEmpire.Services
 
             return new Response<string>(true, "PDF exported successfully.", "", uploadedPath);
         }
-
-        private void AppendQuestionText(StringBuilder sb, Question q)
+        private void AppendQuestionText(StringBuilder sb, Models.Question q)
         {
             sb.AppendLine($"\nQuestion: {q.QuestionText}");
             if (!string.IsNullOrWhiteSpace(q.QuestionDescription))
@@ -955,7 +1066,7 @@ namespace CertEmpire.Services
         public async Task<Response<string>> UpdateFileName(Guid FileId, string FileName)
         {
             Response<string> response = new();
-            var fileInfo = await _context.UploadedFiles.FirstOrDefaultAsync(x=>x.FileId.Equals(FileId));
+            var fileInfo = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId.Equals(FileId));
             if (fileInfo == null)
             {
                 response = new Response<string>(false, "File not found.", "", "");
@@ -972,13 +1083,13 @@ namespace CertEmpire.Services
         public async Task<Response<string>> GenerateFileUrl(string domainName, Guid fileId)
         {
             Response<string> response = new();
-            var domainInfo = await _context.Domains.FirstOrDefaultAsync(x=>x.DomainName.Equals(domainName));
+            var domainInfo = await _context.Domains.FirstOrDefaultAsync(x => x.DomainName.Equals(domainName));
             if (domainInfo != null)
             {
-                var fileInfo = await _context.UploadedFiles.FirstOrDefaultAsync(x=>x.FileId.Equals(fileId));
+                var fileInfo = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId.Equals(fileId));
                 if (fileInfo != null)
                 {
-                    return await ExportQuizPdf(domainInfo.DomainURL,fileId);
+                    return await ExportQuizPdf(domainInfo.DomainURL, fileId);
                 }
                 else
                 {
@@ -987,7 +1098,7 @@ namespace CertEmpire.Services
             }
             else
             {
-                response = new Response<string>(false, $"No domain found with this {domainName}.", "","");
+                response = new Response<string>(false, $"No domain found with this {domainName}.", "", "");
             }
             return response;
         }
@@ -1321,10 +1432,10 @@ namespace CertEmpire.Services
         public async Task<Response<FileInfoResponse>> GetFileInfo(Guid fileId)
         {
             Response<FileInfoResponse> response = new();
-            var fileIno = await _context.UploadedFiles.FirstOrDefaultAsync(x=>x.FileId.Equals(fileId));
+            var fileIno = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId.Equals(fileId));
             if (fileIno == null)
             {
-                response = new Response<FileInfoResponse>(false,"No file found.","", default);
+                response = new Response<FileInfoResponse>(false, "No file found.", "", default);
             }
             else
             {
