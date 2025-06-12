@@ -5,7 +5,6 @@ using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using CertEmpire.Models;
 using CertEmpire.Services.FileService;
-using DocumentFormat.OpenXml.Office.SpreadSheetML.Y2023.MsForms;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using EncryptionDecryptionUsingSymmetricKey;
@@ -767,178 +766,280 @@ namespace CertEmpire.Services
         }
         public async Task<Response<string>> ExportQuizPdf(Guid quizId)
         {
-            int questionCount = 0;
-            var imageMap = new Dictionary<string, byte[]>();
+            string domainNameFooter;
             var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
             if (quiz == null)
-                return new Response<string>(false, "Quiz file not found.", "", "");
-
-            var topicsRaw = await _context.Topics.Where(x => x.FileId.Equals(quiz)).ToListAsync();
-            var questionsRaw = await _context.Questions.Where(q => q.FileId == quizId).ToListAsync();
-
-            var sb = new StringBuilder();
-            sb.AppendLine($"Quiz Title: {quiz.FileName}");
-            sb.AppendLine($"Export Date: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
-            sb.AppendLine(new string('-', 100));
-
-            var realTopics = topicsRaw.Where(t => !string.IsNullOrWhiteSpace(t.TopicName)).ToList();
-            var caseStudies = topicsRaw.Where(t => !string.IsNullOrWhiteSpace(t.CaseStudy)).ToList();
-
-            foreach (var topic in realTopics)
+                return new Response<string>(false, "Quiz not found", "", "");
+            var domain = await _context.Domains.FirstOrDefaultAsync(x=>x.DomainURL.Equals(quiz.FileURL));
+            if (domain != null)
             {
-                sb.AppendLine($"\nTopic: {topic.TopicName}");
-                sb.AppendLine($"Description: {topic.Description}\n");
-
-                var questions = questionsRaw.Where(q => q.TopicId == topic.TopicId).ToList();
-                foreach (var q in questions)
-                {
-                    AppendQuestionText(sb, q);
-                    questionCount = questions.Count;
-                }
+                domainNameFooter = domain.DomainName;
+            }
+            else
+            {
+                domainNameFooter = "CertEmpire";
             }
 
-            foreach (var cs in caseStudies)
-            {
-                sb.AppendLine($"\nCase Study: {cs.CaseStudy}");
-                sb.AppendLine("Related Questions:");
+            var questions = await _context.Questions.Where(q => q.FileId == quizId).ToListAsync();
+            var topics = await _context.Topics.Where(t => t.FileId == quizId).ToListAsync();
 
-                var questions = questionsRaw.Where(q => q.TopicId == cs.TopicId).ToList();
-                foreach (var q in questions)
-                {
-                    AppendQuestionText(sb, q);
-                    questionCount = questions.Count;
-                }
+            var imageMap = new Dictionary<string, byte[]>();
+            var allUrls = questions.SelectMany(q => new[] { q.questionImageURL, q.answerImageURL })
+                                    .Where(url => !string.IsNullOrWhiteSpace(url)).Distinct();
+
+            foreach (var url in allUrls)
+            {
+                try { imageMap[url] = await _httpClient.GetByteArrayAsync(url); }
+                catch { /* Log error if needed */ }
             }
 
-            // Unlinked questions
-            var unlinked = questionsRaw
-                .Where(q => q.TopicId == Guid.Empty || !topicsRaw.Any(t => t.TopicId == q.TopicId))
+            var fileName = $"{quiz.FileName}";
+            var filePath = Path.Combine(Path.GetTempPath(), fileName);
+            var questionCounter = 0;
+
+            // Prepare classifications
+            var generalQuestions = questions.Where(q => !q.TopicId.HasValue || q.TopicId == Guid.Empty).ToList();
+
+            var classifiedTopics = topics
+                .Select(t => new
+                {
+                    Topic = t,
+                    Questions = questions.Where(q => q.TopicId == t.TopicId).ToList(),
+                    IsCaseStudy = !string.IsNullOrWhiteSpace(t.CaseStudy),
+                    IsRealTopic = !string.IsNullOrWhiteSpace(t.TopicName)
+                })
                 .ToList();
 
-            if (unlinked.Any())
-            {
-                sb.AppendLine("\nGeneral Questions:");
-                foreach (var q in unlinked)
-                {
-                    AppendQuestionText(sb, q);
-                }
-                var urls = questionsRaw
-    .SelectMany(q => new[] { q.questionImageURL, q.answerImageURL })
-    .Where(url => !string.IsNullOrWhiteSpace(url))
-    .Distinct();
-                foreach (var url in urls)
-                {
-                    try
-                    {
-                        var bytes = await _httpClient.GetByteArrayAsync(url);
-                        imageMap[url] = bytes;
-                    }
-                    catch
-                    {
-                        // Optionally log errors
-                    }
-                }
-            }
+            var pureTopics = classifiedTopics.Where(x => x.IsRealTopic && !x.IsCaseStudy).ToList();
+            var pureCaseStudies = classifiedTopics.Where(x => x.IsCaseStudy).ToList();
 
-            // Generate PDF using QuestPDF
-            var pdfPath = Path.Combine(Path.GetTempPath(), $"{quiz.FileName}_Export.pdf");
-
-            var document = QuestPDF.Fluent.Document.Create(container =>
+            // PDF Creation
+            QuestPDF.Fluent.Document.Create(container =>
             {
+                // --- Title Page ---
                 container.Page(page =>
                 {
                     page.Size(PageSizes.A4);
-                    page.Margin(30);
-                    // page.DefaultTextStyle(x => x.FontSize(12));
-
-                    // Title Page
-                    page.Content().AlignMiddle().Column(column =>
-                    {
-                        column.Spacing(20);
-
-                        column.Item().AlignCenter().Text(quiz.FileName)
-                            .FontSize(24).Bold().FontColor(Colors.Blue.Medium);
-
-                        column.Item().Text("Microsoft Dynamics 365\nBusiness Central Developer")
-                            .FontSize(18).SemiBold().AlignCenter();
-
-                        column.Item().Text("Exam Questions & Answers")
-              .FontSize(16).Italic().FontColor(Colors.Grey.Darken1).AlignCenter();
-
-                        column.Item().PaddingTop(150);
-
-                        column.Item().Text("CERT EMPIRE")
-                .FontSize(12).FontColor(Colors.Grey.Darken2);
-                    });
-
-                    page.Footer().AlignCenter().Text("Thank You for your purchase").FontSize(10);
-                });
-
-                // Second Page - Metadata
-                container.Page(page =>
-                {
-                    page.Size(PageSizes.A4);
-                    page.Margin(30);
-                    //page.DefaultTextStyle(x => x.FontSize(12));
-
+                    page.Margin(2, Unit.Centimetre);
+                    page.DefaultTextStyle(x => x.FontFamily("Calibri"));
+                    page.PageColor("#5232ea");
                     page.Content().Column(col =>
                     {
-                        col.Item().Text($"Quiz Title: {quiz.FileName}").Bold();
-                        col.Item().Text($"Export Date: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
-                        col.Item().Text($"Product Questions: {questionCount}");
-                        col.Item().Text($"Version: 6.6");
+                        col.Item().PaddingTop(3, Unit.Centimetre).AlignLeft().Column(innerCol =>
+                        {
+                            innerCol.Spacing(8);
+                            innerCol.Item().Text(quiz.FileName).FontSize(30).FontColor(Colors.White).Bold();
+                           // innerCol.Item().Text("Microsoft Dynamics 365").FontSize(30).FontColor(Colors.White);
+                          //  innerCol.Item().Text("Business Central Developer").FontSize(30).FontColor(Colors.White);
+                        });
+
+                        col.Item().AlignLeft().Text("Exam Questions & Answers")
+                            .FontSize(30).Bold().FontColor(Colors.White);
+
+                        col.Item().Height(8, Unit.Centimetre);
+
+                        col.Item().Column(innerCol =>
+                        {
+                            innerCol.Item().PaddingTop(6, Unit.Centimetre).AlignCenter().Text("Thank You for your purchase")
+                                .FontSize(25).FontColor("#c0c3cb");
+
+                            innerCol.Item().AlignCenter().Text(domainNameFooter).FontSize(25).FontColor(Colors.White);
+                        });
                     });
                 });
 
-                // Dynamic Questions & Topics
+                // --- Summary Page ---
                 container.Page(page =>
                 {
                     page.Size(PageSizes.A4);
-                    page.Margin(20);
-                    // page.DefaultTextStyle(x => x.FontSize(11));
-
-                    page.Content().Column(async col =>
+                    page.Margin(30);
+                    page.Header().Element(header =>
                     {
-                        foreach (var topic in realTopics)
+                        header.Column(col =>
                         {
-                            col.Item().Text($"Topic: {topic.TopicName}").Bold();
-                            col.Item().Text($"Description: {topic.Description}");
-
-                            var questions = questionsRaw.Where(q => q.TopicId == topic.TopicId).ToList();
-                            foreach (var q in questions)
+                            col.Item().Row(row =>
                             {
-                                col.Item().Element(container =>
+                                row.RelativeItem().Text("Questions and Answers PDF").Bold().FontSize(10);
+                                row.ConstantItem(100).AlignRight().Text(text =>
                                 {
-                                    col.Item().Element(RenderQuestion(q, q.questionImageURL, q.answerImageURL, imageMap));
+                                    text.CurrentPageNumber().FontSize(10).Bold();
+                                    text.Span("/").FontSize(10);
+                                    text.TotalPages().FontSize(10).Bold();
                                 });
-                            }
-                        }
+                            });
 
-                        foreach (var cs in caseStudies)
+                            col.Item().LineHorizontal(1).LineColor("#3366cc");
+                        });
+                    });
+
+                    // Footer
+                    page.Footer().Element(f =>
+                    {
+                        f.Column(col =>
                         {
-                            col.Item().Text($"Case Study: {cs.CaseStudy}").Bold();
-                            var questions = questionsRaw.Where(q => q.TopicId == cs.TopicId).ToList();
-                            foreach (var q in questions)
-                            {
-                                col.Item().Element(RenderQuestion(q, q.questionImageURL, q.answerImageURL, imageMap));
-                            }
-                        }
+                            col.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
+                            col.Item().AlignCenter().Text(domainNameFooter).FontSize(12).Italic().FontColor(Colors.Grey.Medium);
+                        });
+                    });
+                    page.Content().AlignCenter().Column(col =>
+                    {
+                        col.Item().Text($"Questions Count: {questions.Count}").FontSize(18);
+                        col.Item().Text($"Version: 1.0").FontSize(18);
                     });
                 });
-            });
+                void AddPageWithFooter(Action<IContainer> contentRenderer)
+                {
+                    container.Page(page =>
+                    {
+                        page.Size(PageSizes.A4);
+                        page.Margin(30);
+                        page.DefaultTextStyle(x => x.FontFamily("Calibri"));
+
+                        // --- Header (like the second image) ---
+                        page.Header().Element(header =>
+                        {
+                            header.Column(col =>
+                            {
+                                col.Item().Row(row =>
+                                {
+                                    row.RelativeItem().Text("Questions and Answers PDF").Bold().FontSize(10);
+                                    row.ConstantItem(100).AlignRight().Text(text =>
+                                    {
+                                        text.CurrentPageNumber().FontSize(10).Bold();
+                                        text.Span("/").FontSize(10);
+                                        text.TotalPages().FontSize(10).Bold();
+                                    });
+                                });
+
+                                col.Item().LineHorizontal(1).LineColor("#3366cc");
+                            });
+                        });
+                        // --- Footer with Horizontal Line ---
+                        page.Footer().Column(footerCol =>
+                        {
+                            footerCol.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
+                            footerCol.Item().AlignCenter().Row(row =>
+                            {
+                                row.RelativeItem().AlignCenter().Text(domainNameFooter).FontSize(12).Italic().FontColor(Colors.Grey.Medium);
+                                //row.RelativeItem().AlignCenter().Text(text =>
+                                //{
+                                //    text.CurrentPageNumber().FontSize(10);
+                                //    text.Span(" / ");
+                                //    text.TotalPages().FontSize(10);
+                                //});
+                                // row.RelativeItem().AlignRight().Text("www.certmage.com").FontSize(10).FontColor(Colors.Grey.Medium);
+                            });
+                        });
+
+                        // --- Main Page Content ---
+                        page.Content().Element(contentRenderer);
+                    });
+                }
 
 
-            document.GeneratePdf(pdfPath);
+                // --- Render Sections ---
+                void RenderQuestionBlock(IContainer container, Models.Question q)
+                {
+                    questionCounter++;
+                    container.PaddingBottom(2).Column(col =>
+                    {
+                       // col.Spacing(6);
+                        col.Item().Text($"Question {questionCounter}").FontSize(14).Bold();
 
-            // Upload and return URL
-            using var stream = new FileStream(pdfPath, FileMode.Open, FileAccess.Read);
-            var formFile = new FormFile(stream, 0, stream.Length, "file", Path.GetFileName(pdfPath));
+                        if (!string.IsNullOrWhiteSpace(q.QuestionText))
+                            col.Item().Text(q.QuestionText).FontSize(12);
+
+                        if (!string.IsNullOrWhiteSpace(q.questionImageURL) && imageMap.TryGetValue(q.questionImageURL, out var qImg))
+                            col.Item().Image(qImg).FitWidth();
+
+                        if (q.Options != null && q.Options.Any())
+                        {
+                            col.Item().Text("Options:").Bold();
+                            foreach (var opt in q.Options)
+                                col.Item().Element(e => e.PaddingLeft(10).Text($"• {opt}").FontSize(11));
+                        }
+
+                        if (q.CorrectAnswerIndices.Any())
+                        {
+                            var correctOpts = q.CorrectAnswerIndices
+                                .Where(i => i >= 0 && i < q.Options.Count)
+                                .Select(i => q.Options[i])
+                                .Where(s => !string.IsNullOrWhiteSpace(s));
+
+                            col.Item().Text("Correct Answer:").Bold();
+                            foreach (var ca in correctOpts)
+                                col.Item().Element(e => e.PaddingLeft(10).Text(ca).FontSize(11));
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(q.AnswerDescription))
+                        {
+                            col.Item().Text("Explanation:").Bold();
+                            col.Item().Element(e => e.PaddingLeft(10).Text(q.AnswerDescription).FontSize(11));
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(q.Explanation))
+                        {
+                            col.Item().Text("Why Incorrect Options are Wrong:").Bold();
+                            col.Item().Element(e => e.PaddingLeft(10).Text(q.Explanation).FontSize(11));
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(q.answerImageURL) && imageMap.TryGetValue(q.answerImageURL, out var aImg))
+                            col.Item().Image(aImg).FitWidth();
+                    });
+                }
+
+                void RenderTopicSection(string title, string? description, List<Models.Question> topicQuestions)
+                {
+                    AddPageWithFooter(container =>
+                    {
+                        container.Column(col =>
+                        {
+                            col.Item().Text(title).Bold().FontSize(14);
+                            if (!string.IsNullOrWhiteSpace(description))
+                                col.Item().Text(description).FontSize(11).Italic();
+
+                            foreach (var q in topicQuestions)
+                                col.Item().Element(c => RenderQuestionBlock(c, q));
+                        });
+                    });
+                }
+
+
+                // --- Render Topics ---
+                foreach (var topic in pureTopics)
+                {
+                    if (topic.Questions.Any())
+                        RenderTopicSection($"Topic: {topic.Topic.TopicName}", topic.Topic.Description, topic.Questions);
+                }
+
+                // --- Render Case Studies ---
+                foreach (var cs in pureCaseStudies)
+                {
+                    if (cs.Questions.Any())
+                        AddPageWithFooter(container =>
+                        {
+                            container.Column(col =>
+                            {
+                                col.Item().Text($"Case Study: {cs.Topic.CaseStudy}").Bold().FontSize(14);
+                                foreach (var q in cs.Questions)
+                                    col.Item().Element(c => RenderQuestionBlock(c, q));
+                            });
+                        });
+                }
+
+                // --- Render General Questions ---
+                if (generalQuestions.Any())
+                    RenderTopicSection("General Questions", null, generalQuestions);
+
+            }).GeneratePdf(filePath);
+
+            // Upload the PDF
+            await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+            var formFile = new FormFile(stream, 0, stream.Length, "file", Path.GetFileName(filePath));
             var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
-            quiz.FileURL = uploadedPath;
-            _context.UploadedFiles.Update(quiz);
-            await _context.SaveChangesAsync();
             return new Response<string>(true, "PDF exported successfully.", "", uploadedPath);
         }
+
         public Action<IContainer> RenderQuestion(Models.Question q, string questionImageUrl, string answerImageUrl, Dictionary<string, byte[]> imageMap)
         {
             return container => container.Column(column =>

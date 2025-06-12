@@ -48,7 +48,7 @@ namespace CertEmpire.Services.FileService
             string tempFolder = Path.Combine(Path.GetTempPath(), "uploads", "QuizFiles");
             Directory.CreateDirectory(tempFolder);
 
-            string fileName = $"{Guid.NewGuid()}{fileExtension}";
+            string fileName = $"{file.FileName}";
             string filePath = Path.Combine(tempFolder, fileName);
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
