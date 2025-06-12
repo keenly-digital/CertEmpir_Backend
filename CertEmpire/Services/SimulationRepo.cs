@@ -11,6 +11,7 @@ using EncryptionDecryptionUsingSymmetricKey;
 using ExcelDataReader;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using QuestPDF.Drawing;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -588,7 +589,6 @@ namespace CertEmpire.Services
                 return new Response<object>(false, "Error uploading file.", ex.Message, null);
             }
         }
-        //Create Quiz File
         public async Task<Response<CreateQuizResponse>> CreateQuiz(CreateQuizRequest request)
         {
             Response<CreateQuizResponse> response = new Response<CreateQuizResponse>();
@@ -813,24 +813,34 @@ namespace CertEmpire.Services
             var pureTopics = classifiedTopics.Where(x => x.IsRealTopic && !x.IsCaseStudy).ToList();
             var pureCaseStudies = classifiedTopics.Where(x => x.IsCaseStudy).ToList();
 
+            // Register font globally
+            string fontPath = Path.Combine("Fonts","Roboto", "static", "Roboto-Regular.ttf");
+            FontManager.RegisterFont(File.OpenRead(fontPath));
+
+            string CleanText(string input) =>
+                input.Replace("�", "")
+                     .Replace("“", "\"")
+                     .Replace("”", "\"")
+                     .Replace("–", "-")
+                     .Replace("‘", "'")
+                     .Replace("’", "'");
             // PDF Creation
             QuestPDF.Fluent.Document.Create(container =>
             {
-                // --- Title Page ---
+                // Title Page
                 container.Page(page =>
                 {
                     page.Size(PageSizes.A4);
                     page.Margin(2, Unit.Centimetre);
-                    page.DefaultTextStyle(x => x.FontFamily("Calibri"));
+                    page.DefaultTextStyle(x => x.FontFamily("Roboto"));
                     page.PageColor("#5232ea");
+
                     page.Content().Column(col =>
                     {
                         col.Item().PaddingTop(3, Unit.Centimetre).AlignLeft().Column(innerCol =>
                         {
                             innerCol.Spacing(8);
-                            innerCol.Item().Text(quiz.FileName).FontSize(30).FontColor(Colors.White).Bold();
-                           // innerCol.Item().Text("Microsoft Dynamics 365").FontSize(30).FontColor(Colors.White);
-                          //  innerCol.Item().Text("Business Central Developer").FontSize(30).FontColor(Colors.White);
+                            innerCol.Item().Text(CleanText(quiz.FileName)).FontSize(30).FontColor(Colors.White).Bold();
                         });
 
                         col.Item().AlignLeft().Text("Exam Questions & Answers")
@@ -848,11 +858,13 @@ namespace CertEmpire.Services
                     });
                 });
 
-                // --- Summary Page ---
+                // Summary Page
                 container.Page(page =>
                 {
                     page.Size(PageSizes.A4);
                     page.Margin(30);
+                    page.DefaultTextStyle(x => x.FontFamily("Roboto"));
+
                     page.Header().Element(header =>
                     {
                         header.Column(col =>
@@ -872,7 +884,6 @@ namespace CertEmpire.Services
                         });
                     });
 
-                    // Footer
                     page.Footer().Element(f =>
                     {
                         f.Column(col =>
@@ -881,21 +892,22 @@ namespace CertEmpire.Services
                             col.Item().AlignCenter().Text(domainNameFooter).FontSize(12).Italic().FontColor(Colors.Grey.Medium);
                         });
                     });
+
                     page.Content().AlignCenter().Column(col =>
                     {
                         col.Item().Text($"Questions Count: {questions.Count}").FontSize(18);
                         col.Item().Text($"Version: 1.0").FontSize(18);
                     });
                 });
+
                 void AddPageWithFooter(Action<IContainer> contentRenderer)
                 {
                     container.Page(page =>
                     {
                         page.Size(PageSizes.A4);
                         page.Margin(30);
-                        page.DefaultTextStyle(x => x.FontFamily("Calibri"));
+                        page.DefaultTextStyle(x => x.FontFamily("Roboto"));
 
-                        // --- Header (like the second image) ---
                         page.Header().Element(header =>
                         {
                             header.Column(col =>
@@ -914,40 +926,26 @@ namespace CertEmpire.Services
                                 col.Item().LineHorizontal(1).LineColor("#3366cc");
                             });
                         });
-                        // --- Footer with Horizontal Line ---
+
                         page.Footer().Column(footerCol =>
                         {
                             footerCol.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
-                            footerCol.Item().AlignCenter().Row(row =>
-                            {
-                                row.RelativeItem().AlignCenter().Text(domainNameFooter).FontSize(12).Italic().FontColor(Colors.Grey.Medium);
-                                //row.RelativeItem().AlignCenter().Text(text =>
-                                //{
-                                //    text.CurrentPageNumber().FontSize(10);
-                                //    text.Span(" / ");
-                                //    text.TotalPages().FontSize(10);
-                                //});
-                                // row.RelativeItem().AlignRight().Text("www.certmage.com").FontSize(10).FontColor(Colors.Grey.Medium);
-                            });
+                            footerCol.Item().AlignCenter().Text(domainNameFooter).FontSize(12).Italic().FontColor(Colors.Grey.Medium);
                         });
 
-                        // --- Main Page Content ---
                         page.Content().Element(contentRenderer);
                     });
                 }
 
-
-                // --- Render Sections ---
                 void RenderQuestionBlock(IContainer container, Models.Question q)
                 {
                     questionCounter++;
                     container.PaddingBottom(2).Column(col =>
                     {
-                       // col.Spacing(6);
                         col.Item().Text($"Question {questionCounter}").FontSize(14).Bold();
 
                         if (!string.IsNullOrWhiteSpace(q.QuestionText))
-                            col.Item().Text(q.QuestionText).FontSize(12);
+                            col.Item().Text(CleanText(q.QuestionText)).FontSize(12);
 
                         if (!string.IsNullOrWhiteSpace(q.questionImageURL) && imageMap.TryGetValue(q.questionImageURL, out var qImg))
                             col.Item().Image(qImg).FitWidth();
@@ -956,7 +954,7 @@ namespace CertEmpire.Services
                         {
                             col.Item().Text("Options:").Bold();
                             foreach (var opt in q.Options)
-                                col.Item().Element(e => e.PaddingLeft(10).Text($"• {opt}").FontSize(11));
+                                col.Item().Element(e => e.PaddingLeft(10).Text("• " + CleanText(opt)).FontSize(11));
                         }
 
                         if (q.CorrectAnswerIndices.Any())
@@ -968,19 +966,19 @@ namespace CertEmpire.Services
 
                             col.Item().Text("Correct Answer:").Bold();
                             foreach (var ca in correctOpts)
-                                col.Item().Element(e => e.PaddingLeft(10).Text(ca).FontSize(11));
+                                col.Item().Element(e => e.PaddingLeft(10).Text(CleanText(ca)).FontSize(11));
                         }
 
                         if (!string.IsNullOrWhiteSpace(q.AnswerDescription))
                         {
                             col.Item().Text("Explanation:").Bold();
-                            col.Item().Element(e => e.PaddingLeft(10).Text(q.AnswerDescription).FontSize(11));
+                            col.Item().Element(e => e.PaddingLeft(10).Text(CleanText(q.AnswerDescription)).FontSize(11));
                         }
 
                         if (!string.IsNullOrWhiteSpace(q.Explanation))
                         {
                             col.Item().Text("Why Incorrect Options are Wrong:").Bold();
-                            col.Item().Element(e => e.PaddingLeft(10).Text(q.Explanation).FontSize(11));
+                            col.Item().Element(e => e.PaddingLeft(10).Text(CleanText(q.Explanation)).FontSize(11));
                         }
 
                         if (!string.IsNullOrWhiteSpace(q.answerImageURL) && imageMap.TryGetValue(q.answerImageURL, out var aImg))
@@ -994,9 +992,9 @@ namespace CertEmpire.Services
                     {
                         container.Column(col =>
                         {
-                            col.Item().Text(title).Bold().FontSize(14);
+                            col.Item().Text(CleanText(title)).Bold().FontSize(14);
                             if (!string.IsNullOrWhiteSpace(description))
-                                col.Item().Text(description).FontSize(11).Italic();
+                                col.Item().Text(CleanText(description)).FontSize(11).Italic();
 
                             foreach (var q in topicQuestions)
                                 col.Item().Element(c => RenderQuestionBlock(c, q));
@@ -1004,15 +1002,12 @@ namespace CertEmpire.Services
                     });
                 }
 
-
-                // --- Render Topics ---
                 foreach (var topic in pureTopics)
                 {
                     if (topic.Questions.Any())
                         RenderTopicSection($"Topic: {topic.Topic.TopicName}", topic.Topic.Description, topic.Questions);
                 }
 
-                // --- Render Case Studies ---
                 foreach (var cs in pureCaseStudies)
                 {
                     if (cs.Questions.Any())
@@ -1020,14 +1015,13 @@ namespace CertEmpire.Services
                         {
                             container.Column(col =>
                             {
-                                col.Item().Text($"Case Study: {cs.Topic.CaseStudy}").Bold().FontSize(14);
+                                col.Item().Text($"Case Study: {CleanText(cs.Topic.CaseStudy)}").Bold().FontSize(14);
                                 foreach (var q in cs.Questions)
                                     col.Item().Element(c => RenderQuestionBlock(c, q));
                             });
                         });
                 }
 
-                // --- Render General Questions ---
                 if (generalQuestions.Any())
                     RenderTopicSection("General Questions", null, generalQuestions);
 
@@ -1039,7 +1033,6 @@ namespace CertEmpire.Services
             var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
             return new Response<string>(true, "PDF exported successfully.", "", uploadedPath);
         }
-
         public Action<IContainer> RenderQuestion(Models.Question q, string questionImageUrl, string answerImageUrl, Dictionary<string, byte[]> imageMap)
         {
             return container => container.Column(column =>
