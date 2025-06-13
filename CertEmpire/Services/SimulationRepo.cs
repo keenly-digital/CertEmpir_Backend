@@ -743,7 +743,8 @@ namespace CertEmpire.Services
                 // Serialize and Encrypt
                 var jsonContent = JsonConvert.SerializeObject(examDTO, Formatting.Indented);
                 // var encryptedContent = _aesOperation.EncryptString(Key, jsonContent);
-                var fileName = quiz.FileName + ".qzs";
+                var fileNameWithoutextension = System.IO.Path.GetFileNameWithoutExtension(quiz.FileName);
+                var fileName = fileNameWithoutextension + ".qzs";
                 var filePath = Path.Combine(Path.GetTempPath(), fileName);
                 //    var base64Encrypted = Convert.ToBase64String(Encoding.UTF8.GetBytes(encryptedContent));
                 await File.WriteAllTextAsync(filePath, jsonContent);
