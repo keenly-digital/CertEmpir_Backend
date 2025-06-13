@@ -37,4 +37,10 @@
     <Folder Include="wwwroot\uploads\QuestionImages\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Fonts\Roboto\static\Roboto-Regular.ttf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
