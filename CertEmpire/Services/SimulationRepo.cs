@@ -793,8 +793,8 @@ namespace CertEmpire.Services
                 try { imageMap[url] = await _httpClient.GetByteArrayAsync(url); }
                 catch { /* Log error if needed */ }
             }
-
-            var fileName = $"{quiz.FileName}";
+            var fileNameWithoutextension = Path.GetFileNameWithoutExtension(quiz.FileName) ?? "QuizExport";
+            var fileName = $"{fileNameWithoutextension}+.pdf";
             var filePath = Path.Combine(Path.GetTempPath(), fileName);
             var questionCounter = 0;
 
