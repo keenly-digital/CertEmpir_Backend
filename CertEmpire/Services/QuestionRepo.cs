@@ -54,17 +54,18 @@ namespace CertEmpire.Services
                 var result = await _context.Questions.FirstOrDefaultAsync(x => x.QuestionId.Equals(question.QuestionId));
                 if (result != null)
                 {
-                    if (request.topicId.HasValue && request.topicId != Guid.Empty)
-                    {
-                        // Count existing questions in the same topic
-                        questionOrder = await _context.Questions.CountAsync(q => q.TopicId == request.topicId);
-                    }
-                    else if (request.caseStudyId.HasValue && request.caseStudyId != Guid.Empty)
-                    {
-                        // Count existing questions in the same case study
-                        questionOrder = await _context.Questions.CountAsync(q => q.CaseStudyId == request.caseStudyId);
-                    }
-                    else if (request.fileId != Guid.Empty)
+                    // questionOrder = await _context.Questions.CountAsync(q => q.FileId == request.fileId);
+                    //if (request.topicId.HasValue && request.topicId != Guid.Empty)
+                    //{
+                    //    // Count existing questions in the same topic
+                    //    questionOrder = await _context.Questions.CountAsync(q => q.TopicId == request.topicId);
+                    //}
+                    //else if (request.caseStudyId.HasValue && request.caseStudyId != Guid.Empty)
+                    //{
+                    //    // Count existing questions in the same case study
+                    //    questionOrder = await _context.Questions.CountAsync(q => q.CaseStudyId == request.caseStudyId);
+                    //}
+                    if (request.fileId != Guid.Empty)
                     {
                         // Count questions in the same file/quiz
                         questionOrder = await _context.Questions.CountAsync(q => q.FileId == request.fileId);
