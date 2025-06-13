@@ -953,10 +953,15 @@ namespace CertEmpire.Services
                         if (q.Options != null && q.Options.Any())
                         {
                             col.Item().Text("Options:").Bold();
-                            foreach (var opt in q.Options)
-                                col.Item().Element(e => e.PaddingLeft(10).Text("• " + CleanText(opt)).FontSize(11));
-                        }
 
+                            for (int i = 0; i < q.Options.Count; i++)
+                            {
+                                string letter = ((char)('A' + i)).ToString(); // A, B, C, D...
+                                string optionText = $"{letter}. {CleanText(q.Options[i])}";
+
+                                col.Item().Element(e => e.PaddingLeft(10).Text(optionText).FontSize(11));
+                            }
+                        }
                         if (q.CorrectAnswerIndices.Any())
                         {
                             var correctOpts = q.CorrectAnswerIndices

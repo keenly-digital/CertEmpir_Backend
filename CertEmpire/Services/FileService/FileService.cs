@@ -33,7 +33,7 @@ namespace CertEmpire.Services.FileService
                 await request.Image.CopyToAsync(stream);
             }
             var httpRequest = _httpContextAccessor.HttpContext.Request;
-            var imageLivePath = string.Concat(httpRequest.Scheme, "://", httpRequest.Host.ToUriComponent(), httpRequest.PathBase.ToUriComponent(), "/uploads/ProfilePics/", fileName);
+            var imageLivePath = string.Concat($"https://", httpRequest.Host.ToUriComponent(), httpRequest.PathBase.ToUriComponent(), "/uploads/ProfilePics/", fileName);
             return imageLivePath; // Return relative path
         }
 
@@ -55,7 +55,7 @@ namespace CertEmpire.Services.FileService
                 await file.CopyToAsync(stream);
             }
             var httpRequest = _httpContextAccessor.HttpContext.Request;
-            var imageLivePath = string.Concat(httpRequest.Scheme, "://", httpRequest.Host.ToUriComponent(), httpRequest.PathBase.ToUriComponent(), "/uploads/QuizFiles/", fileName);
+            var imageLivePath = string.Concat("https://", httpRequest.Host.ToUriComponent(), httpRequest.PathBase.ToUriComponent(), "/uploads/QuizFiles/", fileName);
             return imageLivePath; // Return relative path
         }
         public async Task<string> ExportFileAsync(string domainName, IFormFile file, string subDirectory)
