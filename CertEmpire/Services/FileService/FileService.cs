@@ -22,20 +22,26 @@ namespace CertEmpire.Services.FileService
 
             string fileExtension = Path.GetExtension(request.Image.FileName).ToLower();
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
-            // Restrict uploads to .qzs files only
-
-            string tempFolder = Path.Combine(Path.GetTempPath(), "uploads", "ProfilePics");
-            Directory.CreateDirectory(tempFolder);
+            using var memoryStream = new MemoryStream();
+            await request.Image.CopyToAsync(memoryStream);
+            memoryStream.Position = 0; // Reset stream position
+            //Upload to Supabase Storage
 
             string fileName = $"{Guid.NewGuid()}{fileExtension}";
-            string filePath = Path.Combine(tempFolder, fileName);
-            using (var stream = new FileStream(filePath, FileMode.Create))
+
+            var storage = _supabaseClient.Storage.From("profile-pics");
+            var fileBytes = memoryStream.ToArray();
+            var result = await storage.Upload(fileBytes, fileName, new Supabase.Storage.FileOptions
             {
-                await request.Image.CopyToAsync(stream);
-            }
-            var httpRequest = _httpContextAccessor.HttpContext.Request;
-            var imageLivePath = string.Concat($"https://", httpRequest.Host.ToUriComponent(), httpRequest.PathBase.ToUriComponent(), "/uploads/ProfilePics/", fileName);
-            return imageLivePath; // Return relative path
+                Upsert = true,
+                ContentType = "application/octet-stream"
+            });
+            if (result == null)
+                throw new Exception($"Failed to upload file to Supabase. Status: {400}");
+
+            // Get public URL
+            var publicUrl = storage.GetPublicUrl(fileName);
+            return publicUrl;
         }
 
         public async Task<string> ExportFileAsync(IFormFile file, string subDirectory)
@@ -44,20 +50,26 @@ namespace CertEmpire.Services.FileService
                 throw new ArgumentException("Invalid File");
 
             string fileExtension = Path.GetExtension(file.FileName).ToLower();
-            // Restrict uploads to .qzs files only
-
-            string tempFolder = Path.Combine(Path.GetTempPath(), "uploads", "QuizFiles");
-            Directory.CreateDirectory(tempFolder);
-
             string fileName = $"{file.FileName}";
-            string filePath = Path.Combine(tempFolder, fileName);
-            using (var stream = new FileStream(filePath, FileMode.Create))
+            //Read file into memory stream
+            using var memoryStream = new MemoryStream();
+            await file.CopyToAsync(memoryStream);
+            memoryStream.Position = 0; // Reset stream position
+            //Upload to Supabase Storage
+          
+            var storage = _supabaseClient.Storage.From("quiz-files");
+            var fileBytes = memoryStream.ToArray();
+            var result = await storage.Upload(fileBytes, fileName, new Supabase.Storage.FileOptions
             {
-                await file.CopyToAsync(stream);
-            }
-            var httpRequest = _httpContextAccessor.HttpContext.Request;
-            var imageLivePath = string.Concat("https://", httpRequest.Host.ToUriComponent(), httpRequest.PathBase.ToUriComponent(), "/uploads/QuizFiles/", fileName);
-            return imageLivePath; // Return relative path
+                Upsert = true,
+                ContentType = "application/octet-stream"
+            });
+            if (result == null)
+                throw new Exception($"Failed to upload file to Supabase. Status: {400}");
+
+            // Get public URL
+            var publicUrl = storage.GetPublicUrl(fileName);
+            return publicUrl;
         }
         public async Task<string> ExportFileAsync(string domainName, IFormFile file, string subDirectory)
         {
@@ -81,6 +93,5 @@ namespace CertEmpire.Services.FileService
 
             return fileUrl;
         }
-
     }
 }
