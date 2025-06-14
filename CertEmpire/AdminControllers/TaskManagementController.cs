@@ -1,6 +1,7 @@
 ﻿using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using static ReportAnswerDTO;
 
 namespace CertEmpire.AdminControllers
 {
@@ -15,11 +16,11 @@ namespace CertEmpire.AdminControllers
             _reportVoteRepo = reportVoteRepo;
         }
         [HttpPost("[action]")]
-        public async Task<IActionResult> GetReports(Guid userId)
+        public async Task<IActionResult> GetReports([FromQuery]ReportFilterDTO request)
         {
             try
             {
-                var response = await _reportVoteRepo.GetPendingReports(userId);
+                var response = await _reportVoteRepo.GetPendingReports(request);
                 return Ok(response);
             }
             catch (Exception ex)

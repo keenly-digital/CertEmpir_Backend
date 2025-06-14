@@ -11,12 +11,6 @@ namespace CertEmpire.Services
 {
     public class MyTaskRepo(ApplicationDbContext context) : Repository<ReviewTask>(context), IMyTaskRepo
     {
-        #region Admin Methods
-
-        //public async Task<Response<List<>>
-        #endregion
-
-
         public async Task<Response<object>> GetPendingTasks(TaskFilterDTO request)
         {
             Response<object> response;

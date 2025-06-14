@@ -7,6 +7,7 @@ using CertEmpire.Interfaces;
 using CertEmpire.Models;
 using CertEmpire.Services.EmailService;
 using Microsoft.EntityFrameworkCore;
+using static ReportAnswerDTO;
 
 namespace CertEmpire.Services
 {
@@ -19,12 +20,12 @@ namespace CertEmpire.Services
             _emailService = emailService;
             _context = context;
         }
-        public async Task<Response<List<AdminTasksResponse>>> GetPendingReports(Guid UserId)
+        public async Task<Response<List<AdminTasksResponse>>> GetPendingReports(ReportFilterDTO request)
         {
             Response<List<AdminTasksResponse>> response = new();
             List<AdminTasksResponse> list = new();
             //Get user data with user id
-            var userInfo = await _context.Users.FirstOrDefaultAsync(x => x.UserId.Equals(UserId));
+            var userInfo = await _context.Users.FirstOrDefaultAsync(x => x.UserId.Equals(request.UserId));
             if (userInfo == null)
             {
                 response = new Response<List<AdminTasksResponse>>(false, "User not found.", "", null);
@@ -39,8 +40,9 @@ namespace CertEmpire.Services
                 }
                 else
                 {
+                    int pageSize = request.PageNumber * 10; // Assuming PageSize is 10
                     //getting all the tasks
-                    var tasks = await _context.Reports.ToListAsync();
+                    var tasks = await _context.Reports.Take(pageSize).ToListAsync();
                     if (tasks.Any())
                     {
                         foreach (var item in tasks)
@@ -56,10 +58,17 @@ namespace CertEmpire.Services
                                 Reports = item.ReportName,
                                 Votes = voteSummary,
                                 RequestDate = item.Created,
-                                Status = item.Status.ToString()
+                                Status = item.Status.ToString(),
+                                Type = item.Type.ToString()
                             };
                             list.Add(res);
                         }
+                        int totalCount = await _context.Reports.CountAsync();
+                        var result = new 
+                        {
+                            data = list,
+                            results = totalCount
+                        };
                         response = new Response<List<AdminTasksResponse>>(true, "Pending reports retrieved successfully.", "", list);
                     }
                     else
@@ -103,7 +112,8 @@ namespace CertEmpire.Services
                     rt.VotedStatus,
                     rt.ReviewedAt,
                     rt.ReviewerExplanation,
-                    rt.IsCommunityVote
+                    rt.IsCommunityVote,
+                    report.Type
                 }).ToListAsync();
 
             // Decide what to return
