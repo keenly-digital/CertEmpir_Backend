@@ -8,7 +8,7 @@ namespace CertEmpire.Interfaces
 {
     public interface IReportVoteRepo : IRepository<ReportVote>
     {
-        Task<Response<List<AdminTasksResponse>>> GetPendingReports(ReportFilterDTO request);
+        Task<Response<object>> GetPendingReports(ReportFilterDTO request);
         Task<Response<object>> ViewReport(Guid reportId);
         Task<Response<string>> SubmitVoteByAdmin(SubmitAdminVoteDTO request, bool isCommunityVote);
     }

@@ -20,15 +20,15 @@ namespace CertEmpire.Services
             _emailService = emailService;
             _context = context;
         }
-        public async Task<Response<List<AdminTasksResponse>>> GetPendingReports(ReportFilterDTO request)
+        public async Task<Response<object>> GetPendingReports(ReportFilterDTO request)
         {
-            Response<List<AdminTasksResponse>> response = new();
+            Response<object> response = new();
             List<AdminTasksResponse> list = new();
             //Get user data with user id
             var userInfo = await _context.Users.FirstOrDefaultAsync(x => x.UserId.Equals(request.UserId));
             if (userInfo == null)
             {
-                response = new Response<List<AdminTasksResponse>>(false, "User not found.", "", null);
+                response = new Response<object>(false, "User not found.", "", null);
             }
             else
             {
@@ -36,7 +36,7 @@ namespace CertEmpire.Services
                 var userRole = await _context.UserRoles.FirstOrDefaultAsync(x => x.UserRoleId.Equals(userInfo.UserRoleId));
                 if (userRole == null || userRole.Tasks == false)
                 {
-                    response = new Response<List<AdminTasksResponse>>(false, "user is not allowed to view tasks.", "", default);
+                    response = new Response<object>(false, "user is not allowed to view tasks.", "", default);
                 }
                 else
                 {
@@ -69,11 +69,11 @@ namespace CertEmpire.Services
                             data = list,
                             results = totalCount
                         };
-                        response = new Response<List<AdminTasksResponse>>(true, "Pending reports retrieved successfully.", "", list);
+                        response = new Response<object>(true, "Pending reports retrieved successfully.", "", result);
                     }
                     else
                     {
-                        response = new Response<List<AdminTasksResponse>>(true, "No Pending reports found.", "", list);
+                        response = new Response<object>(true, "No Pending reports found.", "", list);
                     }
                 }
             }
