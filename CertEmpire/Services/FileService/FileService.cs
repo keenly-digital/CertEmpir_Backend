@@ -14,7 +14,7 @@ namespace CertEmpire.Services.FileService
             _env = env;
             _supabaseClient = supabaseClient;
         }
-        
+
         public async Task<string> ChangeProfilePic(ChangeProfilePic request)
         {
             if (request.Image == null || request.Image.Length == 0)
@@ -44,25 +44,20 @@ namespace CertEmpire.Services.FileService
                 throw new ArgumentException("Invalid File");
 
             string fileExtension = Path.GetExtension(file.FileName).ToLower();
-            string fileName = $"{file.FileName}";
-            //Read file into memory stream
-            using var memoryStream = new MemoryStream();
-            await file.CopyToAsync(memoryStream);
-            memoryStream.Position = 0; // Reset stream position
-            //Upload to Supabase Storage
-            var storage = _supabaseClient.Storage.From("quizfiles");
-            var fileBytes = memoryStream.ToArray();
-            var result = await storage.Upload(fileBytes, fileName, new Supabase.Storage.FileOptions
-            {
-                Upsert = true,
-                ContentType = file.ContentType ?? "application/octet-stream"
-            });
-            if (result==null)
-                throw new Exception($"Failed to upload file to Supabase. Status: {400}");
+            // Restrict uploads to .qzs files only
 
-            // Get public URL
-            var publicUrl = storage.GetPublicUrl(fileName);
-            return publicUrl;
+            string tempFolder = Path.Combine(Path.GetTempPath(), "uploads", "QuizFiles");
+            Directory.CreateDirectory(tempFolder);
+
+            string fileName = $"{file.FileName}";
+            string filePath = Path.Combine(tempFolder, fileName);
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+            var httpRequest = _httpContextAccessor.HttpContext.Request;
+            var imageLivePath = string.Concat("https://", httpRequest.Host.ToUriComponent(), httpRequest.PathBase.ToUriComponent(), "/uploads/QuizFiles/", fileName);
+            return imageLivePath; // Return relative path
         }
         public async Task<string> ExportFileAsync(string domainName, IFormFile file, string subDirectory)
         {

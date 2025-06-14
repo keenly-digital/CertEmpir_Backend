@@ -21,7 +21,6 @@ using System.Text;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
-
 // Add services to the container.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -137,8 +136,23 @@ builder.Services.AddCors(options =>
                           .AllowAnyMethod()
                           .AllowAnyHeader());
 });
+builder.Services.AddSingleton(provider =>
+{
+    var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL");
+    var supabaseKey = Environment.GetEnvironmentVariable("SUPABASE_KEY");
+
+    var options = new Supabase.SupabaseOptions { AutoConnectRealtime = false };
+    var client = new Supabase.Client(supabaseUrl, supabaseKey, options);
+    client.InitializeAsync().Wait(); // Safe to wait during app startup
+
+    return client;
+});
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 var app = builder.Build();
+if (app.Environment.IsDevelopment())
+{
+    DotNetEnv.Env.Load();
+}
 string QuestionImages = Path.Combine(Path.GetTempPath(), "uploads", "QuestionImages");
 Directory.CreateDirectory(QuestionImages);
 string ProfilePics = Path.Combine(Path.GetTempPath(),"uploads","ProfilePics");
