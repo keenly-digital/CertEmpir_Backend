@@ -31,11 +31,39 @@ namespace CertEmpire.AdminControllers
             }
         }
         [HttpGet("[action]")]
-        public async Task<IActionResult> ViewReport(Guid reportId)
+        public async Task<IActionResult> ViewQuestion(Guid reportId)
         {
             try
             {
-                var response = await _reportVoteRepo.ViewReport(reportId);
+                var response = await _reportVoteRepo.ViewQuestion(reportId);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                var response = new Response<object>(false, "Error", ex.Message, "");
+                return StatusCode(500, response);
+            }
+        }
+        [HttpGet("[action]")]
+        public async Task<IActionResult> ViewAnswer(Guid reportId)
+        {
+            try
+            {
+                var response = await _reportVoteRepo.ViewAnswer(reportId);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                var response = new Response<object>(false, "Error", ex.Message, "");
+                return StatusCode(500, response);
+            }
+        }
+        [HttpGet("[action]")]
+        public async Task<IActionResult> ViewExplanatin(Guid reportId)
+        {
+            try
+            {
+                var response = await _reportVoteRepo.ViewExplanatin(reportId);
                 return Ok(response);
             }
             catch (Exception ex)

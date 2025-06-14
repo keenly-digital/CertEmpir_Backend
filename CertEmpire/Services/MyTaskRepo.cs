@@ -11,7 +11,8 @@ namespace CertEmpire.Services
 {
     public class MyTaskRepo(ApplicationDbContext context) : Repository<ReviewTask>(context), IMyTaskRepo
     {
-        public async Task<Response<object>> GetPendingTasks(TaskFilterDTO request)
+        public async Task<Response<object>> 
+            GetPendingTasks(TaskFilterDTO request)
         {
             Response<object> response;
             List<UploadedFile> list = new List<UploadedFile>();

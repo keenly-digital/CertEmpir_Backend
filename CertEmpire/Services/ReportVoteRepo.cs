@@ -64,7 +64,7 @@ namespace CertEmpire.Services
                             list.Add(res);
                         }
                         int totalCount = await _context.Reports.CountAsync();
-                        var result = new 
+                        var result = new
                         {
                             data = list,
                             results = totalCount
@@ -79,7 +79,7 @@ namespace CertEmpire.Services
             }
             return response;
         }
-        public async Task<Response<object>> ViewReport(Guid reportId)
+        public async Task<Response<object>> ViewQuestion(Guid reportId)
         {
             Response<object> response = new();
             //Get report by id
@@ -131,6 +131,151 @@ namespace CertEmpire.Services
                 report.ExamName,
                 report.QuestionNumber,
                 Question = question.QuestionText,
+                SubmittedBy = submittedBy,
+                Votes = votes
+            };
+            return new Response<object>(true, "Report Info", "", result);
+        }
+        public async Task<Response<object>> ViewAnswer(Guid reportId)
+        {
+            Response<object> response = new();
+            //Get report by id
+            var report = await _context.Reports
+     .Where(r => r.ReportId == reportId)
+     .FirstOrDefaultAsync();
+
+            if (report == null)
+                return new Response<object>(false, "No report found.", "", "");
+
+            var question = await _context.Questions.FirstOrDefaultAsync(x => x.Id.Equals(report.TargetId));
+            if (question == null)
+                return new Response<object>(false, "Question not found or deleted.", "", "");
+            var submittedBy = await _context.Users
+                .Where(u => u.UserId == report.UserId) // adjust based on Report.UserId type
+                .Select(u => new
+                {
+                    u.UserName,
+                    Explanation = report.Explanation
+                }).FirstOrDefaultAsync();
+            List<string> CurrentAnswer = new List<string>();
+            foreach (var index in question.CorrectAnswerIndices)
+            {
+                if (index > 0 && index < question.Options.Count)
+                {
+                    var option = question.Options[index];
+                    CurrentAnswer.Add(option);
+                }
+            }
+            List<string> SuggestedAnswer = new List<string>();
+
+            foreach (var index in report.CorrectAnswerIndices)
+            {
+                if (index > 0 && index < question.Options.Count)
+                {
+                    var option = question.Options[index];
+                    SuggestedAnswer.Add(option);
+                }
+            }
+            // Get all review tasks (could be community or admin)
+            var reviewTasks = await (
+                from rt in _context.ReviewTasks
+                join u in _context.Users on rt.ReviewerUserId equals u.UserId
+                where rt.ReportId == reportId
+                select new
+                {
+                    u.UserName,
+                    rt.VotedStatus,
+                    rt.ReviewedAt,
+                    rt.ReviewerExplanation,
+                    rt.IsCommunityVote,
+                    report.Type
+                }).ToListAsync();
+
+            // Decide what to return
+            var votes = reviewTasks.Select(rt => new
+            {
+                rt.UserName,
+                Vote = rt.VotedStatus,
+                rt.ReviewedAt,
+                rt.ReviewerExplanation
+            }).ToList();
+
+            var result = new
+            {
+                ReportName = report.ReportName,
+                ExamName = report.ExamName,
+                QuestionNumber = report.QuestionNumber,
+                CurrentAnswer = CurrentAnswer,
+                Explanation = report.Explanation,
+                SuggestedAnswer = SuggestedAnswer,
+                SubmittedBy = submittedBy,
+                Votes = votes
+            };
+            return new Response<object>(true, "Report Info", "", result);
+        }
+        public async Task<Response<object>> ViewExplanatin(Guid reportId)
+        {
+            Response<object> response = new();
+            //Get report by id
+            var report = await _context.Reports
+     .Where(r => r.ReportId == reportId)
+     .FirstOrDefaultAsync();
+
+            if (report == null)
+                return new Response<object>(false, "No report found.", "", "");
+
+            var question = await _context.Questions.FirstOrDefaultAsync(x => x.Id.Equals(report.TargetId));
+            if (question == null)
+                return new Response<object>(false, "Question not found or deleted.", "", "");
+            var submittedBy = await _context.Users
+                .Where(u => u.UserId == report.UserId) // adjust based on Report.UserId type
+                .Select(u => new
+                {
+                    u.UserName,
+                    Explanation = report.Explanation
+                }).FirstOrDefaultAsync();
+            List<string> options = new List<string>();
+
+            foreach (var index in question.CorrectAnswerIndices)
+            {
+                if (index > 0 && index < question.Options.Count)
+                {
+                    var option = question.Options[index];
+                    options.Add(option);
+                }
+            }
+            // Get all review tasks (could be community or admin)
+            var reviewTasks = await (
+                from rt in _context.ReviewTasks
+                join u in _context.Users on rt.ReviewerUserId equals u.UserId
+                where rt.ReportId == reportId
+                select new
+                {
+                    u.UserName,
+                    rt.VotedStatus,
+                    rt.ReviewedAt,
+                    rt.ReviewerExplanation,
+                    rt.IsCommunityVote,
+                    report.Type
+                }).ToListAsync();
+
+            // Decide what to return
+            var votes = reviewTasks.Select(rt => new
+            {
+                rt.UserName,
+                Vote = rt.VotedStatus,
+                rt.ReviewedAt,
+                rt.ReviewerExplanation
+            }).ToList();
+
+            var result = new
+            {
+                ReportName = report.ReportName,
+                ExamName = report.ExamName,
+                QuestionNumber = report.QuestionNumber,
+                CurrentExplanation = question.Explanation,
+                Explanation = report.Explanation,
+                SuggestedAnswer = options,
                 SubmittedBy = submittedBy,
                 Votes = votes
             };
