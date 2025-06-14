@@ -1,4 +1,5 @@
-﻿using CertEmpire.Helpers.ResponseWrapper;
+﻿using CertEmpire.DTOs.MyTaskDTOs;
+using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using static ReportAnswerDTO;
@@ -35,6 +36,20 @@ namespace CertEmpire.AdminControllers
             try
             {
                 var response = await _reportVoteRepo.ViewReport(reportId);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                var response = new Response<object>(false, "Error", ex.Message, "");
+                return StatusCode(500, response);
+            }
+        }
+        [HttpPost("[action]")]
+        public async Task<IActionResult> SubmitVoteByAdmin([FromBody] SubmitAdminVoteDTO request, bool isCommunityVote = false)
+        {
+            try
+            {
+                var response = await _reportVoteRepo.SubmitVoteByAdmin(request, isCommunityVote);
                 return Ok(response);
             }
             catch (Exception ex)

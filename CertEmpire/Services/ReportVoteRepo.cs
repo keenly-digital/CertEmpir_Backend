@@ -194,7 +194,7 @@ namespace CertEmpire.Services
                 }
                 else
                 {
-
+                    response = new Response<string>(true, "Community vote sent successfully.", "", null);
                 }
                 response = new Response<string>(true, "Community vote sent successfully.", "", null);
             }
