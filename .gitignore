@@ -56,3 +56,4 @@ obj/
 /CertEmpire/obj/Debug/net8.0/staticwebassets/msbuild.buildMultiTargeting.CertEmpire.props
 /CertEmpire/obj/Debug/net8.0/staticwebassets/msbuild.buildTransitive.CertEmpire.props
 /CertEmpire/obj/CertEmpire.csproj.nuget.g.props
+/CertEmpire/bin/Debug/net8.0/appsettings.Development.json
