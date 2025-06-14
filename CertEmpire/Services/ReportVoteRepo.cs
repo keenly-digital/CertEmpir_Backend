@@ -190,7 +190,6 @@ namespace CertEmpire.Services
                             _emailService.SendEmail(email);
                         }
                     }
-
                 }
                 else
                 {

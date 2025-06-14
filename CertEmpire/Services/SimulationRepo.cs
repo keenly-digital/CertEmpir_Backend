@@ -768,10 +768,11 @@ namespace CertEmpire.Services
         public async Task<Response<string>> ExportQuizPdf(Guid quizId)
         {
             string domainNameFooter;
+            int questionsPerPage = 4;
             var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
             if (quiz == null)
                 return new Response<string>(false, "Quiz not found", "", "");
-            var domain = await _context.Domains.FirstOrDefaultAsync(x=>x.DomainURL.Equals(quiz.FileURL));
+            var domain = await _context.Domains.FirstOrDefaultAsync(x => x.DomainURL.Equals(quiz.FileURL));
             if (domain != null)
             {
                 domainNameFooter = domain.DomainName;
@@ -794,7 +795,7 @@ namespace CertEmpire.Services
                 catch { /* Log error if needed */ }
             }
             var fileNameWithoutextension = Path.GetFileNameWithoutExtension(quiz.FileName) ?? "QuizExport";
-            var fileName = $"{fileNameWithoutextension}+.pdf";
+            var fileName = $"{fileNameWithoutextension}.pdf";
             var filePath = Path.Combine(Path.GetTempPath(), fileName);
             var questionCounter = 0;
 
@@ -815,9 +816,9 @@ namespace CertEmpire.Services
             var pureCaseStudies = classifiedTopics.Where(x => x.IsCaseStudy).ToList();
 
             // Register font globally
-            string fontPath = Path.Combine("Fonts","Roboto", "static", "Roboto-Regular.ttf");
+            string fontPath = Path.Combine("Fonts", "Roboto", "static", "Roboto-Regular.ttf");
             FontManager.RegisterFont(File.OpenRead(fontPath));
-
+            //Cleaning text function to remove unwanted characters
             string CleanText(string input) =>
                 input.Replace("�", "")
                      .Replace("“", "\"")
@@ -928,11 +929,28 @@ namespace CertEmpire.Services
                             });
                         });
 
-                        page.Footer().Column(footerCol =>
+                        page.Footer().Element(footer =>
                         {
-                            footerCol.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
-                            footerCol.Item().AlignCenter().Text(domainNameFooter).FontSize(12).Italic().FontColor(Colors.Grey.Medium);
+                            footer.Column(col =>
+                            {
+                                col.Item().Row(row =>
+                                {
+                                    // Left: Page number
+                                    row.RelativeItem().AlignLeft().Text(text =>
+                                    {
+                                        text.CurrentPageNumber().FontSize(10).FontColor(Colors.Black).ExtraBold();
+                                    });
+
+                                    // Center: Domain name
+                                    row.RelativeItem().AlignCenter().Text(domainNameFooter)
+                                        .FontSize(12).Italic().FontColor(Colors.Black).SemiBold();
+
+                                    // Right: leave empty or add something later
+                                    row.RelativeItem();
+                                });
+                            });
                         });
+
 
                         page.Content().Element(contentRenderer);
                     });
@@ -941,16 +959,27 @@ namespace CertEmpire.Services
                 void RenderQuestionBlock(IContainer container, Models.Question q)
                 {
                     questionCounter++;
-                    container.PaddingBottom(2).Column(col =>
+                    container.PaddingBottom(25).Column(col =>
                     {
-                        col.Item().Text($"Question {questionCounter}").FontSize(14).Bold();
+                        col.Spacing(5);
+                        // Row: Horizontal line + Question title
+                        col.Item().AlignLeft().Column(innerCol =>
+                        {
+                            innerCol.Item().Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
+                            innerCol.Item().Text($"Question {questionCounter}")
+                                .FontSize(14).Bold().AlignCenter();
+                            innerCol.Item().Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
+                        });
 
+                        // Question Text
                         if (!string.IsNullOrWhiteSpace(q.QuestionText))
                             col.Item().Text(CleanText(q.QuestionText)).FontSize(12);
 
+                        // Question Image
                         if (!string.IsNullOrWhiteSpace(q.questionImageURL) && imageMap.TryGetValue(q.questionImageURL, out var qImg))
                             col.Item().Image(qImg).FitWidth();
 
+                        // Options
                         if (q.Options != null && q.Options.Any())
                         {
                             col.Item().Text("Options:").Bold();
@@ -958,35 +987,44 @@ namespace CertEmpire.Services
                             for (int i = 0; i < q.Options.Count; i++)
                             {
                                 string letter = ((char)('A' + i)).ToString(); // A, B, C, D...
-                                string optionText = $"{letter}. {CleanText(q.Options[i])}";
+                                string cleanedOption = CleanOptionText(q.Options[i]);
+                                string optionText = $"{letter}. {cleanedOption}";
 
                                 col.Item().Element(e => e.PaddingLeft(10).Text(optionText).FontSize(11));
                             }
                         }
+
+                        // Correct Answer
                         if (q.CorrectAnswerIndices.Any())
                         {
-                            var correctOpts = q.CorrectAnswerIndices
+                            var correctLetters = q.CorrectAnswerIndices
                                 .Where(i => i >= 0 && i < q.Options.Count)
-                                .Select(i => q.Options[i])
-                                .Where(s => !string.IsNullOrWhiteSpace(s));
+                                .Select(i => ((char)('A' + i)).ToString());
 
-                            col.Item().Text("Correct Answer:").Bold();
-                            foreach (var ca in correctOpts)
-                                col.Item().Element(e => e.PaddingLeft(10).Text(CleanText(ca)).FontSize(11));
+                            string answerText = $"Answer: {string.Join(", ", correctLetters)}";
+
+                            col.Item().AlignRight().Column(innerCol =>
+                            {
+                                innerCol.Item().Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
+                                innerCol.Item().Text(answerText).FontSize(11).Bold().AlignCenter();
+                                innerCol.Item().Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
+                            });
                         }
-
+                        // Explanation
                         if (!string.IsNullOrWhiteSpace(q.AnswerDescription))
                         {
                             col.Item().Text("Explanation:").Bold();
                             col.Item().Element(e => e.PaddingLeft(10).Text(CleanText(q.AnswerDescription)).FontSize(11));
                         }
 
+                        // Incorrect Explanation
                         if (!string.IsNullOrWhiteSpace(q.Explanation))
                         {
                             col.Item().Text("Why Incorrect Options are Wrong:").Bold();
                             col.Item().Element(e => e.PaddingLeft(10).Text(CleanText(q.Explanation)).FontSize(11));
                         }
 
+                        // Answer Image
                         if (!string.IsNullOrWhiteSpace(q.answerImageURL) && imageMap.TryGetValue(q.answerImageURL, out var aImg))
                             col.Item().Image(aImg).FitWidth();
                     });
@@ -999,15 +1037,25 @@ namespace CertEmpire.Services
                         container.Column(col =>
                         {
                             col.Item().Text(CleanText(title)).Bold().FontSize(14);
+
                             if (!string.IsNullOrWhiteSpace(description))
                                 col.Item().Text(CleanText(description)).FontSize(11).Italic();
+                        });
+                    });
 
+                    AddPageWithFooter(container =>
+                    {
+                        container.Column(col =>
+                        {
                             foreach (var q in topicQuestions)
-                                col.Item().Element(c => RenderQuestionBlock(c, q));
+                            {
+                                col.Item().Element(e =>
+                                    e.ShowOnce().Element(c => RenderQuestionBlock(c, q))
+                                );
+                            }
                         });
                     });
                 }
-
                 foreach (var topic in pureTopics)
                 {
                     if (topic.Questions.Any())
@@ -1017,15 +1065,23 @@ namespace CertEmpire.Services
                 foreach (var cs in pureCaseStudies)
                 {
                     if (cs.Questions.Any())
+                    {
                         AddPageWithFooter(container =>
                         {
                             container.Column(col =>
                             {
-                                col.Item().Text($"Case Study: {CleanText(cs.Topic.CaseStudy)}").Bold().FontSize(14);
+                                col.Item().Text($"Case Study: {CleanText(cs.Topic.CaseStudy)}")
+                                    .Bold().FontSize(14);
+
                                 foreach (var q in cs.Questions)
-                                    col.Item().Element(c => RenderQuestionBlock(c, q));
+                                {
+                                    col.Item().Element(e =>
+                                        e.ShowOnce().Element(c => RenderQuestionBlock(c, q))
+                                    );
+                                }
                             });
                         });
+                    }
                 }
 
                 if (generalQuestions.Any())
@@ -1201,6 +1257,14 @@ namespace CertEmpire.Services
                 response = new Response<string>(false, $"No domain found with this {domainName}.", "", "");
             }
             return response;
+        }
+        //Helper functions for clean options and answers
+        string CleanOptionText(string option)
+        {
+            if (string.IsNullOrWhiteSpace(option)) return string.Empty;
+
+            // Remove common leading patterns like "A. ", "1) ", "2. " etc.
+            return Regex.Replace(option.Trim(), @"^(?:[A-Z]\.|[0-9]+\)|[0-9]+\.)\s*", "", RegexOptions.IgnoreCase);
         }
         #endregion
 
