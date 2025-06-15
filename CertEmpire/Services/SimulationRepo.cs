@@ -1016,8 +1016,6 @@ namespace CertEmpire.Services
                                 });
                             }
                         }
-
-
                         // Correct Answer
                         if (q.CorrectAnswerIndices.Any())
                         {
@@ -1084,15 +1082,6 @@ namespace CertEmpire.Services
                             }
                         });
                     });
-
-                    //AddPageWithFooter(container =>
-                    //{
-                    //    container.Column(col =>
-                    //    {
-                    //        foreach (var q in topicQuestions)
-                    //            col.Item().Element(e => e.ShowOnce().Element(c => RenderQuestionBlock(c, q)));
-                    //    });
-                    //});
                 }
 
                 foreach (var topic in pureTopics)
@@ -1130,42 +1119,24 @@ namespace CertEmpire.Services
                                 }
                             });
                         });
-
-
-                        //AddPageWithFooter(container =>
-                        //{
-                        //    container.Column(col =>
-                        //    {
-                        //        foreach (var q in cs.Questions)
-                        //        {
-                        //            col.Item().Element(e =>
-                        //                e.ShowOnce().Element(c => RenderQuestionBlock(c, q))
-                        //            );
-                        //        }
-                        //    });
-                        //});
                     }
                     else if (cs.Questions.Any())
                     {
-                        // If there's no case study content, render only the questions
-                        AddPageWithFooter(container =>
+                        foreach (var q in cs.Questions)
                         {
-                            container.Column(col =>
+                            AddPageWithFooter(container =>
                             {
-                                foreach (var q in cs.Questions)
+                                container.Column(col =>
                                 {
-                                    col.Item().Element(e =>
-                                        e.ShowOnce().Element(c => RenderQuestionBlock(c, q))
-                                    );
-                                }
+                                    col.Item().Element(c => RenderQuestionBlock(c, q));
+                                });
                             });
-                        });
+                        }
                     }
                 }
-
-
                 if (generalQuestions.Any())
                     RenderTopicSection("General Questions", generalQuestions);
+
                 static IContainer CellStyle(IContainer container)
        => container.Background(Colors.White).Padding(10);
 
