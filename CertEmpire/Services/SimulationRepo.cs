@@ -1063,25 +1063,26 @@ namespace CertEmpire.Services
 
                 void RenderTopicSection(string title, List<Models.Question> topicQuestions)
                 {
+                    // Render a dedicated page for the topic title
                     AddPageWithFooter(container =>
                     {
                         container.Column(col =>
                         {
                             col.Item().PaddingBottom(10).Text(CleanText(title)).Bold().FontSize(14);
-                            //if (!string.IsNullOrWhiteSpace(description))
-                            //    col.Item().Element(e => RenderTextWithImages(e, description, imageMap));
-                            foreach (var q in topicQuestions)
-                            {
-                                AddPageWithFooter(container =>
-                                {
-                                    container.Column(col =>
-                                    {
-                                        col.Item().Element(c => RenderQuestionBlock(c, q));
-                                    });
-                                });
-                            }
                         });
                     });
+
+                    // Then render each question on its own page
+                    foreach (var q in topicQuestions)
+                    {
+                        AddPageWithFooter(container =>
+                        {
+                            container.Column(col =>
+                            {
+                                col.Item().Element(c => RenderQuestionBlock(c, q));
+                            });
+                        });
+                    }
                 }
 
                 foreach (var topic in pureTopics)
