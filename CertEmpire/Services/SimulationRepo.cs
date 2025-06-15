@@ -1095,30 +1095,32 @@ namespace CertEmpire.Services
                     if (cs.Questions.Any() && !string.IsNullOrWhiteSpace(cs.Topic.CaseStudy))
                     {
                         // Render Case Study section with justified description
+                        // 1. Case Study Title/Description on its own page
                         AddPageWithFooter(container =>
                         {
                             container.Column(col =>
                             {
-                                col.Item().Text("Case Study")
-                                    .Bold().FontSize(14);
+                                col.Item().Text("Case Study").Bold().FontSize(14);
 
-                                if (cs.Questions.Any() && !string.IsNullOrWhiteSpace(cs.Topic.Description))
+                                if (!string.IsNullOrWhiteSpace(cs.Topic.Description))
                                 {
                                     col.Item().PaddingBottom(10).Element(CellStyle).Text(CleanText(cs.Topic.Description)).Justify();
                                 }
-
-                                foreach (var q in cs.Questions)
-                                {
-                                    AddPageWithFooter(container =>
-                                    {
-                                        container.Column(col =>
-                                        {
-                                            col.Item().Element(c => RenderQuestionBlock(c, q));
-                                        });
-                                    });
-                                }
                             });
                         });
+
+                        // 2. Each question on its own page
+                        foreach (var q in cs.Questions)
+                        {
+                            AddPageWithFooter(container =>
+                            {
+                                container.Column(col =>
+                                {
+                                    col.Item().Element(c => RenderQuestionBlock(c, q));
+                                });
+                            });
+                        }
+
                     }
                     else if (cs.Questions.Any())
                     {
