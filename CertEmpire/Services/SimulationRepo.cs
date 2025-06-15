@@ -950,7 +950,7 @@ namespace CertEmpire.Services
                                 // ✅ Only render image — do not output URL text
                                 if (imageMap.TryGetValue(trimmed, out var imageBytes))
                                 {
-                                    col.Item().Image(imageBytes).FitWidth();
+                                    col.Item().ScaleToFit().MaxHeight(300).MaxWidth(500).Image(imageBytes);
                                 }
                                 else
                                 {
@@ -959,7 +959,7 @@ namespace CertEmpire.Services
                             }
                             else
                             {
-                                // ✅ Only render non-URL text
+                                // Only render non-URL text
                                 col.Item().Element(CellStyle).Text(CleanText(trimmed))
                                     .FontSize(11)
                                     .FontFamily("Roboto")
