@@ -115,7 +115,11 @@ namespace CertEmpire.Services
                     rt.IsCommunityVote,
                     report.Type
                 }).ToListAsync();
-
+            //count total votes for reports
+            int totalVotes = await _context.ReportVotes.CountAsync(x => x.ReportId == reportId);
+            //count upvotes for reports
+            int upVotes = await _context.ReportVotes.CountAsync(x => x.ReportId == reportId && x.Vote.Equals(true));
+            var voteSummary = $"{upVotes}/{totalVotes}";
             // Decide what to return
             var votes = reviewTasks.Select(rt => new
             {
@@ -127,11 +131,12 @@ namespace CertEmpire.Services
 
             var result = new
             {
-                report.ReportName,
-                report.ExamName,
-                report.QuestionNumber,
+                ReportName = report.ReportName,
+                ExamName = report.ExamName,
+                QuestionNumber = report.QuestionNumber,
                 Question = question.QuestionText,
                 SubmittedBy = submittedBy,
+                CommunityVotes = voteSummary,
                 Votes = votes
             };
             return new Response<object>(true, "Report Info", "", result);
@@ -157,6 +162,11 @@ namespace CertEmpire.Services
                     u.UserName,
                     Explanation = report.Explanation
                 }).FirstOrDefaultAsync();
+            //count total votes for reports
+            int totalVotes = await _context.ReportVotes.CountAsync(x => x.ReportId == reportId);
+            //count upvotes for reports
+            int upVotes = await _context.ReportVotes.CountAsync(x => x.ReportId == reportId && x.Vote.Equals(true));
+            var voteSummary = $"{upVotes}/{totalVotes}";
             List<string> CurrentAnswer = new List<string>();
             foreach (var index in question.CorrectAnswerIndices)
             {
@@ -209,6 +219,7 @@ namespace CertEmpire.Services
                 Explanation = report.Explanation,
                 SuggestedAnswer = SuggestedAnswer,
                 SubmittedBy = submittedBy,
+                CommunityVotes = voteSummary,
                 Votes = votes
             };
             return new Response<object>(true, "Report Info", "", result);
@@ -258,7 +269,11 @@ namespace CertEmpire.Services
                     rt.IsCommunityVote,
                     report.Type
                 }).ToListAsync();
-
+            //count total votes for reports
+            int totalVotes = await _context.ReportVotes.CountAsync(x => x.ReportId == reportId);
+            //count upvotes for reports
+            int upVotes = await _context.ReportVotes.CountAsync(x => x.ReportId == reportId && x.Vote.Equals(true));
+            var voteSummary = $"{upVotes}/{totalVotes}";
             // Decide what to return
             var votes = reviewTasks.Select(rt => new
             {
@@ -277,6 +292,7 @@ namespace CertEmpire.Services
                 Explanation = report.Explanation,
                 SuggestedAnswer = options,
                 SubmittedBy = submittedBy,
+                CommunityVotes = voteSummary,
                 Votes = votes
             };
             return new Response<object>(true, "Report Info", "", result);
