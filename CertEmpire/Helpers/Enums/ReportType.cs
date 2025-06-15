@@ -10,7 +10,7 @@
     {
         Pending,
         Approved,
-        Unapproved,
+        Disapprove,
         Voted
     }
     public enum WithdrawalMethod
