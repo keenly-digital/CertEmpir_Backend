@@ -809,7 +809,7 @@ namespace CertEmpire.Services
             {
                 Topic = t,
                 Questions = questions.Where(q => q.TopicId == t.TopicId).ToList(),
-                IsCaseStudy = !string.IsNullOrWhiteSpace(t.CaseStudy),
+                IsCaseStudy = !string.IsNullOrWhiteSpace(t.Description),
                 IsRealTopic = !string.IsNullOrWhiteSpace(t.TopicName)
             }).ToList();
 
@@ -1002,13 +1002,13 @@ namespace CertEmpire.Services
                                 {
                                     row.Spacing(5);
 
-                                    // ✅ LABEL forced top-aligned using Container
+                                    // LABEL forced top-aligned using Container
                                     row.ConstantItem(20).Element(e =>
                                     {
                                         return e.AlignTop().Height(20).PaddingTop(1).PaddingRight(2);
                                     }).Text($"{letter}.").FontSize(11).Bold();
 
-                                    // ✅ CONTENT: text and images, properly aligned
+                                    // CONTENT: text and images, properly aligned
                                     row.RelativeItem().Element(e => e.AlignTop()).Element(container =>
                                     {
                                         RenderTextWithImages(container, cleanedOption, imageMap);
@@ -1063,32 +1063,36 @@ namespace CertEmpire.Services
                     });
                 }
 
-                void RenderTopicSection(string title, string? description, List<Models.Question> topicQuestions)
+                void RenderTopicSection(string title, List<Models.Question> topicQuestions)
                 {
                     AddPageWithFooter(container =>
                     {
                         container.Column(col =>
                         {
-                            col.Item().Text(CleanText(title)).Bold().FontSize(14);
-                            if (!string.IsNullOrWhiteSpace(description))
-                                col.Item().Element(e => RenderTextWithImages(e, description, imageMap));
+                            col.Item().PaddingBottom(10).Text(CleanText(title)).Bold().FontSize(14);
+                            //if (!string.IsNullOrWhiteSpace(description))
+                            //    col.Item().Element(e => RenderTextWithImages(e, description, imageMap));
+                            foreach (var q in topicQuestions)
+                            {
+                                col.Item().Element(e => e.ShowOnce().Element(c => RenderQuestionBlock(c, q)));
+                            }
                         });
                     });
 
-                    AddPageWithFooter(container =>
-                    {
-                        container.Column(col =>
-                        {
-                            foreach (var q in topicQuestions)
-                                col.Item().Element(e => e.ShowOnce().Element(c => RenderQuestionBlock(c, q)));
-                        });
-                    });
+                    //AddPageWithFooter(container =>
+                    //{
+                    //    container.Column(col =>
+                    //    {
+                    //        foreach (var q in topicQuestions)
+                    //            col.Item().Element(e => e.ShowOnce().Element(c => RenderQuestionBlock(c, q)));
+                    //    });
+                    //});
                 }
 
                 foreach (var topic in pureTopics)
                 {
                     if (topic.Questions.Any())
-                        RenderTopicSection($"Topic: {topic.Topic.TopicName}", topic.Topic.Description, topic.Questions);
+                        RenderTopicSection($"Topic: {topic.Topic.TopicName}", topic.Questions);
                 }
 
                 foreach (var cs in pureCaseStudies)
@@ -1103,14 +1107,7 @@ namespace CertEmpire.Services
                                 col.Item().Text("Case Study")
                                     .Bold().FontSize(14);
 
-                                col.Item().Element(CellStyle).Text(CleanText(cs.Topic.Description)).Justify();
-                            });
-                        });
-                        
-                        AddPageWithFooter(container =>
-                        {
-                            container.Column(col =>
-                            {
+                                col.Item().PaddingBottom(10).Element(CellStyle).Text(CleanText(cs.Topic.Description)).Justify();
                                 foreach (var q in cs.Questions)
                                 {
                                     col.Item().Element(e =>
@@ -1119,6 +1116,19 @@ namespace CertEmpire.Services
                                 }
                             });
                         });
+                        
+                        //AddPageWithFooter(container =>
+                        //{
+                        //    container.Column(col =>
+                        //    {
+                        //        foreach (var q in cs.Questions)
+                        //        {
+                        //            col.Item().Element(e =>
+                        //                e.ShowOnce().Element(c => RenderQuestionBlock(c, q))
+                        //            );
+                        //        }
+                        //    });
+                        //});
                     }
                     else if (cs.Questions.Any())
                     {
@@ -1140,7 +1150,7 @@ namespace CertEmpire.Services
 
 
                 if (generalQuestions.Any())
-                    RenderTopicSection("General Questions", null, generalQuestions);
+                    RenderTopicSection("General Questions", generalQuestions);
                 static IContainer CellStyle(IContainer container)
        => container.Background(Colors.White).Padding(10);
 
