@@ -131,6 +131,7 @@ namespace CertEmpire.Services
 
             var result = new
             {
+                ReportId = report.ReportId,
                 ReportName = report.ReportName,
                 ExamName = report.ExamName,
                 QuestionNumber = report.QuestionNumber,
@@ -212,6 +213,7 @@ namespace CertEmpire.Services
 
             var result = new
             {
+                ReportId = report.ReportId,
                 ReportName = report.ReportName,
                 ExamName = report.ExamName,
                 QuestionNumber = report.QuestionNumber,
@@ -285,6 +287,7 @@ namespace CertEmpire.Services
 
             var result = new
             {
+                ReportId = report.ReportId,
                 ReportName = report.ReportName,
                 ExamName = report.ExamName,
                 QuestionNumber = report.QuestionNumber,
