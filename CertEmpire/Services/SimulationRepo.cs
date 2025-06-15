@@ -407,7 +407,7 @@ namespace CertEmpire.Services
 
             string domain = "https://exam-ai-production-2bdc.up.railway.app";
             // Match plain relative image paths
-            var matches = Regex.Matches(html, @"(/static/images/[^\s""']+\.(jpg|jpeg|png|gif))", RegexOptions.IgnoreCase);
+            var matches = Regex.Matches(html, @"(/static/images/.*?\.(jpg|jpeg|png|gif|bmp|webp))", RegexOptions.IgnoreCase);
 
             foreach (Match match in matches)
             {
@@ -1074,7 +1074,13 @@ namespace CertEmpire.Services
                             //    col.Item().Element(e => RenderTextWithImages(e, description, imageMap));
                             foreach (var q in topicQuestions)
                             {
-                                col.Item().Element(e => e.ShowOnce().Element(c => RenderQuestionBlock(c, q)));
+                                AddPageWithFooter(container =>
+                                {
+                                    container.Column(col =>
+                                    {
+                                        col.Item().Element(c => RenderQuestionBlock(c, q));
+                                    });
+                                });
                             }
                         });
                     });
@@ -1107,16 +1113,25 @@ namespace CertEmpire.Services
                                 col.Item().Text("Case Study")
                                     .Bold().FontSize(14);
 
-                                col.Item().PaddingBottom(10).Element(CellStyle).Text(CleanText(cs.Topic.Description)).Justify();
+                                if (cs.Questions.Any() && !string.IsNullOrWhiteSpace(cs.Topic.Description))
+                                {
+                                    col.Item().PaddingBottom(10).Element(CellStyle).Text(CleanText(cs.Topic.Description)).Justify();
+                                }
+
                                 foreach (var q in cs.Questions)
                                 {
-                                    col.Item().Element(e =>
-                                        e.ShowOnce().Element(c => RenderQuestionBlock(c, q))
-                                    );
+                                    AddPageWithFooter(container =>
+                                    {
+                                        container.Column(col =>
+                                        {
+                                            col.Item().Element(c => RenderQuestionBlock(c, q));
+                                        });
+                                    });
                                 }
                             });
                         });
-                        
+
+
                         //AddPageWithFooter(container =>
                         //{
                         //    container.Column(col =>
