@@ -406,57 +406,47 @@ namespace CertEmpire.Services
             if (string.IsNullOrWhiteSpace(html)) return html;
 
             string domain = "https://exam-ai-production-2bdc.up.railway.app";
-            var matches = Regex.Matches(html, @"(/static/images/[^""']+\.(jpg|jpeg|png|gif))", RegexOptions.IgnoreCase);
+            // Match plain relative image paths
+            var matches = Regex.Matches(html, @"(/static/images/[^\s""']+\.(jpg|jpeg|png|gif))", RegexOptions.IgnoreCase);
+
             foreach (Match match in matches)
             {
-                if (match.Groups.Count > 1)
+                string relativePath = match.Groups[1].Value;
+
+                if (string.IsNullOrWhiteSpace(relativePath))
+                    continue;
+
+                string aiImageUrl = $"https://exam-ai-production-2bdc.up.railway.app{relativePath}";
+
+                try
                 {
-                    string relativePath = match.Groups[1].Value;
-                    string fileName = Path.GetFileName(relativePath);
+                    var imageBytes = await _httpClient.GetByteArrayAsync(aiImageUrl);
+                    string fileExtension = Path.GetExtension(aiImageUrl).ToLower();
 
-                    // Ensure image is from AI domain
-                    string aiImageUrl = $"{domain}{relativePath}";
-                    if (!aiImageUrl.StartsWith(domain)) continue;
+                    if (!new[] { ".jpg", ".jpeg", ".png", ".gif" }.Contains(fileExtension))
+                        continue;
 
-                    try
+                    string newFileName = $"{fileId}/{Guid.NewGuid()}{fileExtension}";
+                    var bucket = _supabaseClient.Storage.From("file-images");
+
+                    var result = await bucket.Upload(imageBytes, newFileName, new Supabase.Storage.FileOptions
                     {
-                        var httpClient = new HttpClient();
-                        var imageBytes = await httpClient.GetByteArrayAsync(aiImageUrl);
+                        Upsert = true,
+                        ContentType = "image/" + fileExtension.TrimStart('.')
+                    });
 
-                        string fileExtension = Path.GetExtension(aiImageUrl).ToLower();
-                        if (string.IsNullOrEmpty(fileExtension) || !new[] { ".jpg", ".jpeg", ".png", ".gif" }.Contains(fileExtension))
-                            continue;
+                    if (result == null)
+                        throw new Exception("Image upload failed");
 
-                        // Generate unique file name
-                        string newFileName = $"{fileId}/{Guid.NewGuid()}{fileExtension}"; // Organized in folder by fileId
+                    string newImageUrl = bucket.GetPublicUrl(newFileName);
 
-                        // Upload to Supabase
-                        var bucket = _supabaseClient.Storage.From("file-images");
-
-                        // Upload image bytes
-                        var result = await bucket.Upload(imageBytes, newFileName, new Supabase.Storage.FileOptions
-                        {
-                            Upsert = true,
-                            ContentType = "image/" + fileExtension.TrimStart('.') // e.g., image/png
-                        });
-
-                        if (result == null)
-                            throw new Exception("Image upload to Supabase failed");
-
-                        // Get public URL
-                        string newImageUrl = bucket.GetPublicUrl(newFileName);
-
-                        Console.WriteLine($"Uploaded to Supabase: {newImageUrl}");
-
-
-                        // Replace the entire <img> tag with just the new hosted URL
-                        html = html.Replace(match.Value, newImageUrl);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error downloading or saving image: {aiImageUrl} - {ex.Message}");
-                        html = html.Replace(match.Value, ""); // Remove broken image tag
-                    }
+                    // Replace only the URL part in text
+                    html = html.Replace(relativePath, newImageUrl);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error processing image: {aiImageUrl} — {ex.Message}");
+                    html = html.Replace(relativePath, ""); // Optional: remove broken path
                 }
             }
 
