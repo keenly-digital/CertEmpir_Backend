@@ -780,8 +780,6 @@ namespace CertEmpire.Services
         public async Task<Response<string>> ExportQuizPdf(Guid quizId)
         {
             string domainNameFooter;
-            int questionsPerPage = 4;
-
             var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
             if (quiz == null)
                 return new Response<string>(false, "Quiz not found", "", "");
@@ -793,30 +791,30 @@ namespace CertEmpire.Services
             var topics = await _context.Topics.Where(t => t.FileId == quizId).ToListAsync();
 
             var imageMap = new Dictionary<string, byte[]>();
-            var allUrls = questions
-                .SelectMany(q => new[] {
-            q.questionImageURL, q.answerImageURL
-                }.Concat(q.Options ?? new List<string>())
-                 ).Concat(topics.Select(t => t.CaseStudy)) // if case study is an image URL
-                .Where(url => !string.IsNullOrWhiteSpace(url))
-                .Distinct();
+            Regex urlRegex = new Regex(@"https?:\/\/[^\s""']+\.(jpg|jpeg|png|gif|bmp|webp)", RegexOptions.IgnoreCase);
+
+            var allTextFields = questions
+                .SelectMany(q => new[] { q.QuestionText, q.Explanation, q.AnswerDescription }
+                .Concat(q.Options ?? new List<string>()))
+                .Concat(topics.SelectMany(t => new[] { t.CaseStudy, t.Description }))
+                .Where(s => !string.IsNullOrWhiteSpace(s));
+
+            var allUrls = allTextFields
+                .SelectMany(text => urlRegex.Matches(text).Select(m => m.Value))
+                .Distinct()
+                .ToList();
 
             foreach (var url in allUrls)
             {
-                try
-                {
-                    imageMap[url] = await _httpClient.GetByteArrayAsync(url);
-                }
-                catch { }
+                try { imageMap[url] = await _httpClient.GetByteArrayAsync(url); }
+                catch { /* log if needed */ }
             }
 
             string fileName = $"{Path.GetFileNameWithoutExtension(quiz.FileName) ?? "QuizExport"}.pdf";
             string filePath = Path.Combine(Path.GetTempPath(), fileName);
             int questionCounter = 0;
 
-            // Organize Topics and Questions
             var generalQuestions = questions.Where(q => !q.TopicId.HasValue || q.TopicId == Guid.Empty).ToList();
-
             var classifiedTopics = topics.Select(t => new
             {
                 Topic = t,
@@ -884,8 +882,8 @@ namespace CertEmpire.Services
                     });
                     page.Content().AlignCenter().Column(col =>
                     {
-                        col.Item().Text($"Questions Count: {questions.Count}").FontSize(18);
-                        col.Item().Text("Version: 1.0").FontSize(18);
+                        col.Item().PaddingTop(10).Text($"Questions Count: {questions.Count}").FontSize(25).ExtraBold();
+                        col.Item().PaddingTop(10).Text("Version: 1.0").FontSize(25).ExtraBold();
                     });
                 });
 
@@ -929,63 +927,147 @@ namespace CertEmpire.Services
                     });
                 }
 
+                void RenderTextWithImages(IContainer container, string text, Dictionary<string, byte[]> imageMap)
+                {
+                    if (string.IsNullOrWhiteSpace(text))
+                        return;
+
+                    var parts = Regex.Split(text, @"(https?:\/\/[^\s""']+\.(?:jpg|jpeg|png|gif|bmp|webp))", RegexOptions.IgnoreCase);
+
+                    container.Column(col =>
+                    {
+                        foreach (var part in parts)
+                        {
+                            string trimmed = part.Trim();
+
+                            if (string.IsNullOrWhiteSpace(trimmed))
+                                continue;
+
+                            bool isImageUrl = Regex.IsMatch(trimmed, @"^https?:\/\/[^\s""']+\.(jpg|jpeg|png|gif|bmp|webp)$", RegexOptions.IgnoreCase);
+
+                            if (isImageUrl)
+                            {
+                                // ✅ Only render image — do not output URL text
+                                if (imageMap.TryGetValue(trimmed, out var imageBytes))
+                                {
+                                    col.Item().Image(imageBytes).FitWidth();
+                                }
+                                else
+                                {
+                                    col.Item().Text("[Image failed to load]").FontColor(Colors.Red.Medium);
+                                }
+                            }
+                            else
+                            {
+                                // ✅ Only render non-URL text
+                                col.Item().Element(CellStyle).Text(CleanText(trimmed))
+                                    .FontSize(11)
+                                    .FontFamily("Roboto")
+                                    .Justify();
+                            }
+                        }
+                    });
+                }
+
                 void RenderQuestionBlock(IContainer container, Models.Question q)
                 {
                     questionCounter++;
+
                     container.PaddingBottom(25).Column(col =>
                     {
                         col.Spacing(5);
-                        col.Item().Text($"Question {questionCounter}").FontSize(14).Bold();
+                        col.Item().AlignLeft().Column(innerCol =>
+                        {
+                            innerCol.Item().Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
+                            innerCol.Item().Text($"Question {questionCounter}")
+                                .FontSize(14).Bold().AlignCenter();
+                            innerCol.Item().Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
+                        });
 
+                        // Question Text + Inline Images
                         if (!string.IsNullOrWhiteSpace(q.QuestionText))
-                            col.Item().Text(CleanText(q.QuestionText)).FontSize(12);
+                        {
+                            col.Item().Element(e =>
+                                RenderTextWithImages(e, q.QuestionText, imageMap)
+                            );
+                        }
 
+                        // Question Image
                         if (!string.IsNullOrWhiteSpace(q.questionImageURL) && imageMap.TryGetValue(q.questionImageURL, out var qImg))
                             col.Item().Image(qImg).FitWidth();
 
                         if (q.Options != null && q.Options.Any())
                         {
-                            col.Item().Text("Options:").Bold();
+                            col.Item().PaddingTop(10).Text("Options:").Bold();
+
                             for (int i = 0; i < q.Options.Count; i++)
                             {
                                 string letter = ((char)('A' + i)).ToString();
-                                string optionText = $"{letter}. {CleanText(q.Options[i])}";
+                                string rawOption = q.Options[i] ?? "";
 
-                                if (imageMap.TryGetValue(q.Options[i], out var optImg))
-                                    col.Item().Row(r =>
+                                // Clean option: remove prefixes like "A)", "1.", etc.
+                                string cleanedOption = Regex.Replace(rawOption.Trim(), @"^\s*[\dA-Za-z]\s*[\.\)\-]?\s*", "");
+
+                                col.Item().PaddingBottom(8).Row(row =>
+                                {
+                                    row.Spacing(5);
+
+                                    // ✅ LABEL forced top-aligned using Container
+                                    row.ConstantItem(20).Element(e =>
                                     {
-                                        r.Spacing(5);
-                                        r.ConstantItem(25).Text($"{letter}").Bold();
-                                        r.RelativeItem().Image(optImg).FitWidth();
-                                    });
+                                        return e.AlignTop().Height(20).PaddingTop(1).PaddingRight(2);
+                                    }).Text($"{letter}.").FontSize(11).Bold();
 
-                                else
-                                    col.Item().Element(e => e.PaddingLeft(10).Text(optionText).FontSize(11));
+                                    // ✅ CONTENT: text and images, properly aligned
+                                    row.RelativeItem().Element(e => e.AlignTop()).Element(container =>
+                                    {
+                                        RenderTextWithImages(container, cleanedOption, imageMap);
+                                    });
+                                });
                             }
                         }
 
+
+                        // Correct Answer
                         if (q.CorrectAnswerIndices.Any())
                         {
                             var correctLetters = q.CorrectAnswerIndices
                                 .Where(i => i >= 0 && i < q.Options.Count)
                                 .Select(i => ((char)('A' + i)).ToString());
+
                             string answerText = $"Answer: {string.Join(", ", correctLetters)}";
 
-                            col.Item().AlignRight().Text(answerText).FontSize(11).Bold();
+                            col.Item().AlignRight().Column(innerCol =>
+                            {
+                                innerCol.Item().Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
+                                innerCol.Item().Text(answerText).FontSize(11).Bold().AlignCenter();
+                                innerCol.Item().Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
+                            });
                         }
 
+                        // Answer Description
                         if (!string.IsNullOrWhiteSpace(q.AnswerDescription))
                         {
                             col.Item().Text("Explanation:").Bold();
-                            col.Item().Element(e => e.PaddingLeft(10).Text(CleanText(q.AnswerDescription)).FontSize(11));
+                            col.Item().Element(e =>
+                                e.PaddingLeft(10).Element(inner =>
+                                    RenderTextWithImages(inner, q.AnswerDescription, imageMap)
+                                )
+                            );
                         }
 
+                        // Incorrect Option Explanation
                         if (!string.IsNullOrWhiteSpace(q.Explanation))
                         {
                             col.Item().Text("Why Incorrect Options are Wrong:").Bold();
-                            col.Item().Element(e => e.PaddingLeft(10).Text(CleanText(q.Explanation)).FontSize(11));
+                            col.Item().Element(e =>
+                                e.PaddingLeft(10).Element(inner =>
+                                    RenderTextWithImages(inner, q.Explanation, imageMap)
+                                )
+                            );
                         }
 
+                        // Answer Image
                         if (!string.IsNullOrWhiteSpace(q.answerImageURL) && imageMap.TryGetValue(q.answerImageURL, out var aImg))
                             col.Item().Image(aImg).FitWidth();
                     });
@@ -999,9 +1081,7 @@ namespace CertEmpire.Services
                         {
                             col.Item().Text(CleanText(title)).Bold().FontSize(14);
                             if (!string.IsNullOrWhiteSpace(description))
-                                col.Item().Text(CleanText(description)).FontSize(11).Italic();
-                            if (imageMap.TryGetValue(description ?? "", out var descImg))
-                                col.Item().Image(descImg).FitWidth();
+                                col.Item().Element(e => RenderTextWithImages(e, description, imageMap));
                         });
                     });
 
@@ -1023,12 +1103,56 @@ namespace CertEmpire.Services
 
                 foreach (var cs in pureCaseStudies)
                 {
-                    if (cs.Questions.Any())
-                        RenderTopicSection($"Case Study", cs.Topic.CaseStudy, cs.Questions);
+                    if (cs.Questions.Any() && !string.IsNullOrWhiteSpace(cs.Topic.CaseStudy))
+                    {
+                        // Render Case Study section with justified description
+                        AddPageWithFooter(container =>
+                        {
+                            container.Column(col =>
+                            {
+                                col.Item().Text("Case Study")
+                                    .Bold().FontSize(14);
+
+                                col.Item().Element(CellStyle).Text(CleanText(cs.Topic.Description)).Justify();
+                            });
+                        });
+                        
+                        AddPageWithFooter(container =>
+                        {
+                            container.Column(col =>
+                            {
+                                foreach (var q in cs.Questions)
+                                {
+                                    col.Item().Element(e =>
+                                        e.ShowOnce().Element(c => RenderQuestionBlock(c, q))
+                                    );
+                                }
+                            });
+                        });
+                    }
+                    else if (cs.Questions.Any())
+                    {
+                        // If there's no case study content, render only the questions
+                        AddPageWithFooter(container =>
+                        {
+                            container.Column(col =>
+                            {
+                                foreach (var q in cs.Questions)
+                                {
+                                    col.Item().Element(e =>
+                                        e.ShowOnce().Element(c => RenderQuestionBlock(c, q))
+                                    );
+                                }
+                            });
+                        });
+                    }
                 }
+
 
                 if (generalQuestions.Any())
                     RenderTopicSection("General Questions", null, generalQuestions);
+                static IContainer CellStyle(IContainer container)
+       => container.Background(Colors.White).Padding(10);
 
             }).GeneratePdf(filePath);
 
