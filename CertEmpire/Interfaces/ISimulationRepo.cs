@@ -5,7 +5,7 @@ namespace CertEmpire.Interfaces
 {
     public interface ISimulationRepo
     {
-        Task<Response<object>> PracticeOnline(Guid fileId);
+        Task<Response<object>> PracticeOnline(Guid fileId, int? PageNumber);
         Task<Response<object>> GetAllFiles(string email);
         Task<Response<object>> Create(IFormFile file, string email);
         Task<Response<CreateQuizResponse>> CreateQuiz(CreateQuizRequest request);

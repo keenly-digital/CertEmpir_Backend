@@ -5,6 +5,7 @@ using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using CertEmpire.Models;
 using CertEmpire.Services.FileService;
+using DocumentFormat.OpenXml.Bibliography;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using EncryptionDecryptionUsingSymmetricKey;
@@ -1330,18 +1331,22 @@ namespace CertEmpire.Services
 
         #region Methods for user
         //Practice online for user
-        public async Task<Response<object>> PracticeOnline(Guid fileId)
+        public async Task<Response<object>> PracticeOnline(Guid fileId, int? PageNumber)
         {
             var fileContent = (dynamic)null;
             Response<object> response = new();
             ExamDTO examDTO = new();
+            if (PageNumber == null)
+            {
+                PageNumber = 1;
+            }
             //Getting file information from the database
             var fileInfo = await _context.UploadedFiles.FindAsync(fileId);
             if (fileInfo != null)
             {
                 if (string.IsNullOrEmpty(fileInfo.FileURL))
                 {
-                    fileContent = await GetFileContent(fileId);
+                    fileContent = await GetFileContent(fileId, PageNumber);
                     response = new Response<object>(true, "File Content", "", fileContent);
                     return response;
                 }
@@ -1351,7 +1356,7 @@ namespace CertEmpire.Services
                     var questions = await _context.Questions.Where(x => x.FileId.Equals(fileId)).ToListAsync();
                     if (questions.Count() > 0)
                     {
-                        fileContent = await GetFileContent(fileId);
+                        fileContent = await GetFileContent(fileId, PageNumber);
                         response = new Response<object>(true, "File Content", "", fileContent);
                         return response;
                     }
@@ -1443,10 +1448,11 @@ namespace CertEmpire.Services
                 return new Response<UploadedFile>(false, "Error updating file.", ex.Message, null);
             }
         }
-        private async Task<object> GetFileContent(Guid quizId)
+        private async Task<object> GetFileContent(Guid quizId, int? pageNumber)
         {
             try
             {
+                int pageSize = 10;
                 var uploadedFile = await _context.UploadedFiles.FindAsync(quizId);
                 if (uploadedFile == null)
                     return new Response<object>(false, "File not found", "", null);
@@ -1454,7 +1460,7 @@ namespace CertEmpire.Services
                 var allTopics = _context.Topics.Where(t => t.FileId == quizId).ToList();
                 var allQuestions = _context.Questions
                     .Where(q => q.FileId == quizId)
-                    .OrderBy(q => q.Created)
+                    .OrderBy(q => q.Created).Skip((int)(pageNumber - 1) * pageSize).Take(pageSize)
                     .ToList();
 
                 var caseStudies = allTopics
