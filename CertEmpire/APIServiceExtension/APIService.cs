@@ -3,6 +3,7 @@ using System.Text.Json;
 
 namespace CertEmpire.APIServiceExtension
 {
+
     public class APIService
     {
         //private readonly HttpClient _httpClient;
