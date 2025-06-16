@@ -20,7 +20,7 @@ namespace CertEmpire.Services
             }
             var topic = new TopicEntity
             {
-                TopicId = Guid.Empty,
+                TopicId = request.TopicId,
                 FileId = request.FileId,
                 CaseStudy = caseStudy,
                 CaseStudyId = Guid.NewGuid(),

@@ -804,18 +804,64 @@ namespace CertEmpire.Services
             string filePath = Path.Combine(Path.GetTempPath(), fileName);
             int questionCounter = 0;
 
-            var generalQuestions = questions.Where(q => !q.TopicId.HasValue || q.TopicId == Guid.Empty).ToList();
-            var classifiedTopics = topics.Select(t => new
+            // Fix the de-duplication logic - use Distinct() with a proper comparer
+            var uniqueQuestions = questions
+                .GroupBy(q => q.QuestionId)
+                .Select(g => g.First())
+                .ToList();
+
+            // Verify the count matches your expectations
+            //if (uniqueQuestions.Count != 119)
+            //{
+            //    // Log or handle mismatch
+            //}
+
+            // Fix the topic/case study organization logic
+            var pureTopics = new List<(TopicEntity Topic, List<Question> Questions)>();
+            var topicWithCaseStudies = new List<(TopicEntity Topic, string CaseStudy, List<Question> Questions)>();
+            var standaloneCaseStudies = new List<(string CaseStudy, List<Question> Questions)>();
+
+            foreach (var topic in topics)
             {
-                Topic = t,
-                Questions = questions.Where(q => q.TopicId == t.TopicId).ToList(),
-                IsCaseStudy = !string.IsNullOrWhiteSpace(t.Description),
-                IsRealTopic = !string.IsNullOrWhiteSpace(t.TopicName)
-            }).ToList();
+                // Step 1: Questions linked to a case study under this topic
+                var caseStudyQuestions = uniqueQuestions
+                    .Where(q =>
+                        topic.CaseStudyId != Guid.Empty &&
+                        q.CaseStudyId == topic.CaseStudyId &&
+                        topic.CaseStudyTopicId == topic.TopicId
+                    )
+                    .ToList();
 
-            var pureTopics = classifiedTopics.Where(x => x.IsRealTopic && !x.IsCaseStudy).ToList();
-            var pureCaseStudies = classifiedTopics.Where(x => x.IsCaseStudy).ToList();
+                // Step 2: Questions linked directly to topic (not through a case study)
+                var topicOnlyQuestions = uniqueQuestions
+                    .Where(q =>
+                        q.TopicId == topic.TopicId &&
+                        q.CaseStudyId == Guid.Empty &&
+                        topic.CaseStudyTopicId == Guid.Empty
+                    )
+                    .ToList();
 
+                bool hasTopicName = !string.IsNullOrWhiteSpace(topic.TopicName);
+                bool hasCaseStudy = !string.IsNullOrWhiteSpace(topic.Description);
+
+                if (hasTopicName && hasCaseStudy)
+                {
+                    topicWithCaseStudies.Add((topic, topic.Description, caseStudyQuestions));
+                }
+                else if (hasTopicName)
+                {
+                    pureTopics.Add((topic, topicOnlyQuestions));
+                }
+                else if (hasCaseStudy)
+                {
+                    standaloneCaseStudies.Add((topic.Description, caseStudyQuestions));
+                }
+            }
+            // Make sure general questions are truly general
+            var generalQuestions = uniqueQuestions
+                .Where(q => (!q.TopicId.HasValue || q.TopicId == Guid.Empty) &&
+                           (!q.CaseStudyId.HasValue || q.CaseStudyId == Guid.Empty))
+                .ToList();
             string CleanText(string input) => input.Replace("�", "").Replace("“", "\"").Replace("”", "\"").Replace("–", "-").Replace("‘", "'").Replace("’", "'");
 
             string fontPath = Path.Combine("Fonts", "Roboto", "static", "Roboto-Regular.ttf");
@@ -870,10 +916,13 @@ namespace CertEmpire.Services
                             col.Item().AlignCenter().Text(domainNameFooter).FontSize(12).Italic().FontColor(Colors.Grey.Medium);
                         });
                     });
-                    page.Content().AlignCenter().Column(col =>
+                    page.Content()
+                    .AlignMiddle()
+                    .AlignCenter()
+                    .Column(col =>
                     {
-                        col.Item().PaddingTop(10).Text($"Questions Count: {questions.Count}").FontSize(25).ExtraBold();
-                        col.Item().PaddingTop(10).Text("Version: 1.0").FontSize(25).ExtraBold();
+                        col.Item().Text($"Questions Count: {questions.Count}").FontSize(25).ExtraBold();
+                        col.Item().Text("Version: 1.0").FontSize(25).ExtraBold();
                     });
                 });
 
@@ -968,7 +1017,7 @@ namespace CertEmpire.Services
                         col.Spacing(5);
                         col.Item().AlignLeft().Column(innerCol =>
                         {
-                            innerCol.Item().Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
+                            innerCol.Item().PaddingTop(10).Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
                             innerCol.Item().Text($"Question {questionCounter}")
                                 .FontSize(14).Bold().AlignCenter();
                             innerCol.Item().Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
@@ -1061,84 +1110,54 @@ namespace CertEmpire.Services
                     });
                 }
 
-                void RenderTopicSection(string title, List<Models.Question> topicQuestions)
+                void AddQuestionPage(string? heading, Models.Question q)
                 {
-                    // Render a dedicated page for the topic title
                     AddPageWithFooter(container =>
                     {
                         container.Column(col =>
                         {
-                            col.Item().PaddingBottom(10).Text(CleanText(title)).Bold().FontSize(14);
+                            if (!string.IsNullOrWhiteSpace(heading))
+                                col.Item().Text(CleanText(heading)).Bold().FontSize(14);
+
+                            col.Item().Element(c => RenderQuestionBlock(c, q));
                         });
                     });
-
-                    // Then render each question on its own page
-                    foreach (var q in topicQuestions)
-                    {
-                        AddPageWithFooter(container =>
-                        {
-                            container.Column(col =>
-                            {
-                                col.Item().Element(c => RenderQuestionBlock(c, q));
-                            });
-                        });
-                    }
                 }
 
-                foreach (var topic in pureTopics)
+                void AddCaseStudyPage(string heading, string content)
                 {
-                    if (topic.Questions.Any())
-                        RenderTopicSection($"Topic: {topic.Topic.TopicName}", topic.Questions);
-                }
-
-                foreach (var cs in pureCaseStudies)
-                {
-                    if (cs.Questions.Any() && !string.IsNullOrWhiteSpace(cs.Topic.CaseStudy))
+                    AddPageWithFooter(container =>
                     {
-                        // Render Case Study section with justified description
-                        // 1. Case Study Title/Description on its own page
-                        AddPageWithFooter(container =>
+                        container.Column(col =>
                         {
-                            container.Column(col =>
-                            {
-                                col.Item().Text("Case Study").Bold().FontSize(14);
-
-                                if (!string.IsNullOrWhiteSpace(cs.Topic.Description))
-                                {
-                                    col.Item().PaddingBottom(10).Element(CellStyle).Text(CleanText(cs.Topic.Description)).Justify();
-                                }
-                            });
+                            col.Item().Text(CleanText(heading)).Bold().FontSize(14);
+                            col.Item().Text(CleanText(content)).Justify().FontSize(11);
                         });
-
-                        // 2. Each question on its own page
-                        foreach (var q in cs.Questions)
-                        {
-                            AddPageWithFooter(container =>
-                            {
-                                container.Column(col =>
-                                {
-                                    col.Item().Element(c => RenderQuestionBlock(c, q));
-                                });
-                            });
-                        }
-
-                    }
-                    else if (cs.Questions.Any())
-                    {
-                        foreach (var q in cs.Questions)
-                        {
-                            AddPageWithFooter(container =>
-                            {
-                                container.Column(col =>
-                                {
-                                    col.Item().Element(c => RenderQuestionBlock(c, q));
-                                });
-                            });
-                        }
-                    }
+                    });
                 }
-                if (generalQuestions.Any())
-                    RenderTopicSection("General Questions", generalQuestions);
+                foreach (var q in generalQuestions)
+                    AddQuestionPage(string.Empty, q);
+
+                foreach (var item in topicWithCaseStudies)
+                {
+                    AddCaseStudyPage($"Topic: {item.Topic.TopicName}", item.CaseStudy);
+                    foreach (var q in item.Questions)
+                        AddQuestionPage(null, q);
+                }
+
+                foreach (var item in pureTopics)
+                {
+                    var title = $"Topic: {item.Topic.TopicName}";
+                    foreach (var q in item.Questions)
+                        AddQuestionPage(title, q);
+                }
+
+                foreach (var item in standaloneCaseStudies)
+                {
+                    AddCaseStudyPage("Case Study", item.CaseStudy);
+                    foreach (var q in item.Questions)
+                        AddQuestionPage(null, q);
+                }
 
                 static IContainer CellStyle(IContainer container)
        => container.Background(Colors.White).Padding(10);
@@ -1150,22 +1169,6 @@ namespace CertEmpire.Services
             var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
 
             return new Response<string>(true, "PDF exported successfully.", "", uploadedPath);
-        }
-
-        public Action<IContainer> RenderQuestion(Models.Question q, string questionImageUrl, string answerImageUrl, Dictionary<string, byte[]> imageMap)
-        {
-            return container => container.Column(column =>
-            {
-                column.Item().Text($"Q: {q.QuestionText}").Bold();
-
-                if (!string.IsNullOrWhiteSpace(questionImageUrl) && imageMap.TryGetValue(questionImageUrl, out var qImg))
-                    column.Item().Image(qImg).FitArea();
-
-                column.Item().Text($"A: {q.CorrectAnswerIndices}").FontColor(Colors.Green.Medium);
-
-                if (!string.IsNullOrWhiteSpace(answerImageUrl) && imageMap.TryGetValue(answerImageUrl, out var aImg))
-                    column.Item().Image(aImg).FitArea();
-            });
         }
         private async Task<Response<string>> ExportQuizPdf(string domainName, Guid quizId)
         {
