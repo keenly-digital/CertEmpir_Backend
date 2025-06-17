@@ -1457,112 +1457,91 @@ namespace CertEmpire.Services
         {
             try
             {
-                int pageSize = 10;
+                const int pageSize = 10;
+                int page = pageNumber ?? 1;
                 int questionIndex = 1;
+
+                // 1) Load the file
                 var uploadedFile = await _context.UploadedFiles.FindAsync(quizId);
                 if (uploadedFile == null)
                     return new Response<object>(false, "File not found", "", null);
+
+                // 2) Pull exactly the right slice of questions
                 List<Question> allQuestions;
-                var allTopics = _context.Topics.Where(t => t.FileId == quizId).ToList();
-                if (IsUser.Equals(true))
+                if (IsUser)
                 {
-                    questionIndex = ((pageNumber ?? 1) - 1) * 10 + 1;
+                    questionIndex = (page - 1) * pageSize + 1;
                     allQuestions = _context.Questions
-                    .Where(q => q.FileId == quizId)
-                    .OrderBy(q => q.Created).Skip((int)(pageNumber - 1) * pageSize).Take(pageSize).ToList();
+                        .Where(q => q.FileId == quizId)
+                        .OrderBy(q => q.Created)
+                        .Skip((page - 1) * pageSize)
+                        .Take(pageSize)
+                        .ToList();
                 }
                 else
                 {
                     allQuestions = _context.Questions
-                    .Where(q => q.FileId == quizId)
-                    .OrderBy(q => q.Created).ToList();
+                        .Where(q => q.FileId == quizId)
+                        .OrderBy(q => q.Created)
+                        .ToList();
                 }
 
-                var caseStudies = allTopics
-                    .Where(t => !string.IsNullOrWhiteSpace(t.Description))
-                    .ToList();
-
-                var topics = allTopics
-                    .Where(t => !string.IsNullOrWhiteSpace(t.TopicName))
-                    .ToList();
+                // 3) Pull topics & case studies metadata
+                var allTopics = _context.Topics.Where(t => t.FileId == quizId).ToList();
+                var topics = allTopics.Where(t => !string.IsNullOrWhiteSpace(t.TopicName)).ToList();
+                var caseStudies = allTopics.Where(t => !string.IsNullOrWhiteSpace(t.Description)).ToList();
 
                 var responseItems = new List<object>();
-                
 
-                // --- Standalone Questions ---
+                // 4) Standalone questions (no topic, no caseStudy)
                 responseItems.AddRange(
                     allQuestions
-                        .Where(q => q.TopicId == null || q.TopicId == Guid.Empty)
-                        .Where(q => q.CaseStudyId == null || q.CaseStudyId == Guid.Empty)
+                        .Where(q => (q.TopicId == null || q.TopicId == Guid.Empty)
+                                 && (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty))
                         .Select(q => new
                         {
                             type = "question",
                             question = MapToQuestionObject(q, questionIndex++)
                         })
-                        .ToList()
                 );
 
-                // --- Topic with Questions & Case Studies ---
+                // 5) Topics that actually have one of these questions
                 foreach (var topic in topics)
                 {
+                    // 5a) Questions directly under this topic
+                    var topicQs = allQuestions
+                        .Where(q => q.TopicId == topic.TopicId
+                                 && (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty))
+                        .ToList();
+
+                    // 5b) Case studies under this topic with questions
+                    var csUnderTopic = caseStudies
+                        .Where(cs => cs.CaseStudyTopicId == topic.TopicId)
+                        .Where(cs => allQuestions.Any(q => q.CaseStudyId == cs.CaseStudyId))
+                        .ToList();
+
+                    // If none, skip entirely
+                    if (!topicQs.Any() && !csUnderTopic.Any())
+                        continue;
+
+                    // Build the mixed list of questions + nested caseStudies
                     var topicItems = new List<object>();
 
-                    // Questions under topic (not in a case study)
-                    topicItems.AddRange(
-                        allQuestions
-                            .Where(q => q.TopicId == topic.TopicId &&
-                                       (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty))
-                            .Select(q => new
-                            {
-                                type = "question",
-                                question = MapToQuestionObject(q, questionIndex++)
-                            })
-                            .ToList()
-                    );
-
-                    // Case Studies under this topic
-                    topicItems.AddRange(
-                        caseStudies
-                            .Where(cs => cs.CaseStudyTopicId == topic.TopicId)
-                            .Select(cs => new
-                            {
-                                type = "caseStudy",
-                                caseStudy = new
-                                {
-                                    id = cs.CaseStudyId,
-                                    title = cs.CaseStudy,
-                                    description = cs.Description,
-                                    fileId = cs.FileId,
-                                    topicId = topic.TopicId,
-                                    questions = allQuestions
-                                        .Where(q => q.CaseStudyId == cs.CaseStudyId)
-                                        .OrderBy(q => q.Created)
-                                        .Select(q => MapToQuestionObject(q, questionIndex++))
-                                        .ToList()
-                                }
-                            })
-                            .ToList()
-                    );
-
-                    // Add topic with its items
-                    responseItems.Add(new
+                    // 5a-ii) Add those topicQs
+                    topicItems.AddRange(topicQs.Select(q => new
                     {
-                        type = "topic",
-                        topic = new
-                        {
-                            id = topic.TopicId,
-                            fileId = quizId,
-                            title = topic.TopicName,
-                            topicItems = topicItems
-                        }
-                    });
-                }
+                        type = "question",
+                        question = MapToQuestionObject(q, questionIndex++)
+                    }));
 
-                // --- Standalone Case Studies ---
-                responseItems.AddRange(
-                    caseStudies
-                        .Where(cs => cs.CaseStudyTopicId == null || cs.CaseStudyTopicId == Guid.Empty)
-                        .Select(cs => new
+                    // 5b-ii) Add each nested caseStudy with only its questions
+                    foreach (var cs in csUnderTopic)
+                    {
+                        var csQs = allQuestions
+                            .Where(q => q.CaseStudyId == cs.CaseStudyId)
+                            .ToList();
+
+                        topicItems.Add(new
                         {
                             type = "caseStudy",
                             caseStudy = new
@@ -1571,15 +1550,58 @@ namespace CertEmpire.Services
                                 title = cs.CaseStudy,
                                 description = cs.Description,
                                 fileId = cs.FileId,
-                                topicId = (Guid?)null,
-                                questions = allQuestions
-                                    .Where(q => q.CaseStudyId == cs.CaseStudyId)
-                                    .OrderBy(q => q.Created)
+                                topicId = topic.TopicId,
+                                questions = csQs
                                     .Select(q => MapToQuestionObject(q, questionIndex++))
                                     .ToList()
                             }
-                        }).ToList()
-                );
+                        });
+                    }
+
+                    // Emit the topic wrapper
+                    responseItems.Add(new
+                    {
+                        type = "topic",
+                        topic = new
+                        {
+                            id = topic.TopicId,
+                            fileId = quizId,
+                            title = topic.TopicName,
+                            topicItems
+                        }
+                    });
+                }
+
+                // 6) Standalone case studies (no parent topic) that have questions
+                var standaloneCS = caseStudies
+                    .Where(cs => cs.CaseStudyTopicId == null || cs.CaseStudyTopicId == Guid.Empty)
+                    .Where(cs => allQuestions.Any(q => q.CaseStudyId == cs.CaseStudyId))
+                    .ToList();
+
+                foreach (var cs in standaloneCS)
+                {
+                    var csQs = allQuestions
+                        .Where(q => q.CaseStudyId == cs.CaseStudyId)
+                        .ToList();
+
+                    responseItems.Add(new
+                    {
+                        type = "caseStudy",
+                        caseStudy = new
+                        {
+                            id = cs.CaseStudyId,
+                            title = cs.CaseStudy,
+                            description = cs.Description,
+                            fileId = cs.FileId,
+                            topicId = (Guid?)null,
+                            questions = csQs
+                                .Select(q => MapToQuestionObject(q, questionIndex++))
+                                .ToList()
+                        }
+                    });
+                }
+
+                // 7) Return the exact same shape
                 var encodedName = WebUtility.UrlDecode(uploadedFile.FileName);
                 var response = new
                 {
@@ -1587,6 +1609,7 @@ namespace CertEmpire.Services
                     fileName = encodedName,
                     items = responseItems
                 };
+
                 return response;
             }
             catch (Exception ex)
