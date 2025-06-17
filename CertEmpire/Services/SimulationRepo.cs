@@ -12,11 +12,14 @@ using EncryptionDecryptionUsingSymmetricKey;
 using ExcelDataReader;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using QuestPDF.Drawing;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using Supabase.Gotrue;
 using Supabase.Interfaces;
+using System.Linq;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -1331,7 +1334,7 @@ namespace CertEmpire.Services
 
         #region Methods for user
         //Practice online for user
-        public async Task<Response<object>> PracticeOnline(Guid fileId, int? PageNumber)
+        public async Task<Response<object>> PracticeOnline(Guid fileId, int? PageNumber, bool IsUser)
         {
             var fileContent = (dynamic)null;
             Response<object> response = new();
@@ -1346,7 +1349,7 @@ namespace CertEmpire.Services
             {
                 if (string.IsNullOrEmpty(fileInfo.FileURL))
                 {
-                    fileContent = await GetFileContent(fileId, PageNumber);
+                    fileContent = await GetFileContent(fileId, PageNumber,IsUser);
                     response = new Response<object>(true, "File Content", "", fileContent);
                     return response;
                 }
@@ -1358,7 +1361,7 @@ namespace CertEmpire.Services
                     {
                         int count = questions.Count();
                         string result = count.ToString();
-                        fileContent = await GetFileContent(fileId, PageNumber);
+                        fileContent = await GetFileContent(fileId, PageNumber, IsUser);
                         response = new Response<object>(true, result, "", fileContent);
                         return response;
                     }
@@ -1450,20 +1453,30 @@ namespace CertEmpire.Services
                 return new Response<UploadedFile>(false, "Error updating file.", ex.Message, null);
             }
         }
-        private async Task<object> GetFileContent(Guid quizId, int? pageNumber)
+        private async Task<object> GetFileContent(Guid quizId, int? pageNumber, bool IsUser)
         {
             try
             {
                 int pageSize = 10;
+                int questionIndex = 1;
                 var uploadedFile = await _context.UploadedFiles.FindAsync(quizId);
                 if (uploadedFile == null)
                     return new Response<object>(false, "File not found", "", null);
-
+                List<Question> allQuestions;
                 var allTopics = _context.Topics.Where(t => t.FileId == quizId).ToList();
-                var allQuestions = _context.Questions
+                if (IsUser.Equals(true))
+                {
+                    questionIndex = ((pageNumber ?? 1) - 1) * 10 + 1;
+                    allQuestions = _context.Questions
                     .Where(q => q.FileId == quizId)
-                    .OrderBy(q => q.Created).Skip((int)(pageNumber - 1) * pageSize).Take(pageSize)
-                    .ToList();            
+                    .OrderBy(q => q.Created).Skip((int)(pageNumber - 1) * pageSize).Take(pageSize).ToList();
+                }
+                else
+                {
+                    allQuestions = _context.Questions
+                    .Where(q => q.FileId == quizId)
+                    .OrderBy(q => q.Created).ToList();
+                }
 
                 var caseStudies = allTopics
                     .Where(t => !string.IsNullOrWhiteSpace(t.Description))
@@ -1474,7 +1487,7 @@ namespace CertEmpire.Services
                     .ToList();
 
                 var responseItems = new List<object>();
-                int questionIndex = 1;
+                
 
                 // --- Standalone Questions ---
                 responseItems.AddRange(
@@ -1565,18 +1578,15 @@ namespace CertEmpire.Services
                                     .Select(q => MapToQuestionObject(q, questionIndex++))
                                     .ToList()
                             }
-                        })
-                        .ToList()
+                        }).ToList()
                 );
                 var encodedName = WebUtility.UrlDecode(uploadedFile.FileName);
-                // --- Final Output ---
                 var response = new
                 {
                     fileId = quizId,
                     fileName = encodedName,
-                    items = responseItems
+                    responseItems
                 };
-
                 return response;
             }
             catch (Exception ex)

@@ -14,11 +14,11 @@ namespace CertEmpire.Controllers
         private readonly ISimulationRepo _simulationRepo = simulationRepo;
 
         [HttpGet("PracticeOnline")]
-        public async Task<IActionResult> PracticeOnline(Guid fileId, int? pageNumber)
+        public async Task<IActionResult> PracticeOnline(Guid fileId, int? pageNumber, bool IsUser=false)
         {
             try
             {
-                var response = await _simulationRepo.PracticeOnline(fileId, pageNumber);
+                var response = await _simulationRepo.PracticeOnline(fileId, pageNumber, IsUser);
                 return Ok(response);
             }
             catch (Exception ex)

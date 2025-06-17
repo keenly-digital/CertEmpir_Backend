@@ -38,4 +38,10 @@ namespace CertEmpire.DTOs.QuestioDTOs
         public string? answerExplanation { get; set; } = string.Empty;
         public string? answerDescription { get; set; } = string.Empty;
     }
+    public class QuestionContentDTO 
+    {
+        public string Type { get; set; } = string.Empty;
+        public object Content { get; set; } = new object();
+    }
+    
 }
