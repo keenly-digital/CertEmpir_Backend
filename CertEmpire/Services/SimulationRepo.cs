@@ -1356,7 +1356,7 @@ namespace CertEmpire.Services
                     var questions = await _context.Questions.Where(x => x.FileId.Equals(fileId)).ToListAsync();
                     if (questions.Count() > 0)
                     {
-                        int count = questions.CountAsync();
+                        int count = questions.Count();
                         string result = count.ToString();
                         fileContent = await GetFileContent(fileId, PageNumber);
                         response = new Response<object>(true, result, "", fileContent);
