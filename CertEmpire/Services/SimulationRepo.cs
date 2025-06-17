@@ -1585,7 +1585,7 @@ namespace CertEmpire.Services
                 {
                     fileId = quizId,
                     fileName = encodedName,
-                    responseItems
+                    items = responseItems
                 };
                 return response;
             }
