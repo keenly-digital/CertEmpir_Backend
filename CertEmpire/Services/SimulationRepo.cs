@@ -1356,8 +1356,10 @@ namespace CertEmpire.Services
                     var questions = await _context.Questions.Where(x => x.FileId.Equals(fileId)).ToListAsync();
                     if (questions.Count() > 0)
                     {
+                        int count = await _context.UploadedFiles.CountAsync();
+                        string result = count.ToString();
                         fileContent = await GetFileContent(fileId, PageNumber);
-                        response = new Response<object>(true, "File Content", "", fileContent);
+                        response = new Response<object>(true, result, "", fileContent);
                         return response;
                     }
                     response = new Response<object>(true, "No questions in file found.", "", fileContent);
@@ -1461,7 +1463,7 @@ namespace CertEmpire.Services
                 var allQuestions = _context.Questions
                     .Where(q => q.FileId == quizId)
                     .OrderBy(q => q.Created).Skip((int)(pageNumber - 1) * pageSize).Take(pageSize)
-                    .ToList();
+                    .ToList();            
 
                 var caseStudies = allTopics
                     .Where(t => !string.IsNullOrWhiteSpace(t.Description))
