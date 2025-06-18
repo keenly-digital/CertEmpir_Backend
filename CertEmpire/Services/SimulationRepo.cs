@@ -785,7 +785,11 @@ namespace CertEmpire.Services
             var topics = await _context.Topics.Where(t => t.FileId == quizId).ToListAsync();
 
             var imageMap = new Dictionary<string, byte[]>();
-            Regex urlRegex = new Regex(@"https?:\/\/[^\s""']+\.(jpg|jpeg|png|gif|bmp|webp)", RegexOptions.IgnoreCase);
+            // 3) Pre-compile your regexes
+            var urlRegex = new Regex(@"https?:\/\/[^\s""']+\.(jpg|jpeg|png|gif|bmp|webp)",
+                                             RegexOptions.IgnoreCase | RegexOptions.Compiled);
+            var optionPrefixRegex = new Regex(@"^\s*[\dA-Za-z]\s*[\.\)\-]?\s*",
+                                             RegexOptions.Compiled);
 
             var allTextFields = questions
                 .SelectMany(q => new[] { q.QuestionText, q.Explanation, q.AnswerDescription }
@@ -1039,36 +1043,21 @@ namespace CertEmpire.Services
                         if (!string.IsNullOrWhiteSpace(q.questionImageURL) && imageMap.TryGetValue(q.questionImageURL, out var qImg))
                             col.Item().Image(qImg).FitWidth();
 
-                        if (q.Options != null && q.Options.Any())
+                        // directly into the outer 'col'
+                        if (q.Options?.Any() == true)
                         {
                             col.Item().PaddingTop(10).Text("Options:").Bold();
-
                             for (int i = 0; i < q.Options.Count; i++)
                             {
-                                string letter = ((char)('A' + i)).ToString();
-                                string rawOption = q.Options[i] ?? "";
+                                var letter = ((char)('A' + i)).ToString();
+                                var clean = optionPrefixRegex.Replace(q.Options[i].Trim(), "");
 
-                                // Clean option: remove prefixes like "A)", "1.", etc.
-                                string cleanedOption = Regex.Replace(rawOption.Trim(), @"^\s*[\dA-Za-z]\s*[\.\)\-]?\s*", "");
-
-                                col.Item().PaddingBottom(8).Row(row =>
-                                {
-                                    row.Spacing(5);
-
-                                    // LABEL forced top-aligned using Container
-                                    row.ConstantItem(20).Element(e =>
-                                    {
-                                        return e.AlignTop().Height(20).PaddingTop(1).PaddingRight(2);
-                                    }).Text($"{letter}.").FontSize(11).Bold();
-
-                                    // CONTENT: text and images, properly aligned
-                                    row.RelativeItem().Element(e => e.AlignTop()).Element(container =>
-                                    {
-                                        RenderTextWithImages(container, cleanedOption, imageMap);
-                                    });
-                                });
+                                col.Item()
+                                   .Text($"{letter}. {clean}")
+                                   .FontSize(11);
                             }
                         }
+
                         // Correct Answer
                         if (q.CorrectAnswerIndices.Any())
                         {
