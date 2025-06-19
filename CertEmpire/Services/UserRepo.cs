@@ -415,16 +415,18 @@ namespace CertEmpire.Services
             return response;
         }
 
-        public async Task<Response<object>> GetAllUsersAsync(Guid UserId)
+        public async Task<Response<object>> GetAllUsersAsync(Guid UserId, int PageNumber)
         {
             Response<object> response = new();
+            int pageSize = PageNumber * 10;
             var user = await _context.Users.FirstOrDefaultAsync(x => x.UserId.Equals(UserId) && x.IsAdmin.Equals(true));
             if (user != null)
             {
-
-                var users = await _context.Users.Where(x => x.UserId!=UserId).ToListAsync();
+                var totalUsers = await _context.Users.Where(x => x.UserId!=UserId).ToListAsync();
+                var pageUser = totalUsers.Take(pageSize);
+                int totalCount = totalUsers.Count();
                 List<GetAllUsersResponse> userList = new();
-                foreach (var userInfo in users)
+                foreach (var userInfo in pageUser)
                 {
                     var userRole = await _context.UserRoles.FirstOrDefaultAsync(x => x.UserRoleId.Equals(userInfo.UserRoleId));
                    
@@ -432,17 +434,49 @@ namespace CertEmpire.Services
                     {
                         UserId = userInfo.UserId,
                         Name = $"{userInfo.FirstName} {userInfo.LastName}",
+                        Email = userInfo.Email,
+                        ProfilePicUrl = userInfo.ImageUrl,
                         CreatedAt = userInfo.Created,
                         Role = userRole.UserRoleName??"User"
                     };
                     userList.Add(userObj);
-                    response = new Response<object>(true, "Users retrieved successfully", "", userList);
-
+                    var res = new
+                    {
+                        result = totalCount,
+                        data = userList
+                    };
+                    response = new Response<object>(true, "Users retrieved successfully", "", res);
                 }
             }
             else
             {
                 response = new Response<object>(false, "No user found", "", default);
+            }
+            return response;
+        }
+
+        public async Task<Response<object>> EditUser(EditUser request)
+        {
+            Response<object> response = new();
+            var userInfo = await _context.Users.FirstOrDefaultAsync(x=>x.UserId.Equals(request.UserId));
+            if (userInfo == null)
+            {
+                response = new Response<object>(true, "No user found.","","");
+            }
+            else
+            {
+                var roleInfo = await _context.UserRoles.FirstOrDefaultAsync(x=>x.UserRoleName.Equals(request.RoleName));
+                if (roleInfo == null)
+                {
+                    response = new Response<object>(true, "No role found.", "", "");
+                }
+                else
+                {
+                    userInfo.UserRoleId = roleInfo.UserRoleId;
+                    _context.Users.Update(userInfo);
+                    await _context.SaveChangesAsync();
+                    response = new Response<object>(true, "Updated.", "", "");
+                }
             }
             return response;
         }

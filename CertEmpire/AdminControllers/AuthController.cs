@@ -16,11 +16,11 @@ namespace CertEmpire.AdminControllers
             _userRepo = userRepo;
         }
         [HttpGet("[action]")]
-        public async Task<IActionResult> GetAllUsers(Guid userId)
+        public async Task<IActionResult> GetAllUsers(Guid userId, int pageNumber)
         {
             try
             {
-                var response = await _userRepo.GetAllUsersAsync(userId);
+                var response = await _userRepo.GetAllUsersAsync(userId, pageNumber);
                 return Ok(response);
             }
             catch (Exception ex)
@@ -105,6 +105,20 @@ namespace CertEmpire.AdminControllers
             try
             {
                 var response = await _userRepo.ChangeProfilePicAsync(request);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                var response = new Response<object>(false, "Error", ex.Message, "");
+                return StatusCode(500, response);
+            }
+        }
+        [HttpPost("[action]")]
+        public async Task<IActionResult> EditUser(EditUser request)
+        {
+            try
+            {
+                var response = await _userRepo.EditUser(request);
                 return Ok(response);
             }
             catch (Exception ex)

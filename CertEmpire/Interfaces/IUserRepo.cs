@@ -22,7 +22,8 @@ namespace CertEmpire.Interfaces
         Task<Response<string>> ChangePasswordAsync(ChangePasswordAsync request);
         Task<Response<string>> ChangeProfilePicAsync(ChangeProfilePic request);
         Task<Response<string>> DeleteUser(Guid userId);
-        Task<Response<object>> GetAllUsersAsync(Guid UserId);
+        Task<Response<object>> GetAllUsersAsync(Guid UserId, int PageNumber);
+        Task<Response<object>> EditUser(EditUser request);
         #endregion
     }
 }

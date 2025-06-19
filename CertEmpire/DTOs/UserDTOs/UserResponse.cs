@@ -43,7 +43,14 @@
     {
         public Guid UserId { get; set; } = Guid.Empty;
         public string Name { get; set; } = string.Empty;
+        public string ProfilePicUrl { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public string Role { get; set; } = string.Empty;
+    }
+    public class EditUser
+    {
+        public Guid UserId { get; set; } = Guid.Empty;
+        public string RoleName { get; set; } = string.Empty;
     }
 }

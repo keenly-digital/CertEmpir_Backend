@@ -9,10 +9,12 @@ namespace CertEmpire.Services
 {
     public class UserRoleRepo(ApplicationDbContext context) : Repository<UserRole>(context), IUserRoleRepo
     {
-        public async Task<Response<List<AddUserRoleResponse>>> GetAllRoles()
+        public async Task<Response<object>> GetAllRoles(int pageNumber)
         {
-            Response<List<AddUserRoleResponse>> response = new();
-            var userRoles = await _context.UserRoles.ToListAsync();
+            Response<object> response = new();
+            int pageSize = pageNumber * 10;
+            var totalUser = await _context.UserRoles.CountAsync();
+            var userRoles = await _context.UserRoles.Take(pageSize).ToListAsync();
             if (userRoles.Any())
             {
                 List<AddUserRoleResponse> roles = userRoles.Select(role => new AddUserRoleResponse
@@ -26,11 +28,16 @@ namespace CertEmpire.Services
                     Edit = role.Edit,
                     Delete = role.Delete
                 }).ToList();
-                response = new Response<List<AddUserRoleResponse>>(true, "Roles retrieved successfully.", "", roles);
+                var res = new
+                {
+                    result = totalUser,
+                    data = roles
+                };
+                response = new Response<object>(true, "Roles retrieved successfully.", "", res);
             }
             else
             {
-                response = new Response<List<AddUserRoleResponse>>(false, "No roles found.", "There are no user roles available.", null);
+                response = new Response<object>(false, "No roles found.", "There are no user roles available.", null);
             }
             return response;
         }

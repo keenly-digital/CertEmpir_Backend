@@ -6,7 +6,7 @@ namespace CertEmpire.Interfaces
 {
     public interface IUserRoleRepo : IRepository<UserRole>
     {
-        Task<Response<List<AddUserRoleResponse>>> GetAllRoles();
+        Task<Response<object>> GetAllRoles(int PageNumber);
         Task<Response<AddUserRoleResponse>> AddRole(AddUserRoleRequest request);
         Task<Response<string>> DeleteRole(Guid RoleId);
     }
