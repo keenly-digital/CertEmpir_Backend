@@ -110,7 +110,7 @@ namespace CertEmpire.Services
                         .FirstOrDefaultAsync(x => x.FileURL == file.FileUrl);
                     if (fileExist == null)
                     {
-                        return new Response<LoginResponse>(false, "File not found.","",default);
+                        return new Response<LoginResponse>(false, "File not found.", "", default);
                     }
                     else
                     {
@@ -411,6 +411,38 @@ namespace CertEmpire.Services
             {
                 await DeleteAsync(user);
                 response = new Response<string>(true, "User deleted.", "", "");
+            }
+            return response;
+        }
+
+        public async Task<Response<object>> GetAllUsersAsync(Guid UserId)
+        {
+            Response<object> response = new();
+            var user = await _context.Users.FirstOrDefaultAsync(x => x.UserId.Equals(UserId) && x.IsAdmin.Equals(true));
+            if (user != null)
+            {
+
+                var users = await _context.Users.Where(x => x.UserId!=UserId).ToListAsync();
+                List<GetAllUsersResponse> userList = new();
+                foreach (var userInfo in users)
+                {
+                    var userRole = await _context.UserRoles.FirstOrDefaultAsync(x => x.UserRoleId.Equals(userInfo.UserRoleId));
+                   
+                    GetAllUsersResponse userObj = new()
+                    {
+                        UserId = userInfo.UserId,
+                        Name = $"{userInfo.FirstName} {userInfo.LastName}",
+                        CreatedAt = userInfo.Created,
+                        Role = userRole.UserRoleName??"User"
+                    };
+                    userList.Add(userObj);
+                    response = new Response<object>(true, "Users retrieved successfully", "", userList);
+
+                }
+            }
+            else
+            {
+                response = new Response<object>(false, "No user found", "", default);
             }
             return response;
         }

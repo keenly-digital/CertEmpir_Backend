@@ -5,26 +5,23 @@ using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using CertEmpire.Models;
 using CertEmpire.Services.FileService;
-using DocumentFormat.OpenXml.Bibliography;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using EncryptionDecryptionUsingSymmetricKey;
 using ExcelDataReader;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using QuestPDF.Drawing;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
-using Supabase.Gotrue;
-using Supabase.Interfaces;
-using System.Linq;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Xceed.Document.NET;
+using Xceed.Words.NET;
 
 namespace CertEmpire.Services
 {
@@ -283,7 +280,7 @@ namespace CertEmpire.Services
         public string ExtractTextWithNewLines(Body body)
         {
             StringBuilder textBuilder = new StringBuilder();
-            foreach (var element in body.Elements<Paragraph>())
+            foreach (var element in body.Elements<DocumentFormat.OpenXml.Drawing.Paragraph>())
             {
                 textBuilder.AppendLine(element.InnerText);
             }
@@ -747,7 +744,7 @@ namespace CertEmpire.Services
                 };
 
                 // Serialize and Encrypt
-                var jsonContent = JsonConvert.SerializeObject(examDTO, Formatting.Indented);
+                var jsonContent = JsonConvert.SerializeObject(examDTO, Newtonsoft.Json.Formatting.Indented);
                 // var encryptedContent = _aesOperation.EncryptString(Key, jsonContent);
                 var fileNameWithoutextension = System.IO.Path.GetFileNameWithoutExtension(quiz.FileName);
                 var fileName = fileNameWithoutextension + ".qzs";
@@ -764,12 +761,16 @@ namespace CertEmpire.Services
                 await _context.SaveChangesAsync();
                 return new Response<string>(true, "File exported successfully.", "", uploadedPath);
             }
-            else
+            else if(type.Equals("pdf"))
             {
                 var result = await ExportQuizPdf(quizId);
                 return result;
             }
-
+            else
+            {
+                var result = await ExportQuizDocx(quizId);
+                return result;
+            }
         }
         public async Task<Response<string>> ExportQuizPdf(Guid quizId)
         {
@@ -1162,6 +1163,270 @@ namespace CertEmpire.Services
             var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
 
             return new Response<string>(true, "PDF exported successfully.", "", uploadedPath);
+        }
+        public async Task<Response<string>> ExportQuizDocx(Guid quizId)
+        {
+            // 1) Load the quiz
+            var quizResult = await _context.UploadedFiles.FirstOrDefaultAsync(x=>x.FileId.Equals(quizId));
+            if (quizResult == null)
+                return new Response<string>(false, "Quiz not found", "", "");
+
+            // 2) Fetch questions & topics
+            var allQuestions = await _context.Questions.Where(x=>x.FileId.Equals(quizId)).ToListAsync();
+            var allTopics = await _context.Topics.Where(x=>x.FileId.Equals(quizId)).ToListAsync();
+
+            // 3) Regex helpers
+            var urlRegex = new Regex(@"https?:\/\/[^\s""']+\.(jpg|jpeg|png|gif|bmp|webp)",
+                                             RegexOptions.IgnoreCase | RegexOptions.Compiled);
+            var optionPrefixRegex = new Regex(@"^\s*[\dA-Za-z]\s*[\.\)\-]?\s*",
+                                              RegexOptions.Compiled);
+
+            // 4) Gather & download images once
+            var textFields = allQuestions
+                .SelectMany(q => new[] { q.QuestionText, q.Explanation, q.AnswerDescription }
+                               .Concat(q.Options ?? new List<string>()))
+                .Concat(allTopics.SelectMany(t => new[] { t.CaseStudy, t.Description }))
+                .Where(s => !string.IsNullOrWhiteSpace(s));
+
+            var allImageUrls = textFields
+                .SelectMany(txt => urlRegex.Matches(txt).Cast<Match>().Select(m => m.Value))
+                .Distinct();
+
+            var imageMap = new Dictionary<string, byte[]>();
+            foreach (var url in allImageUrls)
+            {
+                try
+                {
+                    imageMap[url] = await _httpClient.GetByteArrayAsync(url);
+                }
+                catch
+                {
+                    // optionally log failures
+                }
+            }
+
+            // 5) Deduplicate questions
+            var uniqueQuestions = allQuestions
+                .GroupBy(q => q.QuestionId)
+                .Select(g => g.First())
+                .ToList();
+
+            // 6) Organize by topic / case study
+            var pureTopics = new List<(string Title, List<Question> Qs)>();
+            var topicsWithCaseStudies = new List<(string Title, string CaseStudy, List<Question> Qs)>();
+            var standaloneCases = new List<(string CaseStudy, List<Question> Qs)>();
+
+            foreach (var t in allTopics)
+            {
+                bool hasTopic = !string.IsNullOrWhiteSpace(t.TopicName);
+                bool hasCase = !string.IsNullOrWhiteSpace(t.Description);
+
+                var caseQs = uniqueQuestions
+                    .Where(q => q.CaseStudyId == t.CaseStudyId && t.CaseStudyTopicId == t.TopicId)
+                    .ToList();
+
+                var topicQs = uniqueQuestions
+                    .Where(q => q.TopicId == t.TopicId
+                             && (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty)
+                             && t.CaseStudyTopicId == Guid.Empty)
+                    .ToList();
+
+                if (hasTopic && hasCase)
+                    topicsWithCaseStudies.Add((t.TopicName, t.Description, caseQs));
+                else if (hasTopic)
+                    pureTopics.Add((t.TopicName, topicQs));
+                else if (hasCase)
+                    standaloneCases.Add((t.Description, caseQs));
+            }
+
+            // 7) General questions (no topic/case)
+            var generalQuestions = uniqueQuestions
+                .Where(q => (q.TopicId == null || q.TopicId == Guid.Empty)
+                         && (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty))
+                .ToList();
+
+            // 8) Prepare file path
+            string baseName = Path.GetFileNameWithoutExtension(quizResult.FileName) ?? "QuizExport";
+            string docxPath = Path.Combine(Path.GetTempPath(), $"{baseName}.docx");
+
+            // 9) Create the Word document
+            using (var doc = DocX.Create(docxPath))
+            {
+                // --- Cover Page ---
+                doc.InsertParagraph(quizResult.FileName)
+                   .FontSize(32).Bold().Alignment = Alignment.center;
+                doc.InsertParagraph("Exam Questions & Answers")
+                   .FontSize(24).Bold()
+                   .SpacingBefore(20)
+                   .Alignment = Alignment.center;
+                doc.InsertParagraph()  // spacer
+                   .SpacingBefore(200);
+                doc.InsertParagraph("Thank You for your purchase")
+                   .FontSize(18).Italic().Alignment = Alignment.center;
+                doc.InsertParagraph("CertEmpire.com")
+                   .FontSize(18).Bold().Alignment = Alignment.center;
+
+                // section break → headers/footers start on page 2
+                doc.InsertSectionPageBreak();
+
+                // --- Header & Footer ---
+                doc.AddHeaders();
+                doc.AddFooters();
+
+                var hdr = doc.Headers.Odd;
+                hdr.InsertParagraph()
+                   .Append("Questions and Answers DOCX")
+                   .Bold()
+                   .Append("  |  Page ")
+                   .AppendPageNumber(PageNumberFormat.normal)
+                   .Append(" of ")
+                   .AppendPageCount(PageNumberFormat.normal)
+                   .Alignment = Alignment.center;
+
+                var ftr = doc.Footers.Odd;
+                ftr.InsertParagraph("CertEmpire.com")
+                   .Italic()
+                   .Alignment = Alignment.center;
+
+                int counter = 0;
+
+                // helper to clean stray quotes/hyphens
+                static string CleanText(string s) =>
+                    s.Replace("“", "\"")
+                     .Replace("”", "\"")
+                     .Replace("–", "-")
+                     .Replace("‘", "'")
+                     .Replace("’", "'")
+                     .Trim();
+
+                // helper to render text with inline images
+                void RenderTextWithImages(string text)
+                {
+                    foreach (var part in Regex.Split(text, $@"({urlRegex})"))
+                    {
+                        if (string.IsNullOrWhiteSpace(part)) continue;
+
+                        if (urlRegex.IsMatch(part.Trim()) &&
+                            imageMap.TryGetValue(part.Trim(), out var bytes))
+                        {
+                            using var ms = new MemoryStream(bytes);
+                            var img = doc.AddImage(ms);
+                            doc.InsertParagraph().AppendPicture(img.CreatePicture());
+                        }
+                        else
+                        {
+                            doc.InsertParagraph(CleanText(part)).FontSize(12);
+                        }
+                    }
+                }
+
+                // helper to render one question block
+                void RenderQuestion(Question q)
+                {
+                    counter++;
+                    doc.InsertParagraph($"Question {counter}")
+                       .FontSize(16).Bold().SpacingAfter(5);
+
+                    if (!string.IsNullOrWhiteSpace(q.QuestionText))
+                        RenderTextWithImages(q.QuestionText);
+
+                    if (!string.IsNullOrWhiteSpace(q.questionImageURL) &&
+                        imageMap.TryGetValue(q.questionImageURL, out var qImg))
+                    {
+                        using var ms = new MemoryStream(qImg);
+                        var img = doc.AddImage(ms);
+                        doc.InsertParagraph().AppendPicture(img.CreatePicture());
+                    }
+
+                    if (q.Options?.Any() == true)
+                    {
+                        doc.InsertParagraph("Options:")
+                           .Bold().SpacingAfter(2);
+
+                        for (int i = 0; i < q.Options.Count; i++)
+                        {
+                            var letter = ((char)('A' + i)).ToString();
+                            var clean = optionPrefixRegex
+                                            .Replace(q.Options[i].Trim(), "");
+                            doc.InsertParagraph($"{letter}. {clean}")
+                               .FontSize(12)
+                               .IndentationBefore = 20;
+                        }
+                    }
+
+                    if (q.CorrectAnswerIndices?.Any() == true)
+                    {
+                        var letters = q.CorrectAnswerIndices
+                                       .Where(i => i >= 0 && i < q.Options.Count)
+                                       .Select(i => ((char)('A' + i)).ToString());
+                        doc.InsertParagraph($"Answer: {string.Join(", ", letters)}")
+                           .Italic().SpacingAfter(5);
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(q.AnswerDescription))
+                    {
+                        doc.InsertParagraph("Explanation:")
+                           .Bold().SpacingAfter(2);
+                        doc.InsertParagraph(q.AnswerDescription)
+                           .FontSize(12).SpacingAfter(5);
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(q.Explanation))
+                    {
+                        doc.InsertParagraph("Why Incorrect Options are Wrong:")
+                           .Bold().SpacingAfter(2);
+                        doc.InsertParagraph(q.Explanation)
+                           .FontSize(12).SpacingAfter(10);
+                    }
+
+                    // page break after each question
+                    doc.InsertParagraph().InsertPageBreakAfterSelf();
+                }
+
+                // 10) Render content sections
+                foreach (var q in generalQuestions)
+                    RenderQuestion(q);
+
+                foreach (var t in topicsWithCaseStudies)
+                {
+                    doc.InsertParagraph($"Topic: {t.Title}")
+                       .FontSize(14).Bold().SpacingAfter(3);
+                    doc.InsertParagraph(t.CaseStudy)
+                       .FontSize(12).SpacingAfter(10);
+                    foreach (var q in t.Qs)
+                        RenderQuestion(q);
+                }
+
+                foreach (var t in pureTopics)
+                {
+                    doc.InsertParagraph($"Topic: {t.Title}")
+                       .FontSize(14).Bold().SpacingAfter(10);
+                    foreach (var q in t.Qs)
+                        RenderQuestion(q);
+                }
+
+                foreach (var cs in standaloneCases)
+                {
+                    doc.InsertParagraph("Case Study")
+                       .FontSize(14).Bold().SpacingAfter(3);
+                    doc.InsertParagraph(cs.CaseStudy)
+                       .FontSize(12).SpacingAfter(10);
+                    foreach (var q in cs.Qs)
+                        RenderQuestion(q);
+                }
+
+                doc.Save();
+            }
+
+            // 11) Upload & return
+            await using var fs = new FileStream(docxPath, FileMode.Open, FileAccess.Read);
+            var formFile = new FormFile(fs, 0, fs.Length, "file", Path.GetFileName(docxPath));
+            var uploadedUrl = await _fileService.ExportFileAsync(formFile, "QuizFiles");
+
+            return new Response<string>(true,
+                                               "Word exported successfully.",
+                                               "",
+                                               uploadedUrl);
         }
         private async Task<Response<string>> ExportQuizPdf(string domainName, Guid quizId)
         {

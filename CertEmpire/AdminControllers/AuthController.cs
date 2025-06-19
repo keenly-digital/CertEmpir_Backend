@@ -15,6 +15,20 @@ namespace CertEmpire.AdminControllers
         {
             _userRepo = userRepo;
         }
+        [HttpGet("[action]")]
+        public async Task<IActionResult> GetAllUsers(Guid userId)
+        {
+            try
+            {
+                var response = await _userRepo.GetAllUsersAsync(userId);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                var response = new Response<object>(false, "Error", ex.Message, "");
+                return StatusCode(500, response);
+            }
+        }
         [HttpPost("[action]")]
         public async Task<IActionResult> AddNewUser(AddNewUserRequest request)
         {
