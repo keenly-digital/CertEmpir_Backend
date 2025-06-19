@@ -18,11 +18,11 @@ namespace CertEmpire.AdminControllers
             _userRole = userRole;
         }
         [HttpGet("[action]")]
-        public async Task<IActionResult> GetAllRoles(int pageNumber)
+        public async Task<IActionResult> GetAllRoles(int pageNumber, bool isAll)
         {
             try
             {
-                var response = await _userRole.GetAllRoles(pageNumber);
+                var response = await _userRole.GetAllRoles(pageNumber, isAll);
                 return Ok(response);
             }
             catch (Exception ex)

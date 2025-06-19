@@ -9,12 +9,21 @@ namespace CertEmpire.Services
 {
     public class UserRoleRepo(ApplicationDbContext context) : Repository<UserRole>(context), IUserRoleRepo
     {
-        public async Task<Response<object>> GetAllRoles(int pageNumber)
+        public async Task<Response<object>> GetAllRoles(int pageNumber, bool isAll)
         {
             Response<object> response = new();
             int pageSize = pageNumber * 10;
-            var totalUser = await _context.UserRoles.CountAsync();
-            var userRoles = await _context.UserRoles.Take(pageSize).ToListAsync();
+            List<UserRole> userRoles = new List<UserRole>();
+            //If isAll is true, fetch all roles; otherwise, fetch roles based on page size
+            if (isAll == true)
+            {
+                userRoles = await _context.UserRoles.ToListAsync();
+            }
+            else
+            {
+                userRoles = await _context.UserRoles.Take(pageSize).ToListAsync();
+            }
+            var totalUser = await _context.UserRoles.CountAsync();           
             if (userRoles.Any())
             {
                 List<AddUserRoleResponse> roles = userRoles.Select(role => new AddUserRoleResponse
