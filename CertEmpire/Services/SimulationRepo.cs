@@ -771,7 +771,7 @@ namespace CertEmpire.Services
             }
             else
             {
-                var result = await ExportQuizPdf(quizId);
+                var result = await ExportQuizDocx(quizId);
                 return result;
             }
         }
