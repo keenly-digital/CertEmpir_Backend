@@ -5,7 +5,7 @@
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<UserSecretsId>10d5c3df-e87e-455b-905c-25f60348fc8c</UserSecretsId>
-		<RuntimeIdentifiers>win-x64;linux-x64;osx-x64</RuntimeIdentifiers>
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
 	</PropertyGroup>
 
@@ -35,7 +35,6 @@
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.9.0" />
 		<!-- “NoDependencies” packs the native .so in your output -->
-		
 	</ItemGroup>
 
 	<ItemGroup>
