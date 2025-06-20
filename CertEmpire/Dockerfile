@@ -2,14 +2,15 @@
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 
 RUN apt-get update && apt-get install -y \
+ RUN apt-get update && apt-get install -y \
     libfontconfig1 \
     libfreetype6 \
-    libpng16-16 \
     libglib2.0-0 \
     libx11-6 \
     libxext6 \
     libsm6 \
     libxrender1 \
+    libpng-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -31,7 +32,7 @@ RUN dotnet build "CertEmpire.csproj" -c $BUILD_CONFIGURATION -o /app/build
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "CertEmpire.csproj" \
-    -c $BUILD_CONFIGURATION \
+    -c Release \
     -r linux-x64 \
     --self-contained true \
     /p:PublishTrimmed=false \

@@ -31,6 +31,7 @@
 		<PackageReference Include="Newtonsoft.Json.Bson" Version="1.0.3" />
 		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
 		<PackageReference Include="QuestPDF" Version="2025.5.0" />
+		<PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.3" />
 		<PackageReference Include="Supabase" Version="1.1.1" />
 		<PackageReference Include="Supabase.Storage" Version="2.0.2" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
