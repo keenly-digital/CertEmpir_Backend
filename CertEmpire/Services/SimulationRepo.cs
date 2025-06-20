@@ -1177,9 +1177,9 @@ namespace CertEmpire.Services
 
             // 3) Regex helpers
             var urlRegex = new Regex(@"https?:\/\/[^\s""']+\.(jpg|jpeg|png|gif|bmp|webp)",
-                                             RegexOptions.IgnoreCase | RegexOptions.Compiled);
+                                            RegexOptions.IgnoreCase | RegexOptions.Compiled);
             var optionPrefixRegex = new Regex(@"^\s*[\dA-Za-z]\s*[\.\)\-]?\s*",
-                                              RegexOptions.Compiled);
+                                             RegexOptions.Compiled);
 
             // 4) Gather & download images once
             var textFields = allQuestions
@@ -1298,29 +1298,57 @@ namespace CertEmpire.Services
                      .Replace("‘", "'")
                      .Replace("’", "'")
                      .Trim();
+                //helper function to add spacing in word
+                string AddSpacingBetweenWords(string input)
+                {
+                    if (string.IsNullOrWhiteSpace(input))
+                        return input;
+
+                    // Add extra space between words
+                    return string.Join("  ", input.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+                }
 
                 // helper to render text with inline images
                 void RenderTextWithImages(string text)
                 {
-                    foreach (var part in Regex.Split(text, $@"({urlRegex})"))
-                    {
-                        if (string.IsNullOrWhiteSpace(part)) continue;
+                    var matches = urlRegex.Matches(text);
+                    int lastIndex = 0;
 
-                        if (urlRegex.IsMatch(part.Trim()) &&
-                            imageMap.TryGetValue(part.Trim(), out var bytes))
+                    foreach (Match match in matches)
+                    {
+                        // Text before image URL
+                        string beforeImage = text.Substring(lastIndex, match.Index - lastIndex);
+                        if (!string.IsNullOrWhiteSpace(beforeImage))
+                        {
+                            string cleaned = CleanText(beforeImage);
+                            doc.InsertParagraph(AddSpacingBetweenWords(cleaned)).FontSize(12);
+                        }
+
+                        string imageUrl = match.Value.Trim();
+                        if (imageMap.TryGetValue(imageUrl, out var bytes))
                         {
                             using var ms = new MemoryStream(bytes);
                             var img = doc.AddImage(ms);
                             doc.InsertParagraph().AppendPicture(img.CreatePicture());
                         }
-                        else
+
+                        lastIndex = match.Index + match.Length;
+                    }
+
+                    // Text after last image
+                    if (lastIndex < text.Length)
+                    {
+                        string afterImage = text.Substring(lastIndex);
+                        if (!string.IsNullOrWhiteSpace(afterImage))
                         {
-                            doc.InsertParagraph(CleanText(part)).FontSize(12);
+                            string cleaned = CleanText(afterImage);
+                            doc.InsertParagraph(AddSpacingBetweenWords(cleaned)).FontSize(12);
                         }
                     }
                 }
 
                 // helper to render one question block
+                // Renders one full question block
                 void RenderQuestion(Question q)
                 {
                     counter++;
@@ -1341,16 +1369,15 @@ namespace CertEmpire.Services
                     if (q.Options?.Any() == true)
                     {
                         doc.InsertParagraph("Options:")
-                           .Bold().SpacingAfter(2);
+                            .Bold().SpacingAfter(2);
 
                         for (int i = 0; i < q.Options.Count; i++)
                         {
                             var letter = ((char)('A' + i)).ToString();
-                            var clean = optionPrefixRegex
-                                            .Replace(q.Options[i].Trim(), "");
-                            doc.InsertParagraph($"{letter}. {clean}")
-                               .FontSize(12)
-                               .IndentationBefore = 20;
+                            var clean = optionPrefixRegex.Replace(q.Options[i].Trim(), "");
+
+                            doc.InsertParagraph($"{letter}.").FontSize(12).IndentationBefore = 20;
+                            RenderTextWithImages(clean); // allows images inside options
                         }
                     }
 
@@ -1360,29 +1387,26 @@ namespace CertEmpire.Services
                                        .Where(i => i >= 0 && i < q.Options.Count)
                                        .Select(i => ((char)('A' + i)).ToString());
                         doc.InsertParagraph($"Answer: {string.Join(", ", letters)}")
-                           .Italic().SpacingAfter(5);
+                            .Italic().SpacingAfter(5);
                     }
 
                     if (!string.IsNullOrWhiteSpace(q.AnswerDescription))
                     {
                         doc.InsertParagraph("Explanation:")
-                           .Bold().SpacingAfter(2);
-                        doc.InsertParagraph(q.AnswerDescription)
-                           .FontSize(12).SpacingAfter(5);
+                            .Bold().SpacingAfter(2);
+                        RenderTextWithImages(q.AnswerDescription);
                     }
 
                     if (!string.IsNullOrWhiteSpace(q.Explanation))
                     {
                         doc.InsertParagraph("Why Incorrect Options are Wrong:")
-                           .Bold().SpacingAfter(2);
-                        doc.InsertParagraph(q.Explanation)
-                           .FontSize(12).SpacingAfter(10);
+                            .Bold().SpacingAfter(2);
+                        RenderTextWithImages(q.Explanation);
                     }
 
-                    // page break after each question
+                    // Page break after each question
                     doc.InsertParagraph().InsertPageBreakAfterSelf();
                 }
-
                 // 10) Render content sections
                 foreach (var q in generalQuestions)
                     RenderQuestion(q);
@@ -1391,8 +1415,7 @@ namespace CertEmpire.Services
                 {
                     doc.InsertParagraph($"Topic: {t.Title}")
                        .FontSize(14).Bold().SpacingAfter(3);
-                    doc.InsertParagraph(t.CaseStudy)
-                       .FontSize(12).SpacingAfter(10);
+                    RenderTextWithImages(t.CaseStudy);
                     foreach (var q in t.Qs)
                         RenderQuestion(q);
                 }
@@ -1409,8 +1432,7 @@ namespace CertEmpire.Services
                 {
                     doc.InsertParagraph("Case Study")
                        .FontSize(14).Bold().SpacingAfter(3);
-                    doc.InsertParagraph(cs.CaseStudy)
-                       .FontSize(12).SpacingAfter(10);
+                    RenderTextWithImages(cs.CaseStudy);
                     foreach (var q in cs.Qs)
                         RenderQuestion(q);
                 }
