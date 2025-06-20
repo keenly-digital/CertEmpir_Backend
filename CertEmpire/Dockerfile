@@ -1,31 +1,33 @@
-# Base image for runtime (uses ASP.NET Core runtime only)
+# Runtime image with necessary native libs
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 
-# Install native dependencies needed for SkiaSharp (used indirectly by DocX when rendering images)
 RUN apt-get update && apt-get install -y \
     libfontconfig1 \
     libfreetype6 \
+    libpng16-16 \
+    libglib2.0-0 \
+    libx11-6 \
+    libxext6 \
+    libsm6 \
+    libxrender1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
 
-# SDK image for building the application
+# Build image
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
-# Copy project file and restore dependencies
 COPY ["CertEmpire/CertEmpire.csproj", "CertEmpire/"]
 RUN dotnet restore "CertEmpire/CertEmpire.csproj"
-
-# Copy everything else and build
 COPY . .
 WORKDIR "/src/CertEmpire"
 RUN dotnet build "CertEmpire.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
-# Publish the application
+# Publish the app
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "CertEmpire.csproj" \
@@ -36,7 +38,7 @@ RUN dotnet publish "CertEmpire.csproj" \
     /p:UseAppHost=false \
     -o /app/publish
 
-# Final runtime image with app
+# Final image
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
