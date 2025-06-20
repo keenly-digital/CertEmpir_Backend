@@ -8,9 +8,6 @@ using CertEmpire.Services.FileService;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using EncryptionDecryptionUsingSymmetricKey;
-using ExcelDataReader;
-using IronWord;
-using IronWord.Models;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using QuestPDF.Drawing;
@@ -25,7 +22,6 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Xceed.Document.NET;
 using Xceed.Words.NET;
-using TextStyle = IronWord.Models.TextStyle;
 
 
 
@@ -774,7 +770,7 @@ namespace CertEmpire.Services
             }
             else
             {
-                var result = await ExportQuizDocx(quizId);
+                var result = await ExportQuizPdf(quizId);
                 return result;
             }
         }
@@ -1170,15 +1166,16 @@ namespace CertEmpire.Services
 
             return new Response<string>(true, "PDF exported successfully.", "", uploadedPath);
         }
+
         public async Task<Response<string>> ExportQuizDocx(Guid quizId)
         {
             // 1) Load the quiz
-            var quizResult = await _context.UploadedFiles.FirstOrDefaultAsync(x=>x.FileId.Equals(quizId));
+            var quizResult = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId.Equals(quizId));
             if (quizResult == null)
                 return new Response<string>(false, "Quiz not found", "", "");
 
             // 2) Fetch questions & topics
-            var allQuestions = await _context.Questions.Where(x=>x.FileId.Equals(quizId)).ToListAsync();
+            var allQuestions = await _context.Questions.Where(x => x.FileId.Equals(quizId)).ToListAsync();
             var allTopics = await _context.Topics.Where(x => x.FileId.Equals(quizId)).ToListAsync();
 
             // 3) Regex helpers

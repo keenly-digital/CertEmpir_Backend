@@ -1,29 +1,42 @@
-# See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
-
-# This stage is used when running from VS in fast mode (Default for Debug configuration)
+# Base image for runtime (uses ASP.NET Core runtime only)
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-USER $APP_UID
+
+# Install native dependencies needed for SkiaSharp (used indirectly by DocX when rendering images)
+RUN apt-get update && apt-get install -y \
+    libfontconfig1 \
+    libfreetype6 \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
 
-
-# This stage is used to build the service project
+# SDK image for building the application
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
+
+# Copy project file and restore dependencies
 COPY ["CertEmpire/CertEmpire.csproj", "CertEmpire/"]
-RUN dotnet restore "./CertEmpire/CertEmpire.csproj"
+RUN dotnet restore "CertEmpire/CertEmpire.csproj"
+
+# Copy everything else and build
 COPY . .
 WORKDIR "/src/CertEmpire"
-RUN dotnet build "./CertEmpire.csproj" -c $BUILD_CONFIGURATION -o /app/build
+RUN dotnet build "CertEmpire.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
-# This stage is used to publish the service project to be copied to the final stage
+# Publish the application
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./CertEmpire.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "CertEmpire.csproj" \
+    -c $BUILD_CONFIGURATION \
+    -r linux-x64 \
+    --self-contained true \
+    /p:PublishTrimmed=false \
+    /p:UseAppHost=false \
+    -o /app/publish
 
-# This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
+# Final runtime image with app
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
