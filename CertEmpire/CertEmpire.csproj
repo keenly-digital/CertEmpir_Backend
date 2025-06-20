@@ -14,6 +14,7 @@
 		<PackageReference Include="DocX" Version="4.0.25105.5786" />
 		<PackageReference Include="DotNetEnv" Version="3.1.1" />
 		<PackageReference Include="ExcelDataReader" Version="3.7.0" />
+		<PackageReference Include="IronWord" Version="2025.6.4" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.15" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.4" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.4">
