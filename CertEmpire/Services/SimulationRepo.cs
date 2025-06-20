@@ -1390,19 +1390,19 @@ namespace CertEmpire.Services
                             .Italic().SpacingAfter(5);
                     }
 
-                    if (!string.IsNullOrWhiteSpace(q.AnswerDescription))
+                    if (!string.IsNullOrWhiteSpace(q.Explanation))
                     {
                         doc.InsertParagraph("Explanation:")
                             .Bold().SpacingAfter(2);
-                        RenderTextWithImages(q.AnswerDescription);
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(q.Explanation))
-                    {
-                        doc.InsertParagraph("Why Incorrect Options are Wrong:")
-                            .Bold().SpacingAfter(2);
                         RenderTextWithImages(q.Explanation);
                     }
+
+                    //if (!string.IsNullOrWhiteSpace(q.Explanation))
+                    //{
+                    //    doc.InsertParagraph("Why Incorrect Options are Wrong:")
+                    //        .Bold().SpacingAfter(2);
+                    //    RenderTextWithImages(q.Explanation);
+                    //}
 
                     // Page break after each question
                     doc.InsertParagraph().InsertPageBreakAfterSelf();
