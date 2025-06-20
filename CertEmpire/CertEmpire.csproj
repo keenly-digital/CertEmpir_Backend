@@ -34,6 +34,11 @@
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
 		<PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.3" />
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.9.0" />
+		<!-- “NoDependencies” packs the native .so in your output -->
+		<PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.88.1" />
+		<!-- or, if you prefer the full distro package: -->
+		 <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.1" /> 
+
 	</ItemGroup>
 
 	<ItemGroup>

@@ -16,6 +16,13 @@ COPY ["CertEmpire/CertEmpire.csproj", "CertEmpire/"]
 RUN dotnet restore "./CertEmpire/CertEmpire.csproj"
 COPY . .
 WORKDIR "/src/CertEmpire"
+RUN apt-get update \
+
+ && apt-get install -y --no-install-recommends \
+
+      libfontconfig1 libfreetype6 libharfbuzz0b libjpeg62-turbo libpng16-16 \
+
+ && rm -rf /var/lib/apt/lists/*
 RUN dotnet build "./CertEmpire.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # This stage is used to publish the service project to be copied to the final stage
