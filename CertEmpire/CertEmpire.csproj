@@ -8,7 +8,6 @@
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
 	</PropertyGroup>
-
 	<ItemGroup>
 		<PackageReference Include="Aspose.PDF" Version="25.6.1" />
 		<PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
@@ -36,19 +35,16 @@
 		<PackageReference Include="Supabase.Storage" Version="2.0.2" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.9.0" />
-		<!-- “NoDependencies” packs the native .so in your output -->
+		<PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.88.3" />
 	</ItemGroup>
-
 	<ItemGroup>
 		<Folder Include="wwwroot\uploads\QuizFiles\" />
 		<Folder Include="wwwroot\uploads\ProfilePics\" />
 		<Folder Include="wwwroot\uploads\QuestionImages\" />
 	</ItemGroup>
-
 	<ItemGroup>
 		<None Update="Fonts\Roboto\static\Roboto-Regular.ttf">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</None>
 	</ItemGroup>
-
 </Project>
