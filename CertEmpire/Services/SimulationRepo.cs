@@ -8,6 +8,7 @@ using CertEmpire.Services.FileService;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using EncryptionDecryptionUsingSymmetricKey;
+using ExcelDataReader;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using QuestPDF.Drawing;
