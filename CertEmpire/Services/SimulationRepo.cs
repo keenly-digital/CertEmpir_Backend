@@ -141,7 +141,9 @@ namespace CertEmpire.Services
 
                 case ".pdf":
                     var aiAPIResponse = await UploadToThirdPartyApiAsync(file);
-                    return await MapApiResponseToExamDTO(aiAPIResponse, file.FileName, fileId);
+                    var jsonRefineerText = JsonTextRefiner.RefineJson(JsonConvert.SerializeObject(aiAPIResponse, Newtonsoft.Json.Formatting.Indented));
+                    var jsonResponse = JsonConvert.DeserializeObject<Root>(jsonRefineerText);
+                    return await MapApiResponseToExamDTO(jsonResponse, file.FileName, fileId);
 
                 default:
                     throw new ArgumentException("Unsupported file type");
@@ -1187,10 +1189,9 @@ namespace CertEmpire.Services
             var allTopics = await _context.Topics.Where(x=>x.FileId.Equals(quizId)).ToListAsync();
 
             var urlRegex = new Regex(@"https?:\/\/[^\s""']+\.(jpg|jpeg|png|gif|bmp|webp)",
-                                             RegexOptions.IgnoreCase | RegexOptions.Compiled);
+                                            RegexOptions.IgnoreCase | RegexOptions.Compiled);
             var optionPrefixRegex = new Regex(@"^\s*[\dA-Za-z]\s*[\.\)\-]?\s*",
                                              RegexOptions.Compiled);
-
             var textFields = allQuestions
                 .SelectMany(q => new[] { q.QuestionText, q.Explanation, q.AnswerDescription }
                     .Concat(q.Options ?? new List<string>()))
@@ -1222,54 +1223,49 @@ namespace CertEmpire.Services
                 body.Append(new Paragraph(new Run(new Break { Type = BreakValues.Page })));
 
                 int qCount = 0;
-                foreach (var q in uniqueQuestions)
+
+                var topicsWithCaseStudies = allTopics.Where(t => !string.IsNullOrWhiteSpace(t.TopicName) && !string.IsNullOrWhiteSpace(t.Description)).ToList();
+                var topicsOnly = allTopics.Where(t => !string.IsNullOrWhiteSpace(t.TopicName) && string.IsNullOrWhiteSpace(t.Description)).ToList();
+                var standaloneCaseStudies = allTopics.Where(t => string.IsNullOrWhiteSpace(t.TopicName) && !string.IsNullOrWhiteSpace(t.Description)).ToList();
+
+                foreach (var t in topicsWithCaseStudies)
                 {
-                    qCount++;
-                    body.Append(CreateParagraph($"Question {qCount}: {Clean(q.QuestionText)}"));
-
-                    var parts = Regex.Split(q.QuestionText ?? string.Empty, "(https?://[^\\s\\\"']+\\.(?:jpg|jpeg|png|gif|bmp|webp))", RegexOptions.IgnoreCase);
-                    foreach (var part in parts)
+                    body.Append(CreateParagraph($"Topic: {t.TopicName}", "Heading2"));
+                    body.Append(CreateParagraph(Clean(t.Description)));
+                    var questions = uniqueQuestions.Where(q => q.CaseStudyId == t.CaseStudyId && q.TopicId == t.TopicId).ToList();
+                    foreach (var q in questions)
                     {
-                        if (urlRegex.IsMatch(part) && imageMap.TryGetValue(part, out var bytes))
-                        {
-                            var imgPart = mainPart.AddImagePart(ImagePartType.Jpeg);
-                            using (var ms = new MemoryStream(bytes)) imgPart.FeedData(ms);
-                            var rId = mainPart.GetIdOfPart(imgPart);
-                            long widthEmu = 400L * 9525L;
-                            long heightEmu = 300L * 9525L;
-                            var drawing = CreateDrawing(rId, widthEmu, heightEmu);
-                            body.Append(new Paragraph(new Run(drawing)));
-                        }
-                        else if (!string.IsNullOrWhiteSpace(part))
-                        {
-                            body.Append(CreateParagraph(Clean(part)));
-                        }
+                        AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
                     }
-
-                    if (q.Options != null)
-                    {
-                        body.Append(CreateParagraph("Options:", isBold: true));
-                        foreach (var (opt, i) in q.Options.Select((o, i) => (o, i)))
-                        {
-                            var clean = Regex.Replace(opt, @"^\s*[\dA-Za-z]\s*[\.\)\-]?\s*", "").Trim();
-                            var text = $"{(char)('A' + i)}. {clean}";
-                            body.Append(CreateParagraph(text));
-                        }
-                    }
-
-                    if (q.CorrectAnswerIndices != null)
-                    {
-                        var letters = string.Join(", ", q.CorrectAnswerIndices.Select(i => ((char)('A' + i)).ToString()));
-                        body.Append(CreateParagraph($"Answer: {letters}"));
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(q.AnswerDescription))
-                    {
-                        body.Append(CreateParagraph("Explanation:", isBold: true));
-                        body.Append(CreateParagraph(Clean(q.Explanation)));
-                    }
-                    body.Append(new Paragraph(new Run(new Break { Type = BreakValues.Page })));
                 }
+
+                foreach (var t in topicsOnly)
+                {
+                    body.Append(CreateParagraph($"Topic: {t.TopicName}", "Heading2"));
+                    var questions = uniqueQuestions.Where(q => q.TopicId == t.TopicId && (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty)).ToList();
+                    foreach (var q in questions)
+                    {
+                        AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
+                    }
+                }
+
+                foreach (var cs in standaloneCaseStudies)
+                {
+                    body.Append(CreateParagraph("Case Study:", "Heading2"));
+                    body.Append(CreateParagraph(Clean(cs.Description)));
+                    var questions = uniqueQuestions.Where(q => q.CaseStudyId == cs.CaseStudyId && (q.TopicId == null || q.TopicId == Guid.Empty)).ToList();
+                    foreach (var q in questions)
+                    {
+                        AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
+                    }
+                }
+
+                var generalQuestions = uniqueQuestions.Where(q => (q.TopicId == null || q.TopicId == Guid.Empty) && (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty)).ToList();
+                foreach (var q in generalQuestions)
+                {
+                    AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
+                }
+
                 mainPart.Document.Save();
             }
 
@@ -1278,6 +1274,61 @@ namespace CertEmpire.Services
             var url = await _fileService.ExportFileAsync(formFile, "QuizFiles");
 
             return new Response<string>(true, "Word exported successfully.", "", url);
+
+            static void AppendQuestion(Body body, MainDocumentPart mainPart, Question q, ref int qCount, Regex urlRegex, Dictionary<string, byte[]> imageMap)
+            {
+                qCount++;
+                body.Append(CreateParagraph($"Question {qCount}: {Clean(q.QuestionText)}"));
+
+                var parts = Regex.Split(q.QuestionText ?? string.Empty, "(https?://[^\\s\\\"']+\\.(?:jpg|jpeg|png|gif|bmp|webp))", RegexOptions.IgnoreCase);
+                foreach (var part in parts)
+                {
+                    if (urlRegex.IsMatch(part) && imageMap.TryGetValue(part, out var bytes))
+                    {
+                        var imgPart = mainPart.AddImagePart(ImagePartType.Jpeg);
+                        using (var ms = new MemoryStream(bytes)) imgPart.FeedData(ms);
+                        var rId = mainPart.GetIdOfPart(imgPart);
+                        long widthEmu = 400L * 9525L;
+                        long heightEmu = 300L * 9525L;
+                        var drawing = CreateDrawing(rId, widthEmu, heightEmu);
+                        body.Append(new Paragraph(new Run(drawing)));
+                    }
+                    else if (!string.IsNullOrWhiteSpace(part))
+                    {
+                        body.Append(CreateParagraph(Clean(part)));
+                    }
+                }
+
+                if (q.Options != null)
+                {
+                    foreach (var (opt, i) in q.Options.Select((o, i) => (o, i)))
+                    {
+                        var clean = Regex.Replace(opt, @"^\s*[\dA-Za-z]\s*[\.\)\-]?\s*", "").Trim();
+                        var text = $"{(char)('A' + i)}. {clean}";
+                        body.Append(CreateParagraph(text));
+                    }
+                }
+
+                if (q.CorrectAnswerIndices != null)
+                {
+                    var letters = string.Join(", ", q.CorrectAnswerIndices.Select(i => ((char)('A' + i)).ToString()));
+                    body.Append(CreateParagraph($"Answer: {letters}"));
+                }
+
+                if (!string.IsNullOrWhiteSpace(q.AnswerDescription))
+                {
+                    body.Append(CreateParagraph("Explanation:", isBold: true));
+                    body.Append(CreateParagraph(Clean(q.AnswerDescription)));
+                }
+
+                if (!string.IsNullOrWhiteSpace(q.Explanation))
+                {
+                    body.Append(CreateParagraph("Why Incorrect Options are Wrong:", isBold: true));
+                    body.Append(CreateParagraph(Clean(q.Explanation)));
+                }
+
+                body.Append(new Paragraph(new Run(new Break { Type = BreakValues.Page })));
+            }
 
             static string Clean(string s) => s?.Replace("\r", "").Replace("\n", " ").Trim() ?? string.Empty;
 
@@ -1647,9 +1698,9 @@ namespace CertEmpire.Services
                 }
 
                 // 3) Pull topics & case studies metadata
-                var allTopics = _context.Topics.Where(t => t.FileId == quizId).ToList();
-                var topics = allTopics.Where(t => !string.IsNullOrWhiteSpace(t.TopicName)).ToList();
-                var caseStudies = allTopics.Where(t => !string.IsNullOrWhiteSpace(t.Description)).ToList();
+                var allTopics = _context.Topics.Where(t => t.FileId == quizId).OrderBy(x=>x.Created).ToList();
+                var topics = allTopics.Where(t => !string.IsNullOrWhiteSpace(t.TopicName)).OrderBy(x => x.Created).ToList();
+                var caseStudies = allTopics.Where(t => !string.IsNullOrWhiteSpace(t.Description)).OrderBy(x => x.Created).ToList();
 
                 var responseItems = new List<object>();
 
