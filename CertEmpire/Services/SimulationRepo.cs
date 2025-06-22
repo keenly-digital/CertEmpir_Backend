@@ -1248,6 +1248,7 @@ namespace CertEmpire.Services
 
                     if (q.Options != null)
                     {
+                        body.Append(CreateParagraph("Options:", isBold: true));
                         foreach (var (opt, i) in q.Options.Select((o, i) => (o, i)))
                         {
                             var clean = Regex.Replace(opt, @"^\s*[\dA-Za-z]\s*[\.\)\-]?\s*", "").Trim();
