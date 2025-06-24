@@ -28,25 +28,34 @@ namespace CertEmpire.Controllers
         {
             try
             {
-                Response<string> response = new();
+                Response<object> response = new();
+                List<object> list = new();
                 var userInDb = await _context.Users.FirstOrDefaultAsync(x => x.UserId.Equals(request.UserId));
                 if (userInDb == null)
                 {
-                    response = new Response<string>(false, "User not found", "", null);
+                    response = new Response<object>(false, "User not found", "", null);
                 }
                 else
                 {
-                    var fileInDb = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileURL.Equals(request.FileURL));
-                    if (fileInDb == null)
+                    foreach (var fileUrl in request.FileURL)
                     {
-
-                        response = new Response<string>(true, "File not found.", "", default);
+                        var fileInDb = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileURL.Equals(fileUrl));
+                        if (fileInDb == null)
+                        {
+                            response = new Response<object>(true, "File not found.", "", default);
+                        }
+                        else
+                        {
+                            var res = new
+                            {
+                                fileId = fileInDb.FileId,
+                                fileUrl = fileInDb.FileURL
+                            };
+                           // string fileUrlGenerated = GenerateFileURL(request.UserId, fileInDb.FileId, request.PageType);
+                           list.Add(res);
+                        }
                     }
-                    else
-                    {
-                        string fileUrl = GenerateFileURL(request.UserId, fileInDb.FileId, request.PageType);
-                        response = new Response<string>(true, "File URL generated successfully", "", fileUrl);
-                    }
+                    response = new Response<object>(true, "File URL generated successfully", "", list);
                 }
                 return Ok(response);
             }

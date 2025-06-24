@@ -11,7 +11,7 @@ namespace CertEmpire.DTOs.WordpressDTO
         [JsonPropertyName("pageType")]
         public string PageType { get; set; } = string.Empty;
         [JsonPropertyName("fileURL")]
-        public string FileURL { get; set; } = string.Empty;
+        public List<string> FileURL { get; set; } = new List<string>();
     }
     public class GetRequest
     {
