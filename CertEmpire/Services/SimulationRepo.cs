@@ -1234,7 +1234,7 @@ namespace CertEmpire.Services
                     body.Append(CreateParagraph($"Topic: {t.TopicName}", "Heading2"));
                     body.Append(CreateParagraph($"TOPIC END", style: "Heading3", isBold: true));
                     body.Append(CreateParagraph($"Case Study Start", style: "Heading3", isBold: true));
-                    body.Append(CreateParagraph(Clean(t.Description)));
+                    AppendTextWithImages(body, mainPart, t.Description, urlRegex, imageMap);
                     body.Append(CreateParagraph($"Case Study End", style: "Heading3", isBold: true));
                     var questions = uniqueQuestions.Where(q => q.CaseStudyId == t.CaseStudyId && q.TopicId == t.TopicId).ToList();
                     body.Append(CreateParagraph($"Question Start", style: "Heading3", isBold: true));
@@ -1263,7 +1263,7 @@ namespace CertEmpire.Services
                 {
                     body.Append(CreateParagraph($"Case Study Start", style: "Heading3", isBold: true));
                     body.Append(CreateParagraph("Case Study:", "Heading2"));
-                    body.Append(CreateParagraph(Clean(cs.Description)));
+                    AppendTextWithImages(body, mainPart, cs.Description, urlRegex, imageMap);
                     body.Append(CreateParagraph($"Case Study End", style: "Heading3", isBold: true));
                     var questions = uniqueQuestions.Where(q => q.CaseStudyId == cs.CaseStudyId && (q.TopicId == null || q.TopicId == Guid.Empty)).ToList();
                     body.Append(CreateParagraph($"Question Start", style: "Heading3", isBold: true));
@@ -1292,27 +1292,12 @@ namespace CertEmpire.Services
             static void AppendQuestion(Body body, MainDocumentPart mainPart, Question q, ref int qCount, Regex urlRegex, Dictionary<string, byte[]> imageMap)
             {
                 qCount++;
-                body.Append(CreateParagraph($"Question {qCount}: {Clean(q.QuestionText)}"));
+                body.Append(CreateParagraph($"Question {qCount}:", isBold: true));
 
-                var parts = Regex.Split(q.QuestionText ?? string.Empty, "(https?://[^\\s\\\"']+\\.(?:jpg|jpeg|png|gif|bmp|webp))", RegexOptions.IgnoreCase);
-                foreach (var part in parts)
-                {
-                    if (urlRegex.IsMatch(part) && imageMap.TryGetValue(part, out var bytes))
-                    {
-                        var imgPart = mainPart.AddImagePart(ImagePartType.Jpeg);
-                        using (var ms = new MemoryStream(bytes)) imgPart.FeedData(ms);
-                        var rId = mainPart.GetIdOfPart(imgPart);
-                        long widthEmu = 400L * 9525L;
-                        long heightEmu = 300L * 9525L;
-                        var drawing = CreateDrawing(rId, widthEmu, heightEmu);
-                        body.Append(new Paragraph(new Run(drawing)));
-                    }
-                    else if (!string.IsNullOrWhiteSpace(part))
-                    {
-                        body.Append(CreateParagraph(Clean(part)));
-                    }
-                }
+                // Add question text with embedded images
+                AppendTextWithImages(body, mainPart, q.QuestionText, urlRegex, imageMap);
 
+                // Options
                 if (q.Options != null)
                 {
                     foreach (var (opt, i) in q.Options.Select((o, i) => (o, i)))
@@ -1323,25 +1308,53 @@ namespace CertEmpire.Services
                     }
                 }
 
-                if (q.CorrectAnswerIndices != null)
+                // Correct Answers
+                if (q.CorrectAnswerIndices != null && q.CorrectAnswerIndices.Any())
                 {
                     var letters = string.Join(", ", q.CorrectAnswerIndices.Select(i => ((char)('A' + i)).ToString()));
                     body.Append(CreateParagraph($"Answer: {letters}"));
                 }
 
-                //if (!string.IsNullOrWhiteSpace(q.AnswerDescription))
-                //{
-                //    body.Append(CreateParagraph("AnswerDescription:", isBold: true));
-                //    body.Append(CreateParagraph(Clean(q.AnswerDescription)));
-                //}
+                // Answer Description (Optional)
+                if (!string.IsNullOrWhiteSpace(q.AnswerDescription))
+                {
+                    body.Append(CreateParagraph("Answer Description:", isBold: true));
+                    AppendTextWithImages(body, mainPart, q.AnswerDescription, urlRegex, imageMap);
+                }
 
+                // Explanation (Optional)
                 if (!string.IsNullOrWhiteSpace(q.Explanation))
                 {
                     body.Append(CreateParagraph("Explanation:", isBold: true));
-                    body.Append(CreateParagraph(Clean(q.Explanation)));
+                    AppendTextWithImages(body, mainPart, q.Explanation, urlRegex, imageMap);
                 }
 
+                // New Page
                 body.Append(new Paragraph(new Run(new Break { Type = BreakValues.Page })));
+            }
+            static void AppendTextWithImages(Body body, MainDocumentPart mainPart, string text, Regex urlRegex, Dictionary<string, byte[]> imageMap)
+            {
+                var parts = Regex.Split(text ?? "", "(https?://[^\\s\\\"']+\\.(?:jpg|jpeg|png|gif|bmp|webp))", RegexOptions.IgnoreCase);
+
+                foreach (var part in parts)
+                {
+                    if (urlRegex.IsMatch(part) && imageMap.TryGetValue(part, out var bytes))
+                    {
+                        var imgPart = mainPart.AddImagePart(ImagePartType.Jpeg);
+                        using (var ms = new MemoryStream(bytes)) imgPart.FeedData(ms);
+                        var rId = mainPart.GetIdOfPart(imgPart);
+
+                        long widthEmu = 400L * 9525L;
+                        long heightEmu = 300L * 9525L;
+
+                        var drawing = CreateDrawing(rId, widthEmu, heightEmu);
+                        body.Append(new Paragraph(new Run(drawing)));
+                    }
+                    else if (!string.IsNullOrWhiteSpace(part))
+                    {
+                        body.Append(CreateParagraph(Clean(part)));
+                    }
+                }
             }
 
             static string Clean(string s) => s?.Replace("\r", "").Replace("\n", " ").Trim() ?? string.Empty;
