@@ -1185,8 +1185,8 @@ namespace CertEmpire.Services
             if (quiz == null)
                 return new Response<string>(false, "Quiz not found", "", "");
 
-            var allQuestions = await _context.Questions.Where(x=>x.FileId.Equals(quizId)).ToListAsync();
-            var allTopics = await _context.Topics.Where(x=>x.FileId.Equals(quizId)).ToListAsync();
+            var allQuestions = await _context.Questions.Where(x=>x.FileId.Equals(quizId)).OrderBy(x=>x.Created).ToListAsync();
+            var allTopics = await _context.Topics.Where(x=>x.FileId.Equals(quizId)).OrderBy(x=>x.Created).ToListAsync();
 
             var urlRegex = new Regex(@"https?:\/\/[^\s""']+\.(jpg|jpeg|png|gif|bmp|webp)",
                                             RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -1230,42 +1230,56 @@ namespace CertEmpire.Services
 
                 foreach (var t in topicsWithCaseStudies)
                 {
+                    body.Append(CreateParagraph($"TOPIC START" , style: "Heading3", isBold: true));
                     body.Append(CreateParagraph($"Topic: {t.TopicName}", "Heading2"));
+                    body.Append(CreateParagraph($"TOPIC END", style: "Heading3", isBold: true));
+                    body.Append(CreateParagraph($"Case Study Start", style: "Heading3", isBold: true));
                     body.Append(CreateParagraph(Clean(t.Description)));
+                    body.Append(CreateParagraph($"Case Study End", style: "Heading3", isBold: true));
                     var questions = uniqueQuestions.Where(q => q.CaseStudyId == t.CaseStudyId && q.TopicId == t.TopicId).ToList();
+                    body.Append(CreateParagraph($"Question Start", style: "Heading3", isBold: true));
                     foreach (var q in questions)
-                    {
-                        AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
+                    {                        
+                        AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);                       
                     }
+                    body.Append(CreateParagraph($"Question End", style: "Heading3", isBold: true));
                 }
 
                 foreach (var t in topicsOnly)
                 {
+                    body.Append(CreateParagraph($"TOPIC START", style: "Heading3", isBold: true));
                     body.Append(CreateParagraph($"Topic: {t.TopicName}", "Heading2"));
+                    body.Append(CreateParagraph($"TOPIC END", style: "Heading3", isBold: true));
                     var questions = uniqueQuestions.Where(q => q.TopicId == t.TopicId && (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty)).ToList();
+                    body.Append(CreateParagraph($"Question Start", style: "Heading3", isBold: true));
                     foreach (var q in questions)
                     {
-                        AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
+                        AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);                       
                     }
+                    body.Append(CreateParagraph($"Question End", style: "Heading3", isBold: true));
                 }
 
                 foreach (var cs in standaloneCaseStudies)
                 {
+                    body.Append(CreateParagraph($"Case Study Start", style: "Heading3", isBold: true));
                     body.Append(CreateParagraph("Case Study:", "Heading2"));
                     body.Append(CreateParagraph(Clean(cs.Description)));
+                    body.Append(CreateParagraph($"Case Study End", style: "Heading3", isBold: true));
                     var questions = uniqueQuestions.Where(q => q.CaseStudyId == cs.CaseStudyId && (q.TopicId == null || q.TopicId == Guid.Empty)).ToList();
+                    body.Append(CreateParagraph($"Question Start", style: "Heading3", isBold: true));
                     foreach (var q in questions)
                     {
                         AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
                     }
+                    body.Append(CreateParagraph($"Question End", style: "Heading3", isBold: true));
                 }
-
                 var generalQuestions = uniqueQuestions.Where(q => (q.TopicId == null || q.TopicId == Guid.Empty) && (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty)).ToList();
+                body.Append(CreateParagraph($"Question Start", style: "Heading3", isBold: true));
                 foreach (var q in generalQuestions)
-                {
-                    AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
+                {                    
+                    AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);                   
                 }
-
+                body.Append(CreateParagraph($"Question End", style: "Heading3", isBold: true));
                 mainPart.Document.Save();
             }
 
@@ -1315,15 +1329,15 @@ namespace CertEmpire.Services
                     body.Append(CreateParagraph($"Answer: {letters}"));
                 }
 
-                if (!string.IsNullOrWhiteSpace(q.AnswerDescription))
-                {
-                    body.Append(CreateParagraph("Explanation:", isBold: true));
-                    body.Append(CreateParagraph(Clean(q.AnswerDescription)));
-                }
+                //if (!string.IsNullOrWhiteSpace(q.AnswerDescription))
+                //{
+                //    body.Append(CreateParagraph("AnswerDescription:", isBold: true));
+                //    body.Append(CreateParagraph(Clean(q.AnswerDescription)));
+                //}
 
                 if (!string.IsNullOrWhiteSpace(q.Explanation))
                 {
-                    body.Append(CreateParagraph("Why Incorrect Options are Wrong:", isBold: true));
+                    body.Append(CreateParagraph("Explanation:", isBold: true));
                     body.Append(CreateParagraph(Clean(q.Explanation)));
                 }
 
@@ -1335,15 +1349,25 @@ namespace CertEmpire.Services
             static Paragraph CreateParagraph(string text, string style = null, bool isBold = false)
             {
                 var run = new Run(new Text(text));
+
                 if (isBold)
                     run.RunProperties = new RunProperties(new DocumentFormat.OpenXml.Wordprocessing.Bold());
 
-                var paragraph = new Paragraph(run);
-                if (!string.IsNullOrEmpty(style))
-                    paragraph.ParagraphProperties = new ParagraphProperties(new ParagraphStyleId { Val = style });
+                var paragraphProperties = new ParagraphProperties();
 
-                return paragraph;
+                if (!string.IsNullOrEmpty(style))
+                    paragraphProperties.ParagraphStyleId = new ParagraphStyleId { Val = style };
+
+                // Add spacing between paragraphs (e.g., 200 = 10pt)
+                paragraphProperties.SpacingBetweenLines = new SpacingBetweenLines
+                {
+                    Before = "100",
+                    After = "100"
+                };
+
+                return new Paragraph(paragraphProperties, run);
             }
+
 
             static Drawing CreateDrawing(string relationshipId, long cx, long cy)
             {
@@ -1704,18 +1728,6 @@ namespace CertEmpire.Services
 
                 var responseItems = new List<object>();
 
-                // 4) Standalone questions (no topic, no caseStudy)
-                responseItems.AddRange(
-                    allQuestions
-                        .Where(q => (q.TopicId == null || q.TopicId == Guid.Empty)
-                                 && (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty))
-                        .Select(q => new
-                        {
-                            type = "question",
-                            question = MapToQuestionObject(q, questionIndex++)
-                        })
-                );
-
                 // 5) Topics that actually have one of these questions
                 foreach (var topic in topics)
                 {
@@ -1811,7 +1823,17 @@ namespace CertEmpire.Services
                         }
                     });
                 }
-
+                // 4) Standalone questions (no topic, no caseStudy)
+                responseItems.AddRange(
+                    allQuestions
+                        .Where(q => (q.TopicId == null || q.TopicId == Guid.Empty)
+                                 && (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty))
+                        .Select(q => new
+                        {
+                            type = "question",
+                            question = MapToQuestionObject(q, questionIndex++)
+                        })
+                );
                 // 7) Return the exact same shape
                 var encodedName = WebUtility.UrlDecode(uploadedFile.FileName);
                 var response = new
