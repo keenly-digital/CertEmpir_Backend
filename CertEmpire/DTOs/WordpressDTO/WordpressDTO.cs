@@ -7,9 +7,6 @@ namespace CertEmpire.DTOs.WordpressDTO
     {
         [JsonPropertyName("userId")]
         public Guid UserId {  get; set; }
-        [Required]
-        [JsonPropertyName("pageType")]
-        public string PageType { get; set; } = string.Empty;
         [JsonPropertyName("fileURL")]
         public List<string> FileURL { get; set; } = new List<string>();
     }

@@ -1,6 +1,7 @@
 ﻿using CertEmpire.Data;
 using CertEmpire.DTOs.WordpressDTO;
 using CertEmpire.Helpers.ResponseWrapper;
+using CertEmpire.Interfaces;
 using CertEmpire.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -16,10 +17,12 @@ namespace CertEmpire.Controllers
     {
         private readonly IConfiguration _configuration;
         private readonly ApplicationDbContext _context;
-        public WordpressAPIController(IConfiguration configuration, ApplicationDbContext context)
+        private readonly ISimulationRepo _simulationRep;
+        public WordpressAPIController(IConfiguration configuration, ApplicationDbContext context, ISimulationRepo simulationRep)
         {
             _configuration = configuration;
             _context = context;
+            _simulationRep = simulationRep;
         }
 
         #region End Points
@@ -46,10 +49,11 @@ namespace CertEmpire.Controllers
                         }
                         else
                         {
+                            var url = await _simulationRep.ExportFile(fileInDb.FileId,"pdf");
                             var res = new
                             {
                                 fileId = fileInDb.FileId,
-                                fileUrl = fileInDb.FileURL
+                                fileUrl = url.Data
                             };
                            // string fileUrlGenerated = GenerateFileURL(request.UserId, fileInDb.FileId, request.PageType);
                            list.Add(res);
