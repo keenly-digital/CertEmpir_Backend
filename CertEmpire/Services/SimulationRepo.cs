@@ -1181,12 +1181,12 @@ namespace CertEmpire.Services
         }
         public async Task<Response<string>> ExportQuizDocx(Guid quizId)
         {
-            var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x=>x.FileId.Equals(quizId));
+            var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId.Equals(quizId));
             if (quiz == null)
                 return new Response<string>(false, "Quiz not found", "", "");
 
-            var allQuestions = await _context.Questions.Where(x=>x.FileId.Equals(quizId)).OrderBy(x=>x.Created).ToListAsync();
-            var allTopics = await _context.Topics.Where(x=>x.FileId.Equals(quizId)).OrderBy(x=>x.Created).ToListAsync();
+            var allQuestions = await _context.Questions.Where(x => x.FileId.Equals(quizId)).OrderBy(x => x.Created).ToListAsync();
+            var allTopics = await _context.Topics.Where(x => x.FileId.Equals(quizId)).OrderBy(x => x.Created).ToListAsync();
 
             var urlRegex = new Regex(@"https?:\/\/[^\s""']+\.(jpg|jpeg|png|gif|bmp|webp)",
                                             RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -1211,77 +1211,79 @@ namespace CertEmpire.Services
 
             string baseName = Path.GetFileNameWithoutExtension(quiz.FileName) ?? "QuizExport";
             string docxPath = Path.Combine(Path.GetTempPath(), baseName + ".docx");
-
-            using (var wordDoc = WordprocessingDocument.Create(docxPath, WordprocessingDocumentType.Document))
+            await Task.Run(() =>
             {
-                var mainPart = wordDoc.AddMainDocumentPart();
-                mainPart.Document = new Document(new Body());
-                var body = mainPart.Document.Body;
-
-                body.Append(CreateParagraph(quiz.FileName, "Title"));
-                body.Append(CreateParagraph("Exam Questions & Answers", "Heading1"));
-                body.Append(new Paragraph(new Run(new Break { Type = BreakValues.Page })));
-
-                int qCount = 0;
-
-                var topicsWithCaseStudies = allTopics.Where(t => !string.IsNullOrWhiteSpace(t.TopicName) && !string.IsNullOrWhiteSpace(t.Description)).ToList();
-                var topicsOnly = allTopics.Where(t => !string.IsNullOrWhiteSpace(t.TopicName) && string.IsNullOrWhiteSpace(t.Description)).ToList();
-                var standaloneCaseStudies = allTopics.Where(t => string.IsNullOrWhiteSpace(t.TopicName) && !string.IsNullOrWhiteSpace(t.Description)).ToList();
-
-                foreach (var t in topicsWithCaseStudies)
+                using (var wordDoc = WordprocessingDocument.Create(docxPath, WordprocessingDocumentType.Document))
                 {
-                    body.Append(CreateParagraph($"TOPIC START" , style: "Heading3", isBold: true));
-                    body.Append(CreateParagraph($"Topic: {t.TopicName}", "Heading2"));
-                    body.Append(CreateParagraph($"TOPIC END", style: "Heading3", isBold: true));
-                    body.Append(CreateParagraph($"Case Study Start", style: "Heading3", isBold: true));
-                    AppendTextWithImages(body, mainPart, t.Description, urlRegex, imageMap);
-                    body.Append(CreateParagraph($"Case Study End", style: "Heading3", isBold: true));
-                    var questions = uniqueQuestions.Where(q => q.CaseStudyId == t.CaseStudyId && q.TopicId == t.TopicId).ToList();
-                    body.Append(CreateParagraph($"Question Start", style: "Heading3", isBold: true));
-                    foreach (var q in questions)
-                    {                        
-                        AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);                       
-                    }
-                    body.Append(CreateParagraph($"Question End", style: "Heading3", isBold: true));
-                }
+                    var mainPart = wordDoc.AddMainDocumentPart();
+                    mainPart.Document = new Document(new Body());
+                    var body = mainPart.Document.Body;
 
-                foreach (var t in topicsOnly)
-                {
-                    body.Append(CreateParagraph($"TOPIC START", style: "Heading3", isBold: true));
-                    body.Append(CreateParagraph($"Topic: {t.TopicName}", "Heading2"));
-                    body.Append(CreateParagraph($"TOPIC END", style: "Heading3", isBold: true));
-                    var questions = uniqueQuestions.Where(q => q.TopicId == t.TopicId && (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty)).ToList();
-                    body.Append(CreateParagraph($"Question Start", style: "Heading3", isBold: true));
-                    foreach (var q in questions)
+                    body.Append(CreateParagraph(quiz.FileName, "Title"));
+                    body.Append(CreateParagraph("Exam Questions & Answers", "Heading1"));
+                    body.Append(new Paragraph(new Run(new Break { Type = BreakValues.Page })));
+
+                    int qCount = 0;
+
+                    var topicsWithCaseStudies = allTopics.Where(t => !string.IsNullOrWhiteSpace(t.TopicName) && !string.IsNullOrWhiteSpace(t.Description)).ToList();
+                    var topicsOnly = allTopics.Where(t => !string.IsNullOrWhiteSpace(t.TopicName) && string.IsNullOrWhiteSpace(t.Description)).ToList();
+                    var standaloneCaseStudies = allTopics.Where(t => string.IsNullOrWhiteSpace(t.TopicName) && !string.IsNullOrWhiteSpace(t.Description)).ToList();
+
+                    foreach (var t in topicsWithCaseStudies)
                     {
-                        AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);                       
+                        body.Append(CreateParagraph($"TOPIC START", style: "Heading3", isBold: true));
+                        body.Append(CreateParagraph($"Topic: {t.TopicName}", "Heading2"));
+                        body.Append(CreateParagraph($"TOPIC END", style: "Heading3", isBold: true));
+                        body.Append(CreateParagraph($"Case Study Start", style: "Heading3", isBold: true));
+                        AppendTextWithImages(body, mainPart, t.Description, urlRegex, imageMap);
+                        body.Append(CreateParagraph($"Case Study End", style: "Heading3", isBold: true));
+                        var questions = uniqueQuestions.Where(q => q.CaseStudyId == t.CaseStudyId && q.TopicId == t.TopicId).ToList();
+                        body.Append(CreateParagraph($"Question Start", style: "Heading3", isBold: true));
+                        foreach (var q in questions)
+                        {
+                            AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
+                        }
+                        body.Append(CreateParagraph($"Question End", style: "Heading3", isBold: true));
                     }
-                    body.Append(CreateParagraph($"Question End", style: "Heading3", isBold: true));
-                }
 
-                foreach (var cs in standaloneCaseStudies)
-                {
-                    body.Append(CreateParagraph($"Case Study Start", style: "Heading3", isBold: true));
-                    body.Append(CreateParagraph("Case Study:", "Heading2"));
-                    AppendTextWithImages(body, mainPart, cs.Description, urlRegex, imageMap);
-                    body.Append(CreateParagraph($"Case Study End", style: "Heading3", isBold: true));
-                    var questions = uniqueQuestions.Where(q => q.CaseStudyId == cs.CaseStudyId && (q.TopicId == null || q.TopicId == Guid.Empty)).ToList();
+                    foreach (var t in topicsOnly)
+                    {
+                        body.Append(CreateParagraph($"TOPIC START", style: "Heading3", isBold: true));
+                        body.Append(CreateParagraph($"Topic: {t.TopicName}", "Heading2"));
+                        body.Append(CreateParagraph($"TOPIC END", style: "Heading3", isBold: true));
+                        var questions = uniqueQuestions.Where(q => q.TopicId == t.TopicId && (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty)).ToList();
+                        body.Append(CreateParagraph($"Question Start", style: "Heading3", isBold: true));
+                        foreach (var q in questions)
+                        {
+                            AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
+                        }
+                        body.Append(CreateParagraph($"Question End", style: "Heading3", isBold: true));
+                    }
+
+                    foreach (var cs in standaloneCaseStudies)
+                    {
+                        body.Append(CreateParagraph($"Case Study Start", style: "Heading3", isBold: true));
+                        body.Append(CreateParagraph("Case Study:", "Heading2"));
+                        AppendTextWithImages(body, mainPart, cs.Description, urlRegex, imageMap);
+                        body.Append(CreateParagraph($"Case Study End", style: "Heading3", isBold: true));
+                        var questions = uniqueQuestions.Where(q => q.CaseStudyId == cs.CaseStudyId && (q.TopicId == null || q.TopicId == Guid.Empty)).ToList();
+                        body.Append(CreateParagraph($"Question Start", style: "Heading3", isBold: true));
+                        foreach (var q in questions)
+                        {
+                            AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
+                        }
+                        body.Append(CreateParagraph($"Question End", style: "Heading3", isBold: true));
+                    }
+                    var generalQuestions = uniqueQuestions.Where(q => (q.TopicId == null || q.TopicId == Guid.Empty) && (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty)).ToList();
                     body.Append(CreateParagraph($"Question Start", style: "Heading3", isBold: true));
-                    foreach (var q in questions)
+                    foreach (var q in generalQuestions)
                     {
                         AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
                     }
                     body.Append(CreateParagraph($"Question End", style: "Heading3", isBold: true));
+                    mainPart.Document.Save();
                 }
-                var generalQuestions = uniqueQuestions.Where(q => (q.TopicId == null || q.TopicId == Guid.Empty) && (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty)).ToList();
-                body.Append(CreateParagraph($"Question Start", style: "Heading3", isBold: true));
-                foreach (var q in generalQuestions)
-                {                    
-                    AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);                   
-                }
-                body.Append(CreateParagraph($"Question End", style: "Heading3", isBold: true));
-                mainPart.Document.Save();
-            }
+            });
 
             await using var fs = new FileStream(docxPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             var formFile = new FormFile(fs, 0, fs.Length, "file", Path.GetFileName(docxPath));
