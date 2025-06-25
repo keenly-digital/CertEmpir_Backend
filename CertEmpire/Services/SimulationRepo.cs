@@ -1231,56 +1231,76 @@ namespace CertEmpire.Services
 
                     foreach (var t in topicsWithCaseStudies)
                     {
-                        body.Append(CreateParagraph($"TOPIC START", style: "Heading3", isBold: true));
+                        body.Append(CreateParagraph($"*TOPIC START*", style: "Heading3", isBold: true));
                         body.Append(CreateParagraph($"Topic: {t.TopicName}", "Heading2"));
-                        body.Append(CreateParagraph($"TOPIC END", style: "Heading3", isBold: true));
-                        body.Append(CreateParagraph($"Case Study Start", style: "Heading3", isBold: true));
+                        body.Append(CreateParagraph($"*TOPIC END*", style: "Heading3", isBold: true));
+                        body.Append(CreateParagraph($"**Case Study Start**", style: "Heading3", isBold: true));
                         AppendTextWithImages(body, mainPart, t.Description, urlRegex, imageMap);
-                        body.Append(CreateParagraph($"Case Study End", style: "Heading3", isBold: true));
+                        body.Append(CreateParagraph($"**Case Study End**", style: "Heading3", isBold: true));
                         var questions = uniqueQuestions.Where(q => q.CaseStudyId == t.CaseStudyId && q.TopicId == t.TopicId).ToList();
-                        body.Append(CreateParagraph($"Question Start", style: "Heading3", isBold: true));
+                        body.Append(CreateParagraph($"***Question Start***", style: "Heading3", isBold: true));
                         foreach (var q in questions)
                         {
                             AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
                         }
-                        body.Append(CreateParagraph($"Question End", style: "Heading3", isBold: true));
+                        body.Append(CreateParagraph($"***Question End***", style: "Heading3", isBold: true));
                     }
 
                     foreach (var t in topicsOnly)
                     {
-                        body.Append(CreateParagraph($"TOPIC START", style: "Heading3", isBold: true));
+                        body.Append(CreateParagraph($"*TOPIC START*", style: "Heading3", isBold: true));
                         body.Append(CreateParagraph($"Topic: {t.TopicName}", "Heading2"));
-                        body.Append(CreateParagraph($"TOPIC END", style: "Heading3", isBold: true));
+                        body.Append(CreateParagraph($"*TOPIC END*", style: "Heading3", isBold: true));
                         var questions = uniqueQuestions.Where(q => q.TopicId == t.TopicId && (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty)).ToList();
-                        body.Append(CreateParagraph($"Question Start", style: "Heading3", isBold: true));
+                        body.Append(CreateParagraph($"**Question Start**", style: "Heading3", isBold: true));
                         foreach (var q in questions)
                         {
                             AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
                         }
-                        body.Append(CreateParagraph($"Question End", style: "Heading3", isBold: true));
+                        body.Append(CreateParagraph($"**Question End**", style: "Heading3", isBold: true));
                     }
 
                     foreach (var cs in standaloneCaseStudies)
                     {
-                        body.Append(CreateParagraph($"Case Study Start", style: "Heading3", isBold: true));
+                        body.Append(CreateParagraph($"*Case Study Start*", style: "Heading3", isBold: true));
                         body.Append(CreateParagraph("Case Study:", "Heading2"));
                         AppendTextWithImages(body, mainPart, cs.Description, urlRegex, imageMap);
-                        body.Append(CreateParagraph($"Case Study End", style: "Heading3", isBold: true));
+                        body.Append(CreateParagraph($"*Case Study End*", style: "Heading3", isBold: true));
                         var questions = uniqueQuestions.Where(q => q.CaseStudyId == cs.CaseStudyId && (q.TopicId == null || q.TopicId == Guid.Empty)).ToList();
-                        body.Append(CreateParagraph($"Question Start", style: "Heading3", isBold: true));
+                        body.Append(CreateParagraph($"**Question Start**", style: "Heading3", isBold: true));
                         foreach (var q in questions)
                         {
                             AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
                         }
-                        body.Append(CreateParagraph($"Question End", style: "Heading3", isBold: true));
+                        body.Append(CreateParagraph($"**Question End**", style: "Heading3", isBold: true));
                     }
-                    var generalQuestions = uniqueQuestions.Where(q => (q.TopicId == null || q.TopicId == Guid.Empty) && (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty)).ToList();
-                    body.Append(CreateParagraph($"Question Start", style: "Heading3", isBold: true));
+                    bool anyRendered = false;
+                    var generalQuestions = uniqueQuestions
+                        .Where(q => (q.TopicId == null || q.TopicId == Guid.Empty) &&
+                                    (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty))
+                        .OrderBy(x => x.Created)
+                        .ToList();
+
                     foreach (var q in generalQuestions)
                     {
-                        AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
+                        bool rendered = AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
+                        if (rendered && !anyRendered)
+                        {
+                            body.Append(CreateParagraph($"*Question Start*", style: "Heading3", isBold: true));
+                            anyRendered = true;
+                        }
+                        if (rendered)
+                        {
+                            // Question already added inside AppendQuestion
+                        }
                     }
-                    body.Append(CreateParagraph($"Question End", style: "Heading3", isBold: true));
+
+                    if (anyRendered)
+                    {
+                        body.Append(CreateParagraph($"*Question End*", style: "Heading3", isBold: true));
+                    }
+
+
                     mainPart.Document.Save();
                 }
             });
@@ -1291,48 +1311,63 @@ namespace CertEmpire.Services
 
             return new Response<string>(true, "Word exported successfully.", "", url);
 
-            static void AppendQuestion(Body body, MainDocumentPart mainPart, Question q, ref int qCount, Regex urlRegex, Dictionary<string, byte[]> imageMap)
+            static bool AppendQuestion(Body body, MainDocumentPart mainPart, Question q, ref int qCount, Regex urlRegex, Dictionary<string, byte[]> imageMap)
             {
+                if (string.IsNullOrWhiteSpace(q.QuestionText))
+                    return false;
+
+                bool rendered = false;
+
                 qCount++;
                 body.Append(CreateParagraph($"Question {qCount}:", isBold: true));
+                rendered = true;
 
-                // Add question text with embedded images
+                body.Append(CreateParagraph($"*Question Stem*", style: "Heading3", isBold: true));
                 AppendTextWithImages(body, mainPart, q.QuestionText, urlRegex, imageMap);
 
-                // Options
-                if (q.Options != null)
+                if (q.Options != null && q.Options.Any(o => !string.IsNullOrWhiteSpace(o)))
                 {
+                    body.Append(CreateParagraph($"*Options*", style: "Heading3", isBold: true));
                     foreach (var (opt, i) in q.Options.Select((o, i) => (o, i)))
                     {
+                        if (string.IsNullOrWhiteSpace(opt)) continue;
+
                         var clean = Regex.Replace(opt, @"^\s*[\dA-Za-z]\s*[\.\)\-]?\s*", "").Trim();
                         var text = $"{(char)('A' + i)}. {clean}";
                         body.Append(CreateParagraph(text));
                     }
+                    rendered = true;
                 }
 
-                // Correct Answers
                 if (q.CorrectAnswerIndices != null && q.CorrectAnswerIndices.Any())
                 {
+                    body.Append(CreateParagraph($"*Answer*", style: "Heading3", isBold: true));
                     var letters = string.Join(", ", q.CorrectAnswerIndices.Select(i => ((char)('A' + i)).ToString()));
                     body.Append(CreateParagraph($"Answer: {letters}"));
+                    rendered = true;
                 }
 
-                // Answer Description (Optional)
                 if (!string.IsNullOrWhiteSpace(q.AnswerDescription))
                 {
                     body.Append(CreateParagraph("Answer Description:", isBold: true));
                     AppendTextWithImages(body, mainPart, q.AnswerDescription, urlRegex, imageMap);
+                    rendered = true;
                 }
 
-                // Explanation (Optional)
                 if (!string.IsNullOrWhiteSpace(q.Explanation))
                 {
+                    body.Append(CreateParagraph($"*Explanation*", style: "Heading3", isBold: true));
                     body.Append(CreateParagraph("Explanation:", isBold: true));
                     AppendTextWithImages(body, mainPart, q.Explanation, urlRegex, imageMap);
+                    rendered = true;
                 }
 
-                // New Page
-                body.Append(new Paragraph(new Run(new Break { Type = BreakValues.Page })));
+                if (rendered)
+                {
+                    body.Append(new Paragraph(new Run(new Break { Type = BreakValues.Page })));
+                }
+
+                return rendered;
             }
             static void AppendTextWithImages(Body body, MainDocumentPart mainPart, string text, Regex urlRegex, Dictionary<string, byte[]> imageMap)
             {
@@ -1737,7 +1772,7 @@ namespace CertEmpire.Services
                 }
 
                 // 3) Pull topics & case studies metadata
-                var allTopics = _context.Topics.Where(t => t.FileId == quizId).OrderBy(x=>x.Created).ToList();
+                var allTopics = _context.Topics.Where(t => t.FileId == quizId).OrderBy(x => x.Created).ToList();
                 var topics = allTopics.Where(t => !string.IsNullOrWhiteSpace(t.TopicName)).OrderBy(x => x.Created).ToList();
                 var caseStudies = allTopics.Where(t => !string.IsNullOrWhiteSpace(t.Description)).OrderBy(x => x.Created).ToList();
 
