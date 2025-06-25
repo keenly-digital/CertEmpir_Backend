@@ -1238,12 +1238,13 @@ namespace CertEmpire.Services
                         AppendTextWithImages(body, mainPart, t.Description, urlRegex, imageMap);
                         body.Append(CreateParagraph($"**Case Study End**", style: "Heading3", isBold: true));
                         var questions = uniqueQuestions.Where(q => q.CaseStudyId == t.CaseStudyId && q.TopicId == t.TopicId).ToList();
-                        body.Append(CreateParagraph($"***Question Start***", style: "Heading3", isBold: true));
                         foreach (var q in questions)
                         {
+                            body.Append(CreateParagraph($"***Question Start***", style: "Heading3", isBold: true));
                             AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
+                            body.Append(CreateParagraph($"***Question End***", style: "Heading3", isBold: true));
                         }
-                        body.Append(CreateParagraph($"***Question End***", style: "Heading3", isBold: true));
+                        
                     }
 
                     foreach (var t in topicsOnly)
@@ -1252,12 +1253,12 @@ namespace CertEmpire.Services
                         body.Append(CreateParagraph($"Topic: {t.TopicName}", "Heading2"));
                         body.Append(CreateParagraph($"*TOPIC END*", style: "Heading3", isBold: true));
                         var questions = uniqueQuestions.Where(q => q.TopicId == t.TopicId && (q.CaseStudyId == null || q.CaseStudyId == Guid.Empty)).ToList();
-                        body.Append(CreateParagraph($"**Question Start**", style: "Heading3", isBold: true));
                         foreach (var q in questions)
                         {
+                            body.Append(CreateParagraph($"**Question Start**", style: "Heading3", isBold: true));
                             AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
-                        }
-                        body.Append(CreateParagraph($"**Question End**", style: "Heading3", isBold: true));
+                            body.Append(CreateParagraph($"**Question End**", style: "Heading3", isBold: true));
+                        }                       
                     }
 
                     foreach (var cs in standaloneCaseStudies)
@@ -1267,12 +1268,13 @@ namespace CertEmpire.Services
                         AppendTextWithImages(body, mainPart, cs.Description, urlRegex, imageMap);
                         body.Append(CreateParagraph($"*Case Study End*", style: "Heading3", isBold: true));
                         var questions = uniqueQuestions.Where(q => q.CaseStudyId == cs.CaseStudyId && (q.TopicId == null || q.TopicId == Guid.Empty)).ToList();
-                        body.Append(CreateParagraph($"**Question Start**", style: "Heading3", isBold: true));
+                    
                         foreach (var q in questions)
                         {
+                            body.Append(CreateParagraph($"**Question Start**", style: "Heading3", isBold: true));
                             AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
-                        }
-                        body.Append(CreateParagraph($"**Question End**", style: "Heading3", isBold: true));
+                            body.Append(CreateParagraph($"**Question End**", style: "Heading3", isBold: true));
+                        }                        
                     }
                     bool anyRendered = false;
                     var generalQuestions = uniqueQuestions
@@ -1283,21 +1285,24 @@ namespace CertEmpire.Services
 
                     foreach (var q in generalQuestions)
                     {
+                        AppendQuestionHeader(body);
+
                         bool rendered = AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
-                        if (rendered && !anyRendered)
-                        {
-                            body.Append(CreateParagraph($"*Question Start*", style: "Heading3", isBold: true));
-                            anyRendered = true;
-                        }
+
                         if (rendered)
                         {
-                            // Question already added inside AppendQuestion
+                            AppendQuestionFooter(body);
                         }
                     }
-
-                    if (anyRendered)
+                    static bool AppendQuestionHeader(Body body)
                     {
-                        body.Append(CreateParagraph($"*Question End*", style: "Heading3", isBold: true));
+                        body.Append(CreateParagraph("*Question Start*", style: "Heading3", isBold: true));
+                        return true;
+                    }
+
+                    static void AppendQuestionFooter(Body body)
+                    {
+                        body.Append(CreateParagraph("*Question End*", style: "Heading3", isBold: true));
                     }
 
 
@@ -1458,7 +1463,6 @@ namespace CertEmpire.Services
                     });
             }
         }
-
         private async Task<Response<string>> ExportQuizPdf(string domainName, Guid quizId)
         {
             var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
@@ -1616,7 +1620,6 @@ namespace CertEmpire.Services
             return Regex.Replace(option.Trim(), @"^(?:[A-Z]\.|[0-9]+\)|[0-9]+\.)\s*", "", RegexOptions.IgnoreCase);
         }
         #endregion
-
         #region Methods for user
         //Practice online for user
         public async Task<Response<object>> PracticeOnline(Guid fileId, int? PageNumber, bool IsUser)
@@ -1976,7 +1979,6 @@ namespace CertEmpire.Services
             }
             return list;
         }
-
         public async Task<Response<FileInfoResponse>> GetFileInfo(Guid fileId)
         {
             Response<FileInfoResponse> response = new();
@@ -2000,7 +2002,6 @@ namespace CertEmpire.Services
             }
             return response;
         }
-
         public async Task<Response<FileInfoResponse>> GetFileWithUrl(string fileUrl)
         {
             Response<FileInfoResponse> response = new();

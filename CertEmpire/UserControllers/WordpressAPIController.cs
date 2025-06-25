@@ -49,14 +49,14 @@ namespace CertEmpire.Controllers
                         }
                         else
                         {
-                            var url = await _simulationRep.ExportFile(fileInDb.FileId,"pdf");
-                            var res = new
-                            {
-                                fileId = fileInDb.FileId,
-                                fileUrl = url.Data
-                            };
-                           // string fileUrlGenerated = GenerateFileURL(request.UserId, fileInDb.FileId, request.PageType);
-                           list.Add(res);
+                           // var url = await _simulationRep.ExportFile(fileInDb.FileId,"pdf");
+                           // var res = new
+                           // {
+                           //     fileId = fileInDb.FileId,
+                           //     fileUrl = url.Data
+                           // };
+                           //// string fileUrlGenerated = GenerateFileURL(request.UserId, fileInDb.FileId, request.PageType);
+                           //list.Add(res);
                         }
                     }
                     response = new Response<object>(true, "File URL generated successfully", "", list);
