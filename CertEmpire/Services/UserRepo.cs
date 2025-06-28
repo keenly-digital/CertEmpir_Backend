@@ -261,7 +261,7 @@ namespace CertEmpire.Services
         public async Task<Response<AdminLoginResponse>> AdminLoginResponse(AdminLoginRequest request)
         {
             Response<AdminLoginResponse> response = new();
-            var admin = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email && u.Password == request.Password && u.IsAdmin.Equals(true));
+            var admin = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email && u.Password == request.Password);
             if (admin == null)
             {
                 return new Response<AdminLoginResponse>(false, "Invalid email or password", "", default);
