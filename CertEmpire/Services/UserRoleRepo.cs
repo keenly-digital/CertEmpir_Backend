@@ -23,7 +23,7 @@ namespace CertEmpire.Services
             {
                 userRoles = await _context.UserRoles.Take(pageSize).ToListAsync();
             }
-            var totalUser = await _context.UserRoles.CountAsync();           
+            var totalUser = await _context.UserRoles.CountAsync();
             if (userRoles.Any())
             {
                 List<AddUserRoleResponse> roles = userRoles.Select(role => new AddUserRoleResponse
@@ -67,7 +67,7 @@ namespace CertEmpire.Services
                     Edit = userRole.Edit,
                     Delete = userRole.Delete
                 };
-                response = new Response<AddUserRoleResponse>(true, "Role already exist.","", res);
+                response = new Response<AddUserRoleResponse>(true, "Role already exist.", "", res);
             }
             else
             {
@@ -101,18 +101,64 @@ namespace CertEmpire.Services
                 else
                 {
                     response = new Response<AddUserRoleResponse>(false, "Failed to create new role.", "An error occurred while creating the role.", null);
-                }               
+                }
             }
+            return response;
+        }
+        public async Task<Response<EditUserRoleResponse>> EditRole(EditUserRoleResponse request)
+        {
+            Response<EditUserRoleResponse> response = new();
+            var userRole = await _context.UserRoles.FirstOrDefaultAsync(x => x.UserRoleName == request.UserRoleName);
+            if (userRole != null)
+            {
+
+                userRole.UserRoleName = string.IsNullOrWhiteSpace(userRole.UserRoleName)
+                    ? request.UserRoleName
+                    : userRole.UserRoleName;
+                userRole.UserManagement = request.UserManagement ?? userRole.UserManagement;
+                userRole.Tasks = request.Tasks ?? userRole.Tasks;
+                userRole.FileCreation = request.FileCreation ?? userRole.FileCreation;
+                userRole.Create = request.Create ?? userRole.Create;
+                userRole.Edit = request.Edit ?? userRole.Edit;
+                userRole.Delete = request.Delete ?? userRole.Delete;
+                _context.UserRoles.Update(userRole);
+                await _context.SaveChangesAsync();
+                //EditUserRoleResponse res1 = new()
+                //{
+                //    UserRoleId = userRole.UserRoleId,
+                //    UserRoleName = userRole.UserRoleName,
+                //    UserManagement = userRole.UserManagement,
+                //    Tasks = userRole.Tasks,
+                //    FileCreation = userRole.FileCreation,
+                //    Create = userRole.Create,
+                //    Edit = userRole.Edit,
+                //    Delete = userRole.Delete
+                //};
+                response = new Response<EditUserRoleResponse>(true, "Role Updated.", "", default);
+            }
+            else
+            {
+                response = new Response<EditUserRoleResponse>(true, " No Role found.", "", default);
+            }
+
             return response;
         }
         public async Task<Response<string>> DeleteRole(Guid RoleId)
         {
             Response<string> response = new();
-            var role = await _context.UserRoles.FirstOrDefaultAsync(x=>x.UserRoleId.Equals(RoleId));
+            var role = await _context.UserRoles.FirstOrDefaultAsync(x => x.UserRoleId.Equals(RoleId));
             if (role != null)
             {
-                await DeleteAsync(role);
-                response = new Response<string>(true,"Role deleted.","","");
+                var linkedAccounts = await _context.Users.Where(x => x.UserRoleId.Equals(RoleId)).ToListAsync();
+                if (linkedAccounts.Any())
+                {
+                    response = new Response<string>(true, "Role can't be deleted because this role linked with other accounts.", "", "");
+                }
+                else
+                {
+                    await DeleteAsync(role);
+                    response = new Response<string>(true, "Role deleted.", "", "");
+                }
             }
             else
             {

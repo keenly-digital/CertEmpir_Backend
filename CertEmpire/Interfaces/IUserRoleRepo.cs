@@ -8,6 +8,7 @@ namespace CertEmpire.Interfaces
     {
         Task<Response<object>> GetAllRoles(int PageNumber, bool isAll);
         Task<Response<AddUserRoleResponse>> AddRole(AddUserRoleRequest request);
+        Task<Response<EditUserRoleResponse>> EditRole(EditUserRoleResponse request);
         Task<Response<string>> DeleteRole(Guid RoleId);
     }
 }

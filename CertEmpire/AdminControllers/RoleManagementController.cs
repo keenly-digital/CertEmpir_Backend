@@ -1,8 +1,6 @@
 ﻿using CertEmpire.DTOs.UserRoleDTOs;
 using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
-using CertEmpire.Services;
-using DocumentFormat.OpenXml.Office2016.Excel;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CertEmpire.AdminControllers
@@ -37,6 +35,20 @@ namespace CertEmpire.AdminControllers
             try
             {
                 var response = await _userRole.AddRole(request);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                var response = new Response<object>(false, "Error", ex.Message, "");
+                return StatusCode(500, response);
+            }
+        }
+        [HttpPut("[action]")]
+        public async Task<IActionResult> EditUserRole([FromBody] EditUserRoleResponse request)
+        {
+            try
+            {
+                var response = await _userRole.EditRole(request);
                 return Ok(response);
             }
             catch (Exception ex)

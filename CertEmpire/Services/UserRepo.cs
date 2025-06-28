@@ -1,5 +1,6 @@
 ﻿using CertEmpire.Data;
 using CertEmpire.DTOs.UserDTOs;
+using CertEmpire.DTOs.UserRoleDTOs;
 using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using CertEmpire.Interfaces.IJwtService;
@@ -244,7 +245,7 @@ namespace CertEmpire.Services
                         UserName = result.UserName,
                         UserRoleId = result.UserRoleId
                     };
-                    response = new Response<AddNewUserResponse>(true, "User already exist.", "", res);
+                    response = new Response<AddNewUserResponse>(true, "User added.", "", res);
                 }
                 else
                 {
@@ -268,22 +269,36 @@ namespace CertEmpire.Services
                 var userRole = await _context.UserRoles.FirstOrDefaultAsync(x => x.UserRoleId.Equals(admin.UserRoleId));
                 if (userRole == null)
                 {
-
+                    response = new Response<AdminLoginResponse>(false, "User role not found.", "", default);
                 }
-                var jwtToken = await _jwtService.generateJwtToken(admin);
-                return new Response<AdminLoginResponse>(
-                    true,
-                    "Admin logged in successfully",
-                    "",
-                    new AdminLoginResponse
+                else
+                {
+                    Permissions permissions = new()
                     {
-                        UserId = admin.UserId,
-                        Email = admin.Email,
-                        FirstName = admin.FirstName,
-                        LastName = admin.LastName,
-                        UserRole = userRole.UserRoleName,
-                        JWToken = jwtToken
-                    });
+                        Create = userRole.Create,
+                        Delete = userRole.Delete,
+                        Edit = userRole.Edit,
+                        FileCreation = userRole.FileCreation,
+                        Tasks = userRole.Tasks,
+                        UserManagement = userRole.UserManagement
+                    };
+                    var jwtToken = await _jwtService.generateJwtToken(admin);
+                    response = new Response<AdminLoginResponse>(
+                        true,
+                        "Admin logged in successfully",
+                        "",
+                        new AdminLoginResponse
+                        {
+                            UserId = admin.UserId,
+                            Email = admin.Email,
+                            FirstName = admin.FirstName,
+                            LastName = admin.LastName,
+                            UserRole = userRole.UserRoleName ?? "Admin",
+                            JWToken = jwtToken,
+                            Permissions = permissions
+                        });
+                }
+                return response;
             }
         }
         //Change Email for Admin, Super Admin, Owner or for other roles except User
@@ -429,7 +444,7 @@ namespace CertEmpire.Services
                 foreach (var userInfo in pageUser)
                 {
                     var userRole = await _context.UserRoles.FirstOrDefaultAsync(x => x.UserRoleId.Equals(userInfo.UserRoleId));
-                   
+
                     GetAllUsersResponse userObj = new()
                     {
                         UserId = userInfo.UserId,
@@ -458,14 +473,14 @@ namespace CertEmpire.Services
         public async Task<Response<object>> EditUser(EditUser request)
         {
             Response<object> response = new();
-            var userInfo = await _context.Users.FirstOrDefaultAsync(x=>x.UserId.Equals(request.UserId));
+            var userInfo = await _context.Users.FirstOrDefaultAsync(x => x.UserId.Equals(request.UserId));
             if (userInfo == null)
             {
-                response = new Response<object>(true, "No user found.","","");
+                response = new Response<object>(true, "No user found.", "", "");
             }
             else
             {
-                var roleInfo = await _context.UserRoles.FirstOrDefaultAsync(x=>x.UserRoleName.Equals(request.RoleName));
+                var roleInfo = await _context.UserRoles.FirstOrDefaultAsync(x => x.UserRoleName.Equals(request.RoleName));
                 if (roleInfo == null)
                 {
                     response = new Response<object>(true, "No role found.", "", "");

@@ -1,4 +1,6 @@
-﻿namespace CertEmpire.DTOs.UserDTOs
+﻿using CertEmpire.DTOs.UserRoleDTOs;
+
+namespace CertEmpire.DTOs.UserDTOs
 {
     public class AddUserResponse
     {
@@ -28,6 +30,8 @@
         public string Email { get; set; } = string.Empty;
         public string JWToken { get; set; } = string.Empty;
         public string UserRole { get; set; } = string.Empty;
+        public string ProfilePicUrl { get; set; } = string.Empty;
+        public Permissions? Permissions { get; set; } = new Permissions();
     }
     public class AddNewUserResponse
     {
