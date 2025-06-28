@@ -108,7 +108,7 @@ namespace CertEmpire.Services
         public async Task<Response<EditUserRoleResponse>> EditRole(EditUserRoleResponse request)
         {
             Response<EditUserRoleResponse> response = new();
-            var userRole = await _context.UserRoles.FirstOrDefaultAsync(x => x.UserRoleName == request.UserRoleName);
+            var userRole = await _context.UserRoles.FirstOrDefaultAsync(x => x.UserRoleId == request.UserRoleId);
             if (userRole != null)
             {
 
