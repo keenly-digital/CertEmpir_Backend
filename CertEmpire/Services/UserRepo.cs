@@ -7,6 +7,8 @@ using CertEmpire.Interfaces.IJwtService;
 using CertEmpire.Models;
 using CertEmpire.Services.FileService;
 using Microsoft.EntityFrameworkCore;
+using Supabase.Gotrue;
+using User = CertEmpire.Models.User;
 
 namespace CertEmpire.Services
 {
@@ -487,6 +489,18 @@ namespace CertEmpire.Services
                 }
                 else
                 {
+                    if (!string.IsNullOrWhiteSpace(request.FirstName))
+                    {
+                        userInfo.FirstName = request.FirstName.Trim();
+                    }
+                    if (!string.IsNullOrWhiteSpace(request.LastName))
+                    {
+                        userInfo.LastName = request.LastName.Trim();
+                    }
+                    if (!string.IsNullOrEmpty(request.Email))
+                    {
+                        userInfo.Email = request.Email.Trim();
+                    }
                     userInfo.UserRoleId = roleInfo.UserRoleId;
                     _context.Users.Update(userInfo);
                     await _context.SaveChangesAsync();
