@@ -310,7 +310,7 @@ namespace CertEmpire.Services
             }
             if (isCommunityVote == false)
             {
-                report.Status = request.Decision;
+                report.Status = request.Decision.Value;
                 if (request.Decision.Equals("Disapprove"))
                 {
                     report.Explanation = request.Explanation;
@@ -333,7 +333,7 @@ namespace CertEmpire.Services
                 {
                     foreach (var item in purchasers)
                     {
-                        var userInfo = await _context.Users.FirstOrDefaultAsync(x => x.Id.Equals(item.UserId));
+                        var userInfo = await _context.Users.FirstOrDefaultAsync(x => x.UserId.Equals(item.UserId));
                         if (userInfo != null)
                         {
                             var task = new ReviewTask

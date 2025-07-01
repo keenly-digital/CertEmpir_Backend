@@ -27,7 +27,7 @@ namespace CertEmpire.DTOs.MyTaskDTOs
     public class SubmitAdminVoteDTO
     {
         public Guid ReportId { get; set; }
-        public ReportStatus Decision { get; set; }
+        public ReportStatus? Decision { get; set; }
         public string Explanation { get; set; } = string.Empty;
     }
 
