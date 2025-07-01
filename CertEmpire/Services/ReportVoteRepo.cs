@@ -313,7 +313,7 @@ namespace CertEmpire.Services
                 report.Status = request.Decision.Value;
                 if (request.Decision.Equals("Disapprove"))
                 {
-                    report.AdminExplanation = request.Explanation;
+                    report.AdminExplanation = request.Explanation??string.Empty;
                 }
                 _context.Reports.Update(report);
                 await _context.SaveChangesAsync();
