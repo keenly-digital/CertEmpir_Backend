@@ -345,13 +345,13 @@ namespace CertEmpire.Services
                             };
                             await _context.ReviewTasks.AddAsync(task);
                             await _context.SaveChangesAsync();
-                            var email = new Email
-                            {
-                                To = userInfo.Email,
-                                Subject = "Report Review",
-                                // Body = $"Your OTP for password reset is: {otp}"
-                            };
-                            _emailService.SendEmail(email);
+                            //var email = new Email
+                            //{
+                            //    To = userInfo.Email,
+                            //    Subject = "Report Review",
+                            //    Body = $"Your OTP for password reset is: {otp}"
+                            //};
+                            //_emailService.SendEmail(email);
                         }
                     }
                 }
