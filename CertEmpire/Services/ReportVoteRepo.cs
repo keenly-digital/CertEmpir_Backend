@@ -42,7 +42,7 @@ namespace CertEmpire.Services
                 {
                     int pageSize = request.PageNumber * 10; // Assuming PageSize is 10
                     //getting all the tasks
-                    var tasks = await _context.Reports.Take(pageSize).OrderByDescending(x=>x.Created).ToListAsync();
+                    var tasks = await _context.Reports.OrderByDescending(x => x.Created).Take(pageSize).ToListAsync();
                     if (tasks.Any())
                     {
                         foreach (var item in tasks)
