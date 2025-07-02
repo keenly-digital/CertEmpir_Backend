@@ -24,7 +24,7 @@ namespace CertEmpire.Services
             }
 
             var approvedReportsCount = await _context.Reports
-                .Where(x => x.fileId.Equals(request.FileId) && x.UserId==request.UserId && x.Status == ReportStatus.Approved)
+                .Where(x => x.fileId.Equals(request.FileId) && x.UserId == request.UserId && x.Status == ReportStatus.Approved)
                 .CountAsync();
 
             decimal rewardAmount = Math.Min(filePrice, approvedReportsCount * 0.33m);
@@ -35,14 +35,19 @@ namespace CertEmpire.Services
 
             if (existingReward != null)
             {
-                // Update the existing reward amount
                 existingReward.Amount = rewardAmount;
+
+                // Detach any tracked instance with same key
+                var tracked = _context.ChangeTracker.Entries<Reward>()
+                    .FirstOrDefault(e => e.Entity.RewardId == existingReward.RewardId);
+                if (tracked != null)
+                    tracked.State = EntityState.Detached;
+
                 _context.Rewards.Update(existingReward);
                 await _context.SaveChangesAsync();
             }
             else
             {
-                // Add a new reward
                 Reward newReward = new()
                 {
                     ReportId = Guid.NewGuid(),
@@ -52,11 +57,10 @@ namespace CertEmpire.Services
                     UserId = request.UserId,
                     Withdrawn = false
                 };
+
                 await _context.Rewards.AddAsync(newReward);
                 await _context.SaveChangesAsync();
             }
-
-          
 
             var responseDto = new FileReportRewardResponseDTO
             {
@@ -67,6 +71,7 @@ namespace CertEmpire.Services
 
             return new Response<FileReportRewardResponseDTO>(true, "Reward calculated.", "", responseDto);
         }
+
         public async Task<Response<decimal>> Withdraw(FileReportRewardRequestDTO request)
         {
             Response<decimal> response;
