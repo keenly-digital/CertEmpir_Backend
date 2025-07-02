@@ -1607,14 +1607,17 @@ namespace CertEmpire.Services
             var jsonContent = JsonConvert.SerializeObject(examDTO, Newtonsoft.Json.Formatting.Indented);
             // var encryptedContent = _aesOperation.EncryptString(Key, jsonContent);
             var fileNameWithoutextension = System.IO.Path.GetFileNameWithoutExtension(quiz.FileName);
-            var fileName = fileNameWithoutextension + ".qzs";
+            var fileName = fileNameWithoutextension + ".pdf";
             var filePath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), fileName);
             //    var base64Encrypted = Convert.ToBase64String(Encoding.UTF8.GetBytes(encryptedContent));
             await System.IO.File.WriteAllTextAsync(filePath, jsonContent);
             // Convert to IFormFile and Upload
             using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
             var formFile = new FormFile(stream, 0, stream.Length, "file", fileName);
-            var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
+            var uploadedPath = await _fileService.ExportFileAsync(domainName,formFile, "QuizFiles");
+            quiz.FileURL = uploadedPath;
+            _context.UploadedFiles.Update(quiz);
+            await _context.SaveChangesAsync();
             return new Response<string>(true, "File exported successfully.", "", uploadedPath);
         }
         private void AppendQuestionText(StringBuilder sb, Models.Question q)
@@ -2031,6 +2034,7 @@ namespace CertEmpire.Services
         {
             List<QuizFileInfoResponse> list = new();
             int questionCount = 0;
+            pageSize = 10;
             var allQuizzes = _context.UploadedFiles.AsQueryable();
             var userQuizzes = allQuizzes
                 .Where(x => x.UserId == userId)

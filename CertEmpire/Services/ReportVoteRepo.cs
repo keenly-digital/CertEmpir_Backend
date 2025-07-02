@@ -63,7 +63,7 @@ namespace CertEmpire.Services
                             };
                             list.Add(res);
                         }
-                        int totalCount = await _context.Reports.CountAsync();
+                        int totalCount = tasks.Count();
                         var result = new
                         {
                             data = list,
@@ -311,13 +311,13 @@ namespace CertEmpire.Services
             if (isCommunityVote == false)
             {
                 report.Status = request.Decision.Value;
-                if (request.Decision.Equals("Disapprove"))
+                if (request.Decision.Equals("DisApprove"))
                 {
                     report.AdminExplanation = request.Explanation??string.Empty;
                 }
                 _context.Reports.Update(report);
                 await _context.SaveChangesAsync();
-                if (request.Decision.Equals("Approve"))
+                if (request.Decision.Equals("Approved"))
                 {
                     response = new Response<string>(true, "The request has been approved.", "", null);
                 }
