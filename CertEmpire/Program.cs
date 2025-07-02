@@ -24,7 +24,7 @@ using System.Text.Json.Serialization;
 var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+                options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")).EnableSensitiveDataLogging());
 builder.Services.AddScoped<IUserRepo, UserRepo>();
 builder.Services.AddScoped<ISimulationRepo, SimulationRepo>();
 builder.Services.AddScoped<IReportRepo, ReportRepo>();

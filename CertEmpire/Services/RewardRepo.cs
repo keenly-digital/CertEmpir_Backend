@@ -38,6 +38,7 @@ namespace CertEmpire.Services
                 // Update the existing reward amount
                 existingReward.Amount = rewardAmount;
                 _context.Rewards.Update(existingReward);
+                await _context.SaveChangesAsync();
             }
             else
             {
@@ -52,9 +53,10 @@ namespace CertEmpire.Services
                     Withdrawn = false
                 };
                 await _context.Rewards.AddAsync(newReward);
+                await _context.SaveChangesAsync();
             }
 
-            await _context.SaveChangesAsync();
+          
 
             var responseDto = new FileReportRewardResponseDTO
             {
@@ -144,6 +146,7 @@ namespace CertEmpire.Services
                     };
                     var currentBalance = await CalculateReward(requestReward);
                     if (currentBalance.Data!=null)
+                    {
                         result.Add(new
                         {
                             OrderNumber = $"#{orderSeed + index++}",
@@ -155,11 +158,27 @@ namespace CertEmpire.Services
                             VotedReportsApproved = votedReportsApproved,
                             CurrentBalance = currentBalance.Data.CurrentBalance
                         });
-                    object obj = new
+                    }
+                    else
                     {
-                        results = totalCount,
-                        data = result,
-                    };
+                        result.Add(new
+                        {
+                            OrderNumber = $"#{orderSeed + index++}",
+                            FileName = fileObj.FileName,
+                            FilePrice = fileObj.FilePrice,
+                            ReportsSubmitted = reportsSubmitted,
+                            ReportsApproved = approvedReports,
+                            VotedReports = votedReports,
+                            VotedReportsApproved = votedReportsApproved,
+                            CurrentBalance = 0
+                        });
+                    }
+
+                        object obj = new
+                        {
+                            results = totalCount,
+                            data = result,
+                        };
                 }
             }
 
