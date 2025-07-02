@@ -11,14 +11,13 @@ namespace CertEmpire.Services
 {
     public class MyTaskRepo(ApplicationDbContext context) : Repository<ReviewTask>(context), IMyTaskRepo
     {
-        public async Task<Response<object>> 
-            GetPendingTasks(TaskFilterDTO request)
+        public async Task<Response<object>> GetPendingTasks(TaskFilterDTO request)
         {
             Response<object> response;
             List<UploadedFile> list = new List<UploadedFile>();
             // 1. Fetch review tasks for the reviewer
             var reviewTasks = await _context.ReviewTasks
-                .Where(rt => rt.ReviewerUserId == request.UserId && rt.Status == Helpers.Enums.ReportStatus.Pending).OrderByDescending(x=>x.Created)
+                .Where(rt => rt.ReviewerUserId == request.UserId && rt.Status == Helpers.Enums.ReportStatus.Pending).OrderByDescending(x => x.Created)
                 .ToListAsync();
 
             if (!reviewTasks.Any())
@@ -27,10 +26,19 @@ namespace CertEmpire.Services
             // 2. Get ReportIds from the tasks
             var reportIds = reviewTasks.Select(rt => rt.ReportId).Distinct().ToList();
 
+            List<Report> reports = new();
             // 3. Fetch reports
-            var reports = await _context.Reports
-                .Where(r => reportIds.Contains(r.ReportId))
-                .ToListAsync();
+            foreach (var item in reportIds)
+            {
+                var reportInfo = await _context.Reports.FirstOrDefaultAsync(x=>x.ReportId.Equals(item));
+                if(reportInfo!=null)
+                {
+                    reports.Add(reportInfo);
+                }               
+            }
+            //var reports = await _context.Reports
+            //    .Where(r => reportIds.Contains(r.ReportId))
+            //    .ToListAsync();
 
             // 4. Get fileIds and targetIds from reports
             var fileIds = reports.Select(r => r.fileId).Distinct().ToList();
