@@ -24,7 +24,7 @@ namespace CertEmpire.Services
             }
 
             var approvedReportsCount = await _context.Reports
-                .Where(x => x.fileId.Equals(request.FileId) && x.Status == ReportStatus.Approved)
+                .Where(x => x.fileId.Equals(request.FileId) && x.UserId==request.UserId && x.Status == ReportStatus.Approved)
                 .CountAsync();
 
             decimal rewardAmount = Math.Min(filePrice, approvedReportsCount * 0.33m);
