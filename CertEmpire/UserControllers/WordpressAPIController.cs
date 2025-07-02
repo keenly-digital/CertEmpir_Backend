@@ -45,15 +45,21 @@ namespace CertEmpire.Controllers
                         var fileInDb = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileURL.Equals(fileUrl));
                         if (fileInDb == null)
                         {
-                            response = new Response<object>(true, "File not found.", "", default);
+                            var res = new
+                            {
+                                fileId = Guid.Empty,
+                                fileUrl = fileUrl
+                            };
+                            // string fileUrlGenerated = GenerateFileURL(request.UserId, fileInDb.FileId, request.PageType);
+                            list.Add(res);
                         }
                         else
                         {
                           //  var url = await _simulationRep.ExportFile(fileInDb.FileId, "pdf");
                             var res = new
                             {
-                                fileId = fileInDb.FileId,
-                                fileUrl = ""
+                                fileId = (Guid?)fileInDb.FileId??Guid.Empty,
+                                fileUrl = fileInDb.FileURL
                             };
                             // string fileUrlGenerated = GenerateFileURL(request.UserId, fileInDb.FileId, request.PageType);
                             list.Add(res);
