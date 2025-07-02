@@ -65,7 +65,6 @@ namespace CertEmpire.Services
 
             return new Response<FileReportRewardResponseDTO>(true, "Reward calculated.", "", responseDto);
         }
-
         public async Task<Response<decimal>> Withdraw(FileReportRewardRequestDTO request)
         {
             Response<decimal> response;
@@ -101,32 +100,32 @@ namespace CertEmpire.Services
                 .Where(r => r.UserId == request.UserId && !r.Withdrawn)
                 .ToListAsync();
             int pageSize = request.PageNumber * 10;
-            var rewardGroups = rewards
-                .GroupBy(r => r.FileId)
-                .Select(g => new
-                {
-                    FileId = g.Key,
-                    TotalUnwithdrawn = g.Sum(r => r.Amount),
-                    ApprovedReports = g.Count()
-                }).ToList().Take(pageSize);
+            //var rewardGroups = rewards
+            //    .GroupBy(r => r.FileId)
+            //    .Select(g => new
+            //    {
+            //        FileId = g.Key,
+            //        TotalUnwithdrawn = g.Sum(r => r.Amount),
+            //        ApprovedReports = g.Count()
+            //    }).ToList().Take(pageSize);
 
-            var fileInfo = await _context.UserFilePrices
-                .Where(u => u.UserId == request.UserId)
-                .ToListAsync();
-
+            //var fileInfo = await _context.UserFilePrices
+            //    .Where(u => u.UserId == request.UserId)
+            //    .ToListAsync();
+            var reportList = await _context.Reports.Where(x => x.UserId.Equals(request.UserId)).ToListAsync();
             List<object> result = new();
 
             int orderSeed = 40000;
             int index = 1;
-            int totalCount = rewardGroups.Count();
-            foreach (var rg in rewardGroups)
+            int totalCount = reportList.Count();
+            foreach (var rg in reportList)
             {
-                var fileRecord = fileInfo.FirstOrDefault(f => f.FileId == rg.FileId);
-                var fileObj = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == rg.FileId);
+                //  var fileRecord = fileInfo.FirstOrDefault(f => f.FileId == rg.FileId);
+                var fileObj = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == rg.fileId);
 
-                if (fileRecord != null && fileObj != null)
+                if (fileObj != null)
                 {
-                    var fileId = rg.FileId;
+                    var fileId = rg.fileId;
 
                     var reportsSubmitted = await _context.Reports.CountAsync(x => x.UserId == request.UserId && x.fileId == fileId);
                     var votedReports = await _context.Reports.CountAsync(x => x.UserId == request.UserId && x.fileId == fileId && x.Status == ReportStatus.Voted);
@@ -137,18 +136,25 @@ namespace CertEmpire.Services
                         x.Status == ReportStatus.Voted &&
                         x.VotedStatus == true &&  // You may need to adjust this condition
                         _context.Reports.Any(r => r.ReportId == x.ReportId && r.fileId == fileId));
-
-                    result.Add(new
+                    var approvedReports = reportList.Count(x => x.Status.Equals(ReportStatus.Approved));
+                    FileReportRewardRequestDTO requestReward = new()
                     {
-                        OrderNumber = $"#{orderSeed + index++}",
-                        FileName = fileObj.FileName,
-                        FilePrice = fileObj.FilePrice,
-                        ReportsSubmitted = reportsSubmitted,
-                        ReportsApproved = rg.ApprovedReports,
-                        VotedReports = votedReports,
-                        VotedReportsApproved = votedReportsApproved,
-                        CurrentBalance = Math.Min(rg.TotalUnwithdrawn, fileObj.FilePrice)
-                    });
+                        UserId = request.UserId,
+                        FileId = fileObj.FileId
+                    };
+                    var currentBalance = await CalculateReward(requestReward);
+                    if (currentBalance.Data!=null)
+                        result.Add(new
+                        {
+                            OrderNumber = $"#{orderSeed + index++}",
+                            FileName = fileObj.FileName,
+                            FilePrice = fileObj.FilePrice,
+                            ReportsSubmitted = reportsSubmitted,
+                            ReportsApproved = approvedReports,
+                            VotedReports = votedReports,
+                            VotedReportsApproved = votedReportsApproved,
+                            CurrentBalance = currentBalance.Data.CurrentBalance
+                        });
                     object obj = new
                     {
                         results = totalCount,

@@ -1,9 +1,11 @@
 ﻿using CertEmpire.Models.CommonModel;
+using System.ComponentModel.DataAnnotations;
 
 namespace CertEmpire.Models
 {
     public class Reward : AuditableBaseEntity
     {
+        [Key]
         public Guid RewardId { get; set; }
         public Guid UserId { get; set; }
         public Guid FileId { get; set; }
