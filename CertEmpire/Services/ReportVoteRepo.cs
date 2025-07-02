@@ -42,15 +42,15 @@ namespace CertEmpire.Services
                 {
                     int pageSize = request.PageNumber * 10; // Assuming PageSize is 10
                     //getting all the tasks
-                    var tasks = await _context.Reports.OrderByDescending(x => x.Created).Take(pageSize).ToListAsync();
+                    var tasks = await _context.Reports.OrderByDescending(x => x.Created).Where(x=>x.Status.Equals(ReportStatus.Pending)).Take(pageSize).ToListAsync();
                     if (tasks.Any())
                     {
                         foreach (var item in tasks)
                         {
                             //count total votes for reports
-                            int totalVotes = await _context.ReportVotes.CountAsync(x => x.ReportId == item.ReportId);
+                            int totalVotes = await _context.UserFilePrices.CountAsync(x => x.FileId==item.fileId);
                             //count upvotes for reports
-                            int upVotes = await _context.ReportVotes.CountAsync(x => x.ReportId == item.ReportId && x.Vote.Equals(true));
+                            int upVotes = await _context.ReviewTasks.CountAsync(x => x.ReportId == item.ReportId && x.VotedStatus.Equals(true));
                             var voteSummary = $"{upVotes}/{totalVotes}";
                             AdminTasksResponse res = new()
                             {

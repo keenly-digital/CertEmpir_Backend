@@ -91,19 +91,19 @@ namespace CertEmpire.Services
                         var result = await AddAsync(report);
                         if (result != null)
                         {
-                            var buyerIds = await _context.UserFilePrices.Where(x => x.FileId == request.FileId && x.UserId != request.UserId).Select(x => x.UserId).ToListAsync();
-                            if (buyerIds.Count > 0)
-                                foreach (var buyerId in buyerIds)
-                                {
-                                    var task = new ReviewTask
-                                    {
-                                        ReviewTaskId = Guid.NewGuid(),
-                                        ReportId = report.ReportId,
-                                        ReviewerUserId = buyerId,
-                                        Status = ReportStatus.Pending
-                                    };
-                                    await _context.ReviewTasks.AddAsync(task);
-                                }
+                            //var buyerIds = await _context.UserFilePrices.Where(x => x.FileId == request.FileId && x.UserId != request.UserId).Select(x => x.UserId).ToListAsync();
+                            //if (buyerIds.Count > 0)
+                            //    foreach (var buyerId in buyerIds)
+                            //    {
+                            //        var task = new ReviewTask
+                            //        {
+                            //            ReviewTaskId = Guid.NewGuid(),
+                            //            ReportId = report.ReportId,
+                            //            ReviewerUserId = buyerId,
+                            //            Status = ReportStatus.Pending
+                            //        };
+                            //        await _context.ReviewTasks.AddAsync(task);
+                            //    }
 
                             await _context.SaveChangesAsync();
                             response = new Response<string>(true, "Thank You For Your Report. This Helps Us And Our Community.", "", default);
