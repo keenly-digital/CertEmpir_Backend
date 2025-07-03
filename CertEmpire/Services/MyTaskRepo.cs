@@ -36,12 +36,17 @@ namespace CertEmpire.Services
                 if(reportInfo!=null)
                 {
                     reports.Add(reportInfo);
-                }               
+                }
+                else
+                {
+                    var reviewTask = await _context.ReviewTasks.FirstOrDefaultAsync(x => x.ReportId.Equals(item) && x.ReviewerUserId.Equals(request.UserId));
+                    if (reviewTask != null)
+                    {
+                        _context.ReviewTasks.Remove(reviewTask);
+                        await _context.SaveChangesAsync();
+                    }
+                }
             }
-            //var reports = await _context.Reports
-            //    .Where(r => reportIds.Contains(r.ReportId))
-            //    .ToListAsync();
-
             // 4. Get fileIds and targetIds from reports
             var fileIds = reports.Select(r => r.fileId).Distinct().ToList();
             var questionIds = reports.Select(r => r.TargetId).Distinct().ToList();

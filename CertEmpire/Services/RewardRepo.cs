@@ -162,8 +162,8 @@ namespace CertEmpire.Services
 
                 result.Add(new
                 {
-                    OrderNumber = userFileInfo.OrderId,
-                    FileName = fileObj.FileName,
+                    OrderNumber = (int?)userFileInfo.OrderId??0,
+                    FileName = fileObj.FileName??"",
                     FilePrice = fileObj.FilePrice,
                     ReportsSubmitted = reportsSubmitted,
                     ReportsApproved = reportsApproved,
@@ -172,16 +172,12 @@ namespace CertEmpire.Services
                     CurrentBalance = currentBalance
                 });
             }
-
-            return new Response<object>(
-                true,
-                "Reward details with order retrieved",
-                "",
-                new
-                {
-                    results = totalCount,
-                    data = result
-                });
+            object obj = new
+            {
+                results = totalCount,
+                data = result,
+            };
+            return new Response<object>(true, "Reward details with order retrieved", "", result);
         }
 
         public async Task<Response<object>> GetCouponCode(GetCouponCodeDTO request)
