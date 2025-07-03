@@ -59,3 +59,4 @@ obj/
 /CertEmpire/bin/Debug/net8.0/appsettings.Development.json
 /CertEmpire/obj/Debug/net8.0/CertEmpire.GeneratedMSBuildEditorConfig.editorconfig
 /CertEmpire/obj/Debug/net8.0/CertEmpire.GeneratedMSBuildEditorConfig.editorconfig
+/CertEmpire/obj/Debug/net8.0/CertEmpire.genruntimeconfig.cache
