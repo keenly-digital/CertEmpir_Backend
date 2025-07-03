@@ -17,7 +17,7 @@ namespace CertEmpire.Services
             List<UploadedFile> list = new List<UploadedFile>();
             // 1. Fetch review tasks for the reviewer
             var reviewTasks = await _context.ReviewTasks
-                .Where(rt => rt.ReviewerUserId == request.UserId && rt.Status == Helpers.Enums.ReportStatus.Pending).OrderByDescending(x => x.Created)
+                .Where(rt => rt.ReviewerUserId == request.UserId /*&& rt.Status == Helpers.Enums.ReportStatus.Pending*/).OrderByDescending(x => x.Created)
                 .ToListAsync();
 
             if (!reviewTasks.Any())
