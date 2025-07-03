@@ -460,8 +460,16 @@ namespace CertEmpire.Services
                 List<GetAllUsersResponse> userList = new();
                 foreach (var userInfo in pageUser)
                 {
+                    string userRoleName;// Default role name
                     var userRole = await _context.UserRoles.FirstOrDefaultAsync(x => x.UserRoleId.Equals(userInfo.UserRoleId));
-
+                    if (userRole==null)
+                    {
+                        userRoleName = "User"; // Default to "User" if no role found
+                    }
+                    else
+                    {
+                        userRoleName = userRole.UserRoleName;
+                    }
                     GetAllUsersResponse userObj = new()
                     {
                         UserId = userInfo.UserId,
@@ -469,7 +477,7 @@ namespace CertEmpire.Services
                         Email = userInfo.Email,
                         ProfilePicUrl = userInfo.ImageUrl,
                         CreatedAt = userInfo.Created,
-                        Role = userRole.UserRoleName??"User"
+                        Role = userRoleName
                     };
                     userList.Add(userObj);
                     var res = new
