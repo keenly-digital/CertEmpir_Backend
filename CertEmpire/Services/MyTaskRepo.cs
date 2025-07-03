@@ -17,7 +17,7 @@ namespace CertEmpire.Services
             List<UploadedFile> list = new List<UploadedFile>();
             // 1. Fetch review tasks for the reviewer
             var reviewTasks = await _context.ReviewTasks
-                .Where(rt => rt.ReviewerUserId == request.UserId /*&& rt.Status == Helpers.Enums.ReportStatus.Pending*/).OrderByDescending(x => x.Created)
+                .Where(rt => rt.ReviewerUserId == request.UserId && rt.AdminSatus == Helpers.Enums.ReportStatus.Pending).OrderByDescending(x => x.Created)
                 .ToListAsync();
 
             if (!reviewTasks.Any())
@@ -64,7 +64,12 @@ namespace CertEmpire.Services
                 .ToListAsync();
             int pageSize = request.PageNumber * 10;
             // 6. Join all in memory
-            var data = (from rt in reviewTasks
+            var distinctReviewTasks = reviewTasks
+     .GroupBy(rt => rt.ReportId)
+     .Select(g => g.First())
+     .ToList();
+
+            var data = (from rt in distinctReviewTasks
                         join report in reports on rt.ReportId equals report.ReportId
                         join file in list on report.fileId equals file.FileId
                         join question in questions on report.TargetId equals question.Id
@@ -84,6 +89,7 @@ namespace CertEmpire.Services
                             Reason = report.Reason ?? "",
                             Options = report.Options ?? new List<string>()
                         }).ToList();
+
             int totalCount = data.Count;
             var tasks = data.Take(pageSize).ToList();
             object obj = new
