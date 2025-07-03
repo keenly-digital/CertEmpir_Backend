@@ -1,6 +1,7 @@
 ﻿using CertEmpire.Data;
 using CertEmpire.DTOs.MyTaskDTOs;
 using CertEmpire.DTOs.SimulationDTOs;
+using CertEmpire.Helpers.Enums;
 using CertEmpire.Helpers.ResponseWrapper;
 using CertEmpire.Interfaces;
 using CertEmpire.Models;
@@ -17,7 +18,7 @@ namespace CertEmpire.Services
             List<UploadedFile> list = new List<UploadedFile>();
             // 1. Fetch review tasks for the reviewer
             var reviewTasks = await _context.ReviewTasks
-                .Where(rt => rt.ReviewerUserId == request.UserId && rt.AdminSatus == Helpers.Enums.ReportStatus.Pending).OrderByDescending(x => x.Created)
+                .Where(rt => rt.ReviewerUserId == request.UserId).OrderByDescending(x => x.Created)
                 .ToListAsync();
 
             if (!reviewTasks.Any())
@@ -30,7 +31,8 @@ namespace CertEmpire.Services
             // 3. Fetch reports
             foreach (var item in reportIds)
             {
-                var reportInfo = await _context.Reports.FirstOrDefaultAsync(x=>x.ReportId.Equals(item));
+                var reportInfo = await _context.Reports.FirstOrDefaultAsync(x=>x.ReportId.Equals(item) && x.Status.Equals(ReportStatus.Pending));
+
                 if(reportInfo!=null)
                 {
                     reports.Add(reportInfo);
@@ -122,7 +124,6 @@ namespace CertEmpire.Services
                 task.ReviewerExplanation = request.Explanation;
                 task.ReviewedAt = DateTime.UtcNow;
                 task.VotedStatus = true;
-                task.AdminSatus = Helpers.Enums.ReportStatus.Pending;
                 await UpdateAsync(task);
                 response = new Response<string>(true, "Vote submitted successfully", "", null);
             }

@@ -310,21 +310,32 @@ namespace CertEmpire.Services
             }
             if (isCommunityVote == false)
             {
-                report.Status = request.Decision.Value;
-                if (request.Decision.Equals("DisApprove"))
+                if(request.Decision.HasValue)
                 {
-                    report.AdminExplanation = request.Explanation??string.Empty;
-                }
-                _context.Reports.Update(report);
-                await _context.SaveChangesAsync();
-                if (request.Decision.Equals("Approved"))
-                {
-                    response = new Response<string>(true, "The request has been approved.", "", null);
-                }
-                else
-                {
-                    response = new Response<string>(true, "The request has been rejected.", "", null);
-                }
+                    if (request.Decision.Value.Equals(ReportStatus.Approved))
+                    {
+                        report.Status = request.Decision.Value;
+                    }
+                    else
+                    {
+                        report.Status = request.Decision.Value;
+                    }
+                    if (request.Decision.Value.Equals(ReportStatus.Disapprove))
+                    {
+                        report.AdminExplanation = request.Explanation??string.Empty;
+                    }
+                    _context.Reports.Update(report);
+                    await _context.SaveChangesAsync();
+                    if (request.Decision.Value.Equals(ReportStatus.Approved))
+                    {
+                        response = new Response<string>(true, "The request has been approved.", "", null);
+                    }
+                    else
+                    {
+                        response = new Response<string>(true, "The request has been rejected.", "", null);
+                    }
+                }                
+              
             }
             else
             {
@@ -345,13 +356,6 @@ namespace CertEmpire.Services
                             };
                             await _context.ReviewTasks.AddAsync(task);
                             await _context.SaveChangesAsync();
-                            //var email = new Email
-                            //{
-                            //    To = userInfo.Email,
-                            //    Subject = "Report Review",
-                            //    Body = $"Your OTP for password reset is: {otp}"
-                            //};
-                            //_emailService.SendEmail(email);
                         }
                     }
                 }
