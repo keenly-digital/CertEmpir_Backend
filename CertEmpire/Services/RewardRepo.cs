@@ -13,65 +13,60 @@ namespace CertEmpire.Services
         public async Task<Response<FileReportRewardResponseDTO>> CalculateReward(FileReportRewardRequestDTO request)
         {
             var filePrice = await _context.UserFilePrices
-                .Where(x => x.FileId.Equals(request.FileId))
+                .Where(x => x.FileId == request.FileId && x.UserId == request.UserId)
                 .Select(x => x.FilePrice)
                 .FirstOrDefaultAsync();
 
             if (filePrice == 0)
             {
-                return new Response<FileReportRewardResponseDTO>(
-                    true, "No reward on free files.", "", default);
+                return new Response<FileReportRewardResponseDTO>(true, "No reward on free files.", "", default);
             }
 
             var approvedReportsCount = await _context.Reports
-                .Where(x => x.fileId.Equals(request.FileId) && x.UserId == request.UserId && x.Status == ReportStatus.Approved)
+                .Where(x => x.fileId == request.FileId && x.UserId == request.UserId && x.Status == ReportStatus.Approved)
                 .CountAsync();
 
             decimal rewardAmount = Math.Min(filePrice, approvedReportsCount * 0.33m);
 
-            // Check if reward already exists for this FileId and UserId
+            // ✅ 1. Detach if already tracked
+            var tracked = _context.ChangeTracker.Entries<Reward>()
+                .FirstOrDefault(e => e.Entity.UserId == request.UserId && e.Entity.FileId == request.FileId);
+            if (tracked != null)
+                tracked.State = EntityState.Detached;
+
+            // ✅ 2. Safely get the existing reward (no tracking)
             var existingReward = await _context.Rewards
+                .AsNoTracking()
                 .FirstOrDefaultAsync(r => r.FileId == request.FileId && r.UserId == request.UserId);
 
             if (existingReward != null)
             {
                 existingReward.Amount = rewardAmount;
-
-                // Detach any tracked instance with same key
-                var tracked = _context.ChangeTracker.Entries<Reward>()
-                    .FirstOrDefault(e => e.Entity.RewardId == existingReward.RewardId);
-                if (tracked != null)
-                    tracked.State = EntityState.Detached;
-
                 _context.Rewards.Update(existingReward);
-                await _context.SaveChangesAsync();
             }
             else
             {
                 Reward newReward = new()
                 {
+                    RewardId = Guid.NewGuid(),
                     ReportId = Guid.NewGuid(),
                     Amount = rewardAmount,
                     FileId = request.FileId,
-                    RewardId = Guid.NewGuid(),
                     UserId = request.UserId,
                     Withdrawn = false
                 };
-
                 await _context.Rewards.AddAsync(newReward);
-                await _context.SaveChangesAsync();
             }
 
-            var responseDto = new FileReportRewardResponseDTO
+            await _context.SaveChangesAsync();
+
+            return new Response<FileReportRewardResponseDTO>(true, "Reward calculated.", "", new FileReportRewardResponseDTO
             {
                 FileId = request.FileId,
                 UserId = request.UserId,
                 CurrentBalance = rewardAmount
-            };
-
-            return new Response<FileReportRewardResponseDTO>(true, "Reward calculated.", "", responseDto);
+            });
         }
-
         public async Task<Response<decimal>> Withdraw(FileReportRewardRequestDTO request)
         {
             Response<decimal> response;
@@ -103,83 +98,81 @@ namespace CertEmpire.Services
         }
         public async Task<Response<object>> GetUserRewardDetailsWithOrder(RewardsFilterDTO request)
         {
-            var rewards = await _context.Rewards
-                .Where(r => r.UserId == request.UserId && !r.Withdrawn)
+            var reportList = await _context.Reports
+                .Where(r => r.UserId == request.UserId)
                 .ToListAsync();
-            int pageSize = request.PageNumber * 10;
-             
-            var reportList = await _context.Reports.Where(x => x.UserId.Equals(request.UserId)).ToListAsync();
+
+            // Group reports by file to avoid duplicates
+            var groupedReports = reportList
+                .GroupBy(r => r.fileId)
+                .Select(g => new
+                {
+                    FileId = g.Key,
+                    Reports = g.ToList()
+                }).ToList();
+
             List<object> result = new();
-            int index = 1;
-            int totalCount = reportList.Count();
-            foreach (var rg in reportList)
+            int totalCount = groupedReports.Count;
+
+            foreach (var group in groupedReports)
             {
-                var userFileInfo = await _context.UserFilePrices.FirstOrDefaultAsync(x => x.UserId == request.UserId && x.FileId == rg.fileId);
+                var fileId = group.FileId;
+
+                var userFileInfo = await _context.UserFilePrices
+                    .FirstOrDefaultAsync(x => x.UserId == request.UserId && x.FileId == fileId);
+
+                // Skip if file price is not set
                 if (userFileInfo == null || userFileInfo.FilePrice == 0)
+                    continue;
+
+                var fileObj = await _context.UploadedFiles
+                    .FirstOrDefaultAsync(x => x.FileId == fileId);
+
+                if (fileObj == null)
+                    continue;
+
+                var reportsSubmitted = group.Reports.Count;
+                var reportsApproved = group.Reports.Count(x => x.Status == ReportStatus.Approved);
+                var votedReports = group.Reports.Count(x => x.Status == ReportStatus.Voted);
+
+                var votedReportsApproved = await _context.ReviewTasks.CountAsync(x =>
+                    x.ReviewerUserId == request.UserId &&
+                    x.Status == ReportStatus.Voted &&
+                    x.VotedStatus == true &&
+                    _context.Reports.Any(r => r.ReportId == x.ReportId && r.fileId == fileId));
+
+                var currentBalanceResponse = await CalculateReward(new FileReportRewardRequestDTO
                 {
-                    continue; // Skip if no price is set for the file
-                }
-                var fileObj = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == rg.fileId);
+                    UserId = request.UserId,
+                    FileId = fileId
+                });
 
-                if (fileObj != null)
+                var currentBalance = currentBalanceResponse.Data?.CurrentBalance ?? 0;
+
+                result.Add(new
                 {
-                    var fileId = rg.fileId;
-
-                    var reportsSubmitted = await _context.Reports.CountAsync(x => x.UserId == request.UserId && x.fileId == fileId);
-                    var votedReports = await _context.Reports.CountAsync(x => x.UserId == request.UserId && x.fileId == fileId && x.Status == ReportStatus.Voted);
-
-                    // Count of voted reports approved (by the reviewer) — custom logic may be needed here
-                    var votedReportsApproved = await _context.ReviewTasks.CountAsync(x =>
-                        x.ReviewerUserId == request.UserId &&
-                        x.Status == ReportStatus.Voted &&
-                        x.VotedStatus == true &&  // You may need to adjust this condition
-                        _context.Reports.Any(r => r.ReportId == x.ReportId && r.fileId == fileId));
-                    var approvedReports = reportList.Count(x => x.Status.Equals(ReportStatus.Approved));
-                    FileReportRewardRequestDTO requestReward = new()
-                    {
-                        UserId = request.UserId,
-                        FileId = fileObj.FileId
-                    };
-                    var currentBalance = await CalculateReward(requestReward);
-                    if (currentBalance.Data!=null)
-                    {
-                        result.Add(new
-                        {
-                            OrderNumber = userFileInfo.OrderId,
-                            FileName = fileObj.FileName,
-                            FilePrice = fileObj.FilePrice,
-                            ReportsSubmitted = reportsSubmitted,
-                            ReportsApproved = approvedReports,
-                            VotedReports = votedReports,
-                            VotedReportsApproved = votedReportsApproved,
-                            CurrentBalance = currentBalance.Data.CurrentBalance
-                        });
-                    }
-                    else
-                    {
-                        result.Add(new
-                        {
-                            OrderNumber = (int?)userFileInfo.OrderId??0,
-                            FileName = fileObj.FileName,
-                            FilePrice = fileObj.FilePrice,
-                            ReportsSubmitted = reportsSubmitted,
-                            ReportsApproved = approvedReports,
-                            VotedReports = votedReports,
-                            VotedReportsApproved = votedReportsApproved,
-                            CurrentBalance = 0
-                        });
-                    }
-
-                        object obj = new
-                        {
-                            results = totalCount,
-                            data = result,
-                        };
-                }
+                    OrderNumber = userFileInfo.OrderId,
+                    FileName = fileObj.FileName,
+                    FilePrice = fileObj.FilePrice,
+                    ReportsSubmitted = reportsSubmitted,
+                    ReportsApproved = reportsApproved,
+                    VotedReports = votedReports,
+                    VotedReportsApproved = votedReportsApproved,
+                    CurrentBalance = currentBalance
+                });
             }
 
-            return new Response<object>(true, "Reward details with order retrieved", "", result);
+            return new Response<object>(
+                true,
+                "Reward details with order retrieved",
+                "",
+                new
+                {
+                    results = totalCount,
+                    data = result
+                });
         }
+
         public async Task<Response<object>> GetCouponCode(GetCouponCodeDTO request)
         {
             var filePrice = await _context.UploadedFiles

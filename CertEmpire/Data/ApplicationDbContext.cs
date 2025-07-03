@@ -45,14 +45,22 @@ namespace CertEmpire.Data
         }
         protected override void OnModelCreating(ModelBuilder builder)
         {
-            //All Decimals will have 18,6 Range
+            base.OnModelCreating(builder); // ensure base is called
+
+            // Set decimal precision globally
             foreach (var property in builder.Model.GetEntityTypes()
-            .SelectMany(t => t.GetProperties())
-            .Where(p => p.ClrType == typeof(decimal) || p.ClrType == typeof(decimal?)))
+                .SelectMany(t => t.GetProperties())
+                .Where(p => p.ClrType == typeof(decimal) || p.ClrType == typeof(decimal?)))
             {
                 property.SetPrecision(18);
                 property.SetScale(6);
             }
+
+            // ✅ Add unique constraint to Rewards table
+            builder.Entity<Reward>()
+                .HasIndex(r => new { r.UserId, r.FileId })
+                .IsUnique();
         }
+
     }
 }
