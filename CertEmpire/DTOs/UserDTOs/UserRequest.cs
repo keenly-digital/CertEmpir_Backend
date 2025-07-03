@@ -20,6 +20,7 @@ namespace CertEmpire.DTOs.UserDTOs
         public string? FileUrl { get; set; }
         public decimal FilePrice { get; set; }
         public int ProductId { get; set; }
+        public int OrderId { get; set; }
     }
     public class FileResponse
     {

@@ -125,7 +125,7 @@ namespace CertEmpire.Services
                             {
                                 FileId = fileExist.FileId,
                                 UserId = user.UserId,
-                                FilePriceId = Guid.NewGuid()
+                                FilePriceId = Guid.NewGuid(),
                             };
                             await _context.UserFilePrices.AddAsync(filePrice);
                             await _context.SaveChangesAsync();
@@ -179,6 +179,18 @@ namespace CertEmpire.Services
             {
                 await DeleteAsync(user);
                 return new Response<string>(true, "User deleted successfully", "", default);
+            }
+            else
+            {
+                return new Response<string>(false, "User not found", "", default);
+            }
+        }
+        public async Task<Response<string>> GetUser(string Email)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == Email);
+            if (user != null)
+            {
+                return new Response<string>(true, "User Found successfully", "", user.Password);
             }
             else
             {
