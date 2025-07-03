@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using CertEmpire.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CertEmpire.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250703160741_OrderIdAdd")]
+    partial class OrderIdAdd
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -527,21 +530,11 @@ namespace CertEmpire.Migrations
                     b.Property<Guid>("FileId")
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("FilePrice")
-                        .HasPrecision(18, 6)
-                        .HasColumnType("numeric(18,6)");
-
                     b.Property<Guid>("FilePriceId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("LastModified")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("OrderId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ProductId")
-                        .HasColumnType("integer");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");

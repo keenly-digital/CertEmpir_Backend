@@ -86,7 +86,8 @@ namespace CertEmpire.Services
                             fileId = request.FileId,
                             Status = ReportStatus.Pending,
                             ReportName = reportName,
-                            QuestionNumber = request.QuestionNumber
+                            QuestionNumber = request.QuestionNumber,
+                            OrderId=request.OrderId
                         };
                         var result = await AddAsync(report);
                         if (result != null)
@@ -172,6 +173,7 @@ namespace CertEmpire.Services
                             ReportName = request.Reason,
                             CorrectAnswerIndices = request.CorrectAnswerIndices,
                             Options = options,
+                            OrderId = request.OrderId
                         };
                         var result = await AddAsync(report);
                         if (result != null)
