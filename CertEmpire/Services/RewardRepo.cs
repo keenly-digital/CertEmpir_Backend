@@ -98,10 +98,11 @@ namespace CertEmpire.Services
         }
         public async Task<Response<object>> GetUserRewardDetailsWithOrder(RewardsFilterDTO request)
         {
+            dynamic votedReportsApproved = 0;
             var reportList = await _context.Reports
                 .Where(r => r.UserId == request.UserId)
                 .ToListAsync();
-
+            var userTasks = await _context.ReviewTasks.Where(x => x.ReviewerUserId.Equals(request.UserId)).ToListAsync();
             // Group reports by file to avoid duplicates
             var groupedReports = reportList
                 .GroupBy(r => r.fileId)
@@ -123,23 +124,33 @@ namespace CertEmpire.Services
 
                 // Skip if file price is not set
                 if (userFileInfo == null || userFileInfo.FilePrice == 0)
-                    continue;
+                {
+
+                }
 
                 var fileObj = await _context.UploadedFiles
                     .FirstOrDefaultAsync(x => x.FileId == fileId);
 
                 if (fileObj == null)
-                    continue;
+                {
+                }
 
                 var reportsSubmitted = group.Reports.Count;
                 var reportsApproved = group.Reports.Count(x => x.Status == ReportStatus.Approved);
-                var votedReports = group.Reports.Count(x => x.Status == ReportStatus.Voted);
+                var votedReports = userTasks.Count(x => x.VotedStatus==true);
 
-                var votedReportsApproved = await _context.ReviewTasks.CountAsync(x =>
-                    x.ReviewerUserId == request.UserId &&
-                    x.Status == ReportStatus.Voted &&
-                    x.VotedStatus == true &&
-                    _context.Reports.Any(r => r.ReportId == x.ReportId && r.fileId == fileId));
+                //var votedReportsApproved = await _context.ReviewTasks.CountAsync(x =>
+                //    x.ReviewerUserId == request.UserId &&
+                //    x.Status == ReportStatus.Voted &&
+                //    x.VotedStatus == true &&
+                //    _context.Reports.Any(r => r.ReportId == x.ReportId && r.fileId == fileId));
+
+                foreach (var item in userTasks)
+                {
+                    votedReportsApproved = await _context.Reports
+                        .Where(r => r.ReportId == item.ReportId && r.fileId == fileId && r.Status == ReportStatus.Approved)
+                        .CountAsync();
+                }
 
                 var currentBalanceResponse = await CalculateReward(new FileReportRewardRequestDTO
                 {
