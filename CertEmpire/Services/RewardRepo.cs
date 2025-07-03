@@ -12,7 +12,7 @@ namespace CertEmpire.Services
     {
         public async Task<Response<FileReportRewardResponseDTO>> CalculateReward(FileReportRewardRequestDTO request)
         {
-            var filePrice = await _context.UploadedFiles
+            var filePrice = await _context.UserFilePrices
                 .Where(x => x.FileId.Equals(request.FileId))
                 .Select(x => x.FilePrice)
                 .FirstOrDefaultAsync();
@@ -107,27 +107,18 @@ namespace CertEmpire.Services
                 .Where(r => r.UserId == request.UserId && !r.Withdrawn)
                 .ToListAsync();
             int pageSize = request.PageNumber * 10;
-            //var rewardGroups = rewards
-            //    .GroupBy(r => r.FileId)
-            //    .Select(g => new
-            //    {
-            //        FileId = g.Key,
-            //        TotalUnwithdrawn = g.Sum(r => r.Amount),
-            //        ApprovedReports = g.Count()
-            //    }).ToList().Take(pageSize);
-
-            //var fileInfo = await _context.UserFilePrices
-            //    .Where(u => u.UserId == request.UserId)
-            //    .ToListAsync();
+             
             var reportList = await _context.Reports.Where(x => x.UserId.Equals(request.UserId)).ToListAsync();
             List<object> result = new();
-
-            int orderSeed = 40000;
             int index = 1;
             int totalCount = reportList.Count();
             foreach (var rg in reportList)
             {
-                //  var fileRecord = fileInfo.FirstOrDefault(f => f.FileId == rg.FileId);
+                var userFileInfo = await _context.UserFilePrices.FirstOrDefaultAsync(x => x.UserId == request.UserId && x.FileId == rg.fileId);
+                if (userFileInfo == null || userFileInfo.FilePrice == 0)
+                {
+                    continue; // Skip if no price is set for the file
+                }
                 var fileObj = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == rg.fileId);
 
                 if (fileObj != null)
@@ -154,7 +145,7 @@ namespace CertEmpire.Services
                     {
                         result.Add(new
                         {
-                            OrderNumber = $"#{orderSeed + index++}",
+                            OrderNumber = userFileInfo.OrderId,
                             FileName = fileObj.FileName,
                             FilePrice = fileObj.FilePrice,
                             ReportsSubmitted = reportsSubmitted,
@@ -168,7 +159,7 @@ namespace CertEmpire.Services
                     {
                         result.Add(new
                         {
-                            OrderNumber = $"#{orderSeed + index++}",
+                            OrderNumber = (int?)userFileInfo.OrderId??0,
                             FileName = fileObj.FileName,
                             FilePrice = fileObj.FilePrice,
                             ReportsSubmitted = reportsSubmitted,
