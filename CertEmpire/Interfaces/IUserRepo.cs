@@ -11,6 +11,8 @@ namespace CertEmpire.Interfaces
         Task<Response<LoginResponse>> LoginResponse(LoginRequest request);
         Task<Response<object>> GetAllEmailAsync();
         Task<Response<string>> DeleteUser(string Email);
+
+        Task<Response<string>> GetUser(string Email);
         Task<Response<string>> UpdatePassword(UpdatePasswordRequest request);
         #endregion
 
