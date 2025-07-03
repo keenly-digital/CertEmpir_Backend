@@ -13,6 +13,7 @@ namespace CertEmpire.DTOs.ReportRequestDTOs
         public Guid UserId { get; set; }
         public Guid FileId { get; set; }
         public string QuestionNumber { get; set; } = string.Empty;
+        public int OrderId { get; set; }
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
             if (string.IsNullOrWhiteSpace(Reason))
@@ -36,6 +37,7 @@ public class ReportAnswerDTO
     public string? Explanation { get; set; }
     public Guid UserId { get; set; }
     public Guid FileId { get; set; }
+    public int OrderId { get; set; }
     public List<int> CorrectAnswerIndices { get; set; } = new List<int>();
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {

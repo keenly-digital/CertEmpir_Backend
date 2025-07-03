@@ -9,7 +9,8 @@ namespace CertEmpire.Models
         [Key]
         public Guid ReportId { get; set; }
         public ReportType Type { get; set; }
-        public int TargetId { get; set; } 
+        public int TargetId { get; set; }
+        public int OrderId { get; set; }
         public string? Reason { get; set; }
         public string? Explanation { get; set; }
         public Guid UserId { get; set; }
