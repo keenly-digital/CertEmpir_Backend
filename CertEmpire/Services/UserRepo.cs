@@ -126,6 +126,9 @@ namespace CertEmpire.Services
                                 FileId = fileExist.FileId,
                                 UserId = user.UserId,
                                 FilePriceId = Guid.NewGuid(),
+                                FilePrice = file.FilePrice,
+                                OrderId = file.OrderId,
+                                ProductId = file.ProductId
                             };
                             await _context.UserFilePrices.AddAsync(filePrice);
                             await _context.SaveChangesAsync();
