@@ -6,6 +6,7 @@ using CertEmpire.Interfaces;
 using CertEmpire.Models;
 using CertEmpire.Services.FileService;
 using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Math;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using EncryptionDecryptionUsingSymmetricKey;
@@ -26,6 +27,8 @@ using Break = DocumentFormat.OpenXml.Wordprocessing.Break;
 using Colors = QuestPDF.Helpers.Colors;
 using Document = DocumentFormat.OpenXml.Wordprocessing.Document;
 using Drawing = DocumentFormat.OpenXml.Wordprocessing.Drawing;
+using Paragraph = DocumentFormat.OpenXml.Wordprocessing.Paragraph;
+using ParagraphProperties = DocumentFormat.OpenXml.Wordprocessing.ParagraphProperties;
 using pic = DocumentFormat.OpenXml.Drawing.Pictures;
 using Run = DocumentFormat.OpenXml.Wordprocessing.Run;
 using RunProperties = DocumentFormat.OpenXml.Wordprocessing.RunProperties;
@@ -640,6 +643,21 @@ namespace CertEmpire.Services
                 return new Response<CreateQuizResponse>(false, "Error while creating quiz.", "", default);
             }
         }
+        public async Task<Response<string>> CreateFiles(Guid fileId)
+        {
+            var qzs = await ExportQuizQzs(fileId);
+            var pdf = await ExportQuizPdf(fileId);
+            if (qzs.Success ==true & pdf.Success ==true)
+            {
+
+                return new Response<string>(true, "File Created successfully.", "","Created");
+            }
+            else
+            {
+
+                return new Response<string>(false, "File Not Created successfully.", "", "Not Created");
+            }
+        }
         public async Task<Response<string>> ExportFile(Guid quizId, string type)
         {
             if (type.Equals("qzs"))
@@ -783,6 +801,138 @@ namespace CertEmpire.Services
                 var result = await ExportQuizDocx(quizId);
                 return result;
             }
+        }
+        public async Task<Response<string>> ExportQuizQzs(Guid quizId)
+        {
+           
+                var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
+                if (quiz == null)
+                    return new Response<string>(false, "Quiz file not found.", "", "");
+
+                var topicsRaw = await _context.Topics.Where(x => x.FileId.Equals(quiz)).ToListAsync();
+                var questionsRaw = await _context.Questions.Where(q => q.FileId == quizId).ToListAsync();
+
+                var topicDtos = new List<Topic>();
+
+                // Real topics (TopicName filled, CaseStudy empty)
+                var realTopics = topicsRaw.Where(t => !string.IsNullOrWhiteSpace(t.TopicName) && string.IsNullOrWhiteSpace(t.CaseStudy)).ToList();
+
+                // Case studies (CaseStudy filled, TopicName empty)
+                var caseStudies = topicsRaw.Where(t => !string.IsNullOrWhiteSpace(t.CaseStudy) && string.IsNullOrWhiteSpace(t.TopicName)).ToList();
+
+                // Map Topics
+                foreach (var topic in realTopics)
+                {
+                    var relatedQuestions = questionsRaw
+                        .Where(q => q.TopicId == topic.TopicId)
+                        .Select(q => new QuestionObject
+                        {
+                            id = q.Id,
+                            questionText = q.QuestionText ?? "",
+                            questionDescription = q.QuestionDescription ?? "",
+                            options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
+                            correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
+                            answerExplanation = q.Explanation ?? "",
+                            questionImageURL = q.questionImageURL ?? "",
+                            answerImageURL = q.answerImageURL ?? "",
+                            showAnswer = false,
+                            TopicId = q.TopicId ?? Guid.Empty,
+                            CaseStudyId = Guid.Empty
+                        }).ToList();
+
+                    topicDtos.Add(new Topic
+                    {
+                        TopicId = topic.TopicId ?? Guid.Empty,
+                        TopicName = topic.TopicName ?? "",
+                        CaseStudy = topic.CaseStudy ?? "",
+                        description = topic.Description ?? "",
+                        Questions = relatedQuestions
+                    });
+                }
+
+                // Map Case Studies
+                foreach (var cs in caseStudies)
+                {
+                    var relatedQuestions = questionsRaw
+                        .Where(q => q.TopicId == cs.TopicId)
+                        .Select(q => new QuestionObject
+                        {
+                            id = q.Id,
+                            questionText = q.QuestionText ?? "",
+                            questionDescription = q.QuestionDescription ?? "",
+                            options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
+                            correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
+                            answerExplanation = q.Explanation ?? "",
+                            questionImageURL = q.questionImageURL ?? "",
+                            answerImageURL = q.answerImageURL ?? "",
+                            showAnswer = false,
+                            TopicId = Guid.Empty,
+                            CaseStudyId = q.TopicId ?? Guid.Empty
+                        }).ToList();
+
+                    topicDtos.Add(new Topic
+                    {
+                        TopicId = cs.TopicId ?? Guid.Empty,
+                        TopicName = "",
+                        CaseStudy = cs.CaseStudy ?? "",
+                        description = "",
+                        Questions = relatedQuestions
+                    });
+                }
+
+                // Map unlinked questions (no topic or invalid topic reference)
+                var unlinkedQuestions = questionsRaw
+                    .Where(q => q.TopicId == Guid.Empty || !topicsRaw.Any(t => t.TopicId == q.TopicId))
+                    .Select(q => new QuestionObject
+                    {
+                        id = q.Id,
+                        questionText = q.QuestionText ?? "",
+                        questionDescription = q.QuestionDescription ?? "",
+                        options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
+                        correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
+                        answerExplanation = q.Explanation ?? "",
+                        questionImageURL = q.questionImageURL ?? "",
+                        answerImageURL = q.answerImageURL ?? "",
+                        showAnswer = false,
+                        TopicId = Guid.Empty,
+                        CaseStudyId = Guid.Empty
+                    }).ToList();
+
+                if (unlinkedQuestions.Any())
+                {
+                    topicDtos.Add(new Topic
+                    {
+                        TopicId = Guid.Empty,
+                        TopicName = "General",
+                        CaseStudy = "",
+                        description = "",
+                        Questions = unlinkedQuestions
+                    });
+                }
+
+                var examDTO = new ExamDTO
+                {
+                    ExamTitle = quiz.FileName,
+                    Topics = topicDtos
+                };
+
+                // Serialize and Encrypt
+                var jsonContent = JsonConvert.SerializeObject(examDTO, Newtonsoft.Json.Formatting.Indented);
+                // var encryptedContent = _aesOperation.EncryptString(Key, jsonContent);
+                var fileNameWithoutextension = System.IO.Path.GetFileNameWithoutExtension(quiz.FileName);
+                var fileName = fileNameWithoutextension + ".qzs";
+                var filePath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), fileName);
+                //    var base64Encrypted = Convert.ToBase64String(Encoding.UTF8.GetBytes(encryptedContent));
+                await System.IO.File.WriteAllTextAsync(filePath, jsonContent);
+
+                // Convert to IFormFile and Upload
+                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                var formFile = new FormFile(stream, 0, stream.Length, "file", fileName);
+                var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
+                quiz.FileQzsURL = uploadedPath;
+                _context.UploadedFiles.Update(quiz);
+                await _context.SaveChangesAsync();
+                return new Response<string>(true, "File exported successfully.", "", uploadedPath);
         }
         public async Task<Response<string>> ExportQuizPdf(Guid quizId)
         {
