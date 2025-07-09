@@ -16,5 +16,6 @@ namespace CertEmpire.Interfaces
         Task<Response<string>> GenerateFileUrl(string domainName, Guid fileId);
         Task<Response<FileInfoResponse>> GetFileInfo(Guid fileId);
         Task<Response<FileInfoResponse>> GetFileWithUrl(string fileUrl);
+        Task<Response<string>> GetFileDownloadUrl(Guid fileId, string fileType);
     }
 }

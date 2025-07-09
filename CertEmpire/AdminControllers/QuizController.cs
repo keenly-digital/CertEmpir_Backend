@@ -92,6 +92,20 @@ namespace CertEmpire.AdminControllers
                 return StatusCode(500, response);
             }
         }
+        [HttpGet("[action]")]
+        public async Task<IActionResult> GetFileDownloadUrl(Guid fileId, string fileType)
+        {
+            try
+            {
+                var response = await _simulationRepo.GetFileDownloadUrl(fileId, fileType);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                var response = new Response<object>(false, "Error", ex.Message, "");
+                return StatusCode(500, response);
+            }
+        }
         [HttpPost("UploadFile")]
         [RequestSizeLimit(104857600)]
         public async Task<ActionResult> Create(IFormFile file, string email)

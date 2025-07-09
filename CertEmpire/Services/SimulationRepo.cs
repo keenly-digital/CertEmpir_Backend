@@ -7,7 +7,6 @@ using CertEmpire.Models;
 using CertEmpire.Services.FileService;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
-using DocumentFormat.OpenXml.Spreadsheet;
 using DocumentFormat.OpenXml.Wordprocessing;
 using EncryptionDecryptionUsingSymmetricKey;
 using ExcelDataReader;
@@ -33,8 +32,6 @@ using RunProperties = DocumentFormat.OpenXml.Wordprocessing.RunProperties;
 using Text = DocumentFormat.OpenXml.Wordprocessing.Text;
 using Topic = CertEmpire.DTOs.SimulationDTOs.Topic;
 using wp = DocumentFormat.OpenXml.Drawing.Wordprocessing;
-
-
 
 namespace CertEmpire.Services
 {
@@ -771,8 +768,8 @@ namespace CertEmpire.Services
                 using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
                 var formFile = new FormFile(stream, 0, stream.Length, "file", fileName);
                 var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
-                //  quiz.FileURL = uploadedPath;
-                //  _context.UploadedFiles.Update(quiz);
+                quiz.FileQzsURL = uploadedPath;
+                _context.UploadedFiles.Update(quiz);
                 await _context.SaveChangesAsync();
                 return new Response<string>(true, "File exported successfully.", "", uploadedPath);
             }
@@ -797,8 +794,8 @@ namespace CertEmpire.Services
             var domain = await _context.Domains.FirstOrDefaultAsync(x => x.DomainURL.Equals(quiz.FileURL));
             domainNameFooter = domain?.DomainName ?? "CertEmpire";
 
-            var questions = await _context.Questions.Where(q => q.FileId == quizId).OrderBy(x=>x.Created).ToListAsync();
-            var topics = await _context.Topics.Where(t => t.FileId == quizId).OrderBy(x=>x.Created).ToListAsync();
+            var questions = await _context.Questions.Where(q => q.FileId == quizId).OrderBy(x => x.Created).ToListAsync();
+            var topics = await _context.Topics.Where(t => t.FileId == quizId).OrderBy(x => x.Created).ToListAsync();
 
             var imageMap = new Dictionary<string, byte[]>();
             // 3) Pre-compile your regexes
@@ -1203,7 +1200,9 @@ namespace CertEmpire.Services
             await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
             var formFile = new FormFile(stream, 0, stream.Length, "file", System.IO.Path.GetFileName(filePath));
             var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
-
+            quiz.FilePdfURL = uploadedPath;
+            _context.UploadedFiles.Update(quiz);
+            await _context.SaveChangesAsync();
             return new Response<string>(true, "PDF exported successfully.", "", uploadedPath);
         }
         public async Task<Response<string>> ExportQuizDocx(Guid quizId)
@@ -1271,7 +1270,7 @@ namespace CertEmpire.Services
                             AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
                             body.Append(CreateParagraph($"***Question End***", style: "Heading3", isBold: true));
                         }
-                        
+
                     }
 
                     foreach (var t in topicsOnly)
@@ -1285,7 +1284,7 @@ namespace CertEmpire.Services
                             body.Append(CreateParagraph($"**Question Start**", style: "Heading3", isBold: true));
                             AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
                             body.Append(CreateParagraph($"**Question End**", style: "Heading3", isBold: true));
-                        }                       
+                        }
                     }
 
                     foreach (var cs in standaloneCaseStudies)
@@ -1295,13 +1294,13 @@ namespace CertEmpire.Services
                         AppendTextWithImages(body, mainPart, cs.Description, urlRegex, imageMap);
                         body.Append(CreateParagraph($"*Case Study End*", style: "Heading3", isBold: true));
                         var questions = uniqueQuestions.Where(q => q.CaseStudyId == cs.CaseStudyId && (q.TopicId == null || q.TopicId == Guid.Empty)).ToList();
-                    
+
                         foreach (var q in questions)
                         {
                             body.Append(CreateParagraph($"**Question Start**", style: "Heading3", isBold: true));
                             AppendQuestion(body, mainPart, q, ref qCount, urlRegex, imageMap);
                             body.Append(CreateParagraph($"**Question End**", style: "Heading3", isBold: true));
-                        }                        
+                        }
                     }
                     bool anyRendered = false;
                     var generalQuestions = uniqueQuestions
@@ -1614,7 +1613,7 @@ namespace CertEmpire.Services
             // Convert to IFormFile and Upload
             using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
             var formFile = new FormFile(stream, 0, stream.Length, "file", fileName);
-            var uploadedPath = await _fileService.ExportFileAsync(domainName,formFile, "QuizFiles");
+            var uploadedPath = await _fileService.ExportFileAsync(domainName, formFile, "QuizFiles");
             quiz.FileURL = uploadedPath;
             _context.UploadedFiles.Update(quiz);
             await _context.SaveChangesAsync();
@@ -1692,6 +1691,29 @@ namespace CertEmpire.Services
 
             // Remove common leading patterns like "A. ", "1) ", "2. " etc.
             return Regex.Replace(option.Trim(), @"^(?:[A-Z]\.|[0-9]+\)|[0-9]+\.)\s*", "", RegexOptions.IgnoreCase);
+        }
+        public async Task<Response<string>> GetFileDownloadUrl(Guid fileId, string fileType)
+        {
+            Response<string> response = new();
+            string fileUrl;
+            var fileInfo = await _context.UploadedFiles.FindAsync(fileId);
+            if (fileInfo == null)
+            {
+                response = new Response<string>(false, "File not found.", "", "");
+            }
+            else
+            {
+                if (fileType == "pdf")
+                {
+                    fileUrl = fileInfo.FilePdfURL;
+                }
+                else
+                {
+                    fileUrl = fileInfo.FileQzsURL;
+                }
+                response = new Response<string>(true, "File Download  Url", " ", fileUrl);
+            }
+            return response;
         }
         #endregion
         #region Methods for user
