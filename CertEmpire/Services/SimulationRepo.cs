@@ -2178,7 +2178,7 @@ namespace CertEmpire.Services
         {
             Response<object> response = new();
             var userInfo = await _context.Users.FirstOrDefaultAsync(x => x.Email.Equals(email));
-
+            
             if (userInfo == null)
             {
                 return new Response<object>(true, "No user found.", "", "");
@@ -2199,7 +2199,7 @@ namespace CertEmpire.Services
             var files = await _context.UploadedFiles
                 .Where(x => userFileIds.Contains(x.FileId))
                 .ToListAsync();
-
+            files = files.OrderByDescending(x => x.FileName).ToList();
             return new Response<object>(true, "Files", "", files);
         }
         public async Task<List<QuizFileInfoResponse>> GetQuizById(Guid userId, int pageNumber, int pageSize)
