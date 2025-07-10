@@ -1,5 +1,6 @@
 ﻿using CertEmpire.DTOs.QuizDTOs;
 using CertEmpire.Helpers.ResponseWrapper;
+using CertEmpire.Models;
 
 namespace CertEmpire.Interfaces
 {
@@ -9,7 +10,6 @@ namespace CertEmpire.Interfaces
         Task<Response<object>> GetAllFiles(string email);
         Task<Response<object>> Create(IFormFile file, string email);
         Task<Response<CreateQuizResponse>> CreateQuiz(CreateQuizRequest request);
-        Task<Response<string>> ExportQuizPdf(Guid quizId);
         Task<Response<string>> ExportFile(Guid quizId, string type);
         Task<Response<string>> CreateFiles(Guid quizId);
         Task<List<QuizFileInfoResponse>> GetQuizById(Guid userId, int pageNumber, int pageSize);

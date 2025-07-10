@@ -645,316 +645,197 @@ namespace CertEmpire.Services
         }
         public async Task<Response<string>> CreateFiles(Guid fileId)
         {
-            var uploadFile = await _context.UploadedFiles.FirstOrDefaultAsync (x => x.FileId == fileId);
-            if(uploadFile==null)
-                return new Response<string>(false, "File not found.", "", "");
-          //  var qzs = await ExportQuizQzs(fileId);
-            var pdf = await ExportQuizPdf(fileId);
-            //uploadFile.FileQzsURL = qzs.Data??"";
-            //uploadFile.FilePdfURL = pdf.Data??"";
-            //_context.UploadedFiles.Update(uploadFile);
-            //await _context.SaveChangesAsync();
-            if ( pdf.Success ==true)
-            {
-                return new Response<string>(true, "File Created successfully.", "","Created");
-            }
-            else
-            {
-                return new Response<string>(false, "File Not Created successfully.", "", "Not Created");
-            }
-        }
-        public async Task<Response<string>> ExportFile(Guid quizId, string type)
-        {
-            if (type.Equals("qzs"))
-            {
-                var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
-                if (quiz == null)
-                    return new Response<string>(false, "Quiz file not found.", "", "");
+            // Fetch the quiz ONCE
+            var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == fileId);
+            if (quiz == null)
+                return new Response<string>(false, "Quiz file not found.", "", "");
 
-                var topicsRaw = await _context.Topics.Where(x => x.FileId.Equals(quiz)).ToListAsync();
-                var questionsRaw = await _context.Questions.Where(q => q.FileId == quizId).ToListAsync();
+            // Export both files, pass the same entity
+            var qzs = await ExportQuizQzs(quiz);
+            var pdf = await ExportQuizPdf(quiz);
 
-                var topicDtos = new List<Topic>();
-
-                // Real topics (TopicName filled, CaseStudy empty)
-                var realTopics = topicsRaw.Where(t => !string.IsNullOrWhiteSpace(t.TopicName) && string.IsNullOrWhiteSpace(t.CaseStudy)).ToList();
-
-                // Case studies (CaseStudy filled, TopicName empty)
-                var caseStudies = topicsRaw.Where(t => !string.IsNullOrWhiteSpace(t.CaseStudy) && string.IsNullOrWhiteSpace(t.TopicName)).ToList();
-
-                // Map Topics
-                foreach (var topic in realTopics)
-                {
-                    var relatedQuestions = questionsRaw
-                        .Where(q => q.TopicId == topic.TopicId)
-                        .Select(q => new QuestionObject
-                        {
-                            id = q.Id,
-                            questionText = q.QuestionText ?? "",
-                            questionDescription = q.QuestionDescription ?? "",
-                            options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
-                            correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
-                            answerExplanation = q.Explanation ?? "",
-                            questionImageURL = q.questionImageURL ?? "",
-                            answerImageURL = q.answerImageURL ?? "",
-                            showAnswer = false,
-                            TopicId = q.TopicId ?? Guid.Empty,
-                            CaseStudyId = Guid.Empty
-                        }).ToList();
-
-                    topicDtos.Add(new Topic
-                    {
-                        TopicId = topic.TopicId ?? Guid.Empty,
-                        TopicName = topic.TopicName ?? "",
-                        CaseStudy = topic.CaseStudy ?? "",
-                        description = topic.Description ?? "",
-                        Questions = relatedQuestions
-                    });
-                }
-
-                // Map Case Studies
-                foreach (var cs in caseStudies)
-                {
-                    var relatedQuestions = questionsRaw
-                        .Where(q => q.TopicId == cs.TopicId)
-                        .Select(q => new QuestionObject
-                        {
-                            id = q.Id,
-                            questionText = q.QuestionText ?? "",
-                            questionDescription = q.QuestionDescription ?? "",
-                            options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
-                            correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
-                            answerExplanation = q.Explanation ?? "",
-                            questionImageURL = q.questionImageURL ?? "",
-                            answerImageURL = q.answerImageURL ?? "",
-                            showAnswer = false,
-                            TopicId = Guid.Empty,
-                            CaseStudyId = q.TopicId ?? Guid.Empty
-                        }).ToList();
-
-                    topicDtos.Add(new Topic
-                    {
-                        TopicId = cs.TopicId ?? Guid.Empty,
-                        TopicName = "",
-                        CaseStudy = cs.CaseStudy ?? "",
-                        description = "",
-                        Questions = relatedQuestions
-                    });
-                }
-
-                // Map unlinked questions (no topic or invalid topic reference)
-                var unlinkedQuestions = questionsRaw
-                    .Where(q => q.TopicId == Guid.Empty || !topicsRaw.Any(t => t.TopicId == q.TopicId))
-                    .Select(q => new QuestionObject
-                    {
-                        id = q.Id,
-                        questionText = q.QuestionText ?? "",
-                        questionDescription = q.QuestionDescription ?? "",
-                        options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
-                        correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
-                        answerExplanation = q.Explanation ?? "",
-                        questionImageURL = q.questionImageURL ?? "",
-                        answerImageURL = q.answerImageURL ?? "",
-                        showAnswer = false,
-                        TopicId = Guid.Empty,
-                        CaseStudyId = Guid.Empty
-                    }).ToList();
-
-                if (unlinkedQuestions.Any())
-                {
-                    topicDtos.Add(new Topic
-                    {
-                        TopicId = Guid.Empty,
-                        TopicName = "General",
-                        CaseStudy = "",
-                        description = "",
-                        Questions = unlinkedQuestions
-                    });
-                }
-
-                var examDTO = new ExamDTO
-                {
-                    ExamTitle = quiz.FileName,
-                    Topics = topicDtos
-                };
-
-                // Serialize and Encrypt
-                var jsonContent = JsonConvert.SerializeObject(examDTO, Newtonsoft.Json.Formatting.Indented);
-                // var encryptedContent = _aesOperation.EncryptString(Key, jsonContent);
-                var fileNameWithoutextension = System.IO.Path.GetFileNameWithoutExtension(quiz.FileName);
-                var fileName = fileNameWithoutextension + ".qzs";
-                var filePath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), fileName);
-                //    var base64Encrypted = Convert.ToBase64String(Encoding.UTF8.GetBytes(encryptedContent));
-                await System.IO.File.WriteAllTextAsync(filePath, jsonContent);
-
-                // Convert to IFormFile and Upload
-                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-                var formFile = new FormFile(stream, 0, stream.Length, "file", fileName);
-                var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
-                quiz.FileQzsURL = uploadedPath;
-                _context.UploadedFiles.Update(quiz);
-                await _context.SaveChangesAsync();
-                return new Response<string>(true, "File exported successfully.", "", uploadedPath);
-            }
-            else if (type.Equals("pdf"))
-            {
-                var result = await ExportQuizPdf(quizId);
-                return result;
-            }
-            else
-            {
-                var result = await ExportQuizDocx(quizId);
-                return result;
-            }
-        }
-        public async Task<Response<string>> ExportQuizQzs(Guid quizId)
-        {
-           
-                var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
-                if (quiz == null)
-                    return new Response<string>(false, "Quiz file not found.", "", "");
-
-                var topicsRaw = await _context.Topics.Where(x => x.FileId.Equals(quiz)).ToListAsync();
-                var questionsRaw = await _context.Questions.Where(q => q.FileId == quizId).ToListAsync();
-
-                var topicDtos = new List<Topic>();
-
-                // Real topics (TopicName filled, CaseStudy empty)
-                var realTopics = topicsRaw.Where(t => !string.IsNullOrWhiteSpace(t.TopicName) && string.IsNullOrWhiteSpace(t.CaseStudy)).ToList();
-
-                // Case studies (CaseStudy filled, TopicName empty)
-                var caseStudies = topicsRaw.Where(t => !string.IsNullOrWhiteSpace(t.CaseStudy) && string.IsNullOrWhiteSpace(t.TopicName)).ToList();
-
-                // Map Topics
-                foreach (var topic in realTopics)
-                {
-                    var relatedQuestions = questionsRaw
-                        .Where(q => q.TopicId == topic.TopicId)
-                        .Select(q => new QuestionObject
-                        {
-                            id = q.Id,
-                            questionText = q.QuestionText ?? "",
-                            questionDescription = q.QuestionDescription ?? "",
-                            options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
-                            correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
-                            answerExplanation = q.Explanation ?? "",
-                            questionImageURL = q.questionImageURL ?? "",
-                            answerImageURL = q.answerImageURL ?? "",
-                            showAnswer = false,
-                            TopicId = q.TopicId ?? Guid.Empty,
-                            CaseStudyId = Guid.Empty
-                        }).ToList();
-
-                    topicDtos.Add(new Topic
-                    {
-                        TopicId = topic.TopicId ?? Guid.Empty,
-                        TopicName = topic.TopicName ?? "",
-                        CaseStudy = topic.CaseStudy ?? "",
-                        description = topic.Description ?? "",
-                        Questions = relatedQuestions
-                    });
-                }
-
-                // Map Case Studies
-                foreach (var cs in caseStudies)
-                {
-                    var relatedQuestions = questionsRaw
-                        .Where(q => q.TopicId == cs.TopicId)
-                        .Select(q => new QuestionObject
-                        {
-                            id = q.Id,
-                            questionText = q.QuestionText ?? "",
-                            questionDescription = q.QuestionDescription ?? "",
-                            options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
-                            correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
-                            answerExplanation = q.Explanation ?? "",
-                            questionImageURL = q.questionImageURL ?? "",
-                            answerImageURL = q.answerImageURL ?? "",
-                            showAnswer = false,
-                            TopicId = Guid.Empty,
-                            CaseStudyId = q.TopicId ?? Guid.Empty
-                        }).ToList();
-
-                    topicDtos.Add(new Topic
-                    {
-                        TopicId = cs.TopicId ?? Guid.Empty,
-                        TopicName = "",
-                        CaseStudy = cs.CaseStudy ?? "",
-                        description = "",
-                        Questions = relatedQuestions
-                    });
-                }
-
-                // Map unlinked questions (no topic or invalid topic reference)
-                var unlinkedQuestions = questionsRaw
-                    .Where(q => q.TopicId == Guid.Empty || !topicsRaw.Any(t => t.TopicId == q.TopicId))
-                    .Select(q => new QuestionObject
-                    {
-                        id = q.Id,
-                        questionText = q.QuestionText ?? "",
-                        questionDescription = q.QuestionDescription ?? "",
-                        options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
-                        correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
-                        answerExplanation = q.Explanation ?? "",
-                        questionImageURL = q.questionImageURL ?? "",
-                        answerImageURL = q.answerImageURL ?? "",
-                        showAnswer = false,
-                        TopicId = Guid.Empty,
-                        CaseStudyId = Guid.Empty
-                    }).ToList();
-
-                if (unlinkedQuestions.Any())
-                {
-                    topicDtos.Add(new Topic
-                    {
-                        TopicId = Guid.Empty,
-                        TopicName = "General",
-                        CaseStudy = "",
-                        description = "",
-                        Questions = unlinkedQuestions
-                    });
-                }
-
-                var examDTO = new ExamDTO
-                {
-                    ExamTitle = quiz.FileName,
-                    Topics = topicDtos
-                };
-
-                // Serialize and Encrypt
-                var jsonContent = JsonConvert.SerializeObject(examDTO, Newtonsoft.Json.Formatting.Indented);
-                // var encryptedContent = _aesOperation.EncryptString(Key, jsonContent);
-                var fileNameWithoutextension = System.IO.Path.GetFileNameWithoutExtension(quiz.FileName);
-                var fileName = fileNameWithoutextension + ".qzs";
-                var filePath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), fileName);
-                //    var base64Encrypted = Convert.ToBase64String(Encoding.UTF8.GetBytes(encryptedContent));
-                await System.IO.File.WriteAllTextAsync(filePath, jsonContent);
-
-                // Convert to IFormFile and Upload
-                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-                var formFile = new FormFile(stream, 0, stream.Length, "file", fileName);
-                var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
-                quiz.FileQzsURL = uploadedPath;
+            // Only update/save ONCE
             _context.UploadedFiles.Update(quiz);
             await _context.SaveChangesAsync();
+
+            if (pdf.Success && qzs.Success)
+                return new Response<string>(true, "Files created successfully.", "", "Created");
+            else
+                return new Response<string>(false, "File(s) not created successfully.", "", "Not Created");
+        }
+
+        public async Task<Response<string>> ExportQuizQzs(UploadedFile quiz)
+        {
+            var topicsRaw = await _context.Topics.Where(x => x.FileId == quiz.FileId).ToListAsync();
+            var questionsRaw = await _context.Questions.Where(q => q.FileId == quiz.FileId).ToListAsync();
+
+            var topicDtos = new List<Topic>();
+
+            // 1. Topic Only
+            var topicOnly = topicsRaw.Where(t => !string.IsNullOrWhiteSpace(t.TopicName) && string.IsNullOrWhiteSpace(t.CaseStudy)).ToList();
+            // 2. Case Study Only
+            var caseStudyOnly = topicsRaw.Where(t => !string.IsNullOrWhiteSpace(t.CaseStudy) && string.IsNullOrWhiteSpace(t.TopicName)).ToList();
+            // 3. Both Topic and Case Study
+            var topicWithCaseStudy = topicsRaw.Where(t => !string.IsNullOrWhiteSpace(t.TopicName) && !string.IsNullOrWhiteSpace(t.CaseStudy)).ToList();
+
+            // Topic Only
+            foreach (var topic in topicOnly)
+            {
+                var relatedQuestions = questionsRaw
+                    .Where(q => q.TopicId == topic.TopicId)
+                    .Select(q => new QuestionObject
+                    {
+                        id = q.Id,
+                        questionText = q.QuestionText ?? "",
+                        questionDescription = q.QuestionDescription ?? "",
+                        options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
+                        correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
+                        answerExplanation = q.Explanation ?? "",
+                        questionImageURL = q.questionImageURL ?? "",
+                        answerImageURL = q.answerImageURL ?? "",
+                        showAnswer = false,
+                        TopicId = q.TopicId ?? Guid.Empty,
+                        CaseStudyId = Guid.Empty
+                    }).ToList();
+
+                topicDtos.Add(new Topic
+                {
+                    TopicId = topic.TopicId ?? Guid.Empty,
+                    TopicName = topic.TopicName ?? "",
+                    CaseStudy = "",
+                    description = topic.Description ?? "",
+                    Questions = relatedQuestions
+                });
+            }
+
+            // Case Study Only
+            foreach (var cs in caseStudyOnly)
+            {
+                var relatedQuestions = questionsRaw
+                    .Where(q => q.CaseStudyId == cs.TopicId)
+                    .Select(q => new QuestionObject
+                    {
+                        id = q.Id,
+                        questionText = q.QuestionText ?? "",
+                        questionDescription = q.QuestionDescription ?? "",
+                        options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
+                        correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
+                        answerExplanation = q.Explanation ?? "",
+                        questionImageURL = q.questionImageURL ?? "",
+                        answerImageURL = q.answerImageURL ?? "",
+                        showAnswer = false,
+                        TopicId = Guid.Empty,
+                        CaseStudyId = q.CaseStudyId ?? Guid.Empty
+                    }).ToList();
+
+                topicDtos.Add(new Topic
+                {
+                    TopicId = cs.TopicId ?? Guid.Empty,
+                    TopicName = "",
+                    CaseStudy = cs.CaseStudy ?? "",
+                    description = cs.Description ?? "",
+                    Questions = relatedQuestions
+                });
+            }
+
+            // Both Topic and Case Study
+            foreach (var tcs in topicWithCaseStudy)
+            {
+                var relatedQuestions = questionsRaw
+                    .Where(q => q.TopicId == tcs.TopicId && q.CaseStudyId == tcs.TopicId)
+                    .Select(q => new QuestionObject
+                    {
+                        id = q.Id,
+                        questionText = q.QuestionText ?? "",
+                        questionDescription = q.QuestionDescription ?? "",
+                        options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
+                        correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
+                        answerExplanation = q.Explanation ?? "",
+                        questionImageURL = q.questionImageURL ?? "",
+                        answerImageURL = q.answerImageURL ?? "",
+                        showAnswer = false,
+                        TopicId = q.TopicId ?? Guid.Empty,
+                        CaseStudyId = q.CaseStudyId ?? Guid.Empty
+                    }).ToList();
+
+                topicDtos.Add(new Topic
+                {
+                    TopicId = tcs.TopicId ?? Guid.Empty,
+                    TopicName = tcs.TopicName ?? "",
+                    CaseStudy = tcs.CaseStudy ?? "",
+                    description = tcs.Description ?? "",
+                    Questions = relatedQuestions
+                });
+            }
+
+            // Unlinked questions
+            var unlinkedQuestions = questionsRaw
+                .Where(q => (q.TopicId == Guid.Empty || q.TopicId == null) && (q.CaseStudyId == Guid.Empty || q.CaseStudyId == null))
+                .Select(q => new QuestionObject
+                {
+                    id = q.Id,
+                    questionText = q.QuestionText ?? "",
+                    questionDescription = q.QuestionDescription ?? "",
+                    options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
+                    correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
+                    answerExplanation = q.Explanation ?? "",
+                    questionImageURL = q.questionImageURL ?? "",
+                    answerImageURL = q.answerImageURL ?? "",
+                    showAnswer = false,
+                    TopicId = Guid.Empty,
+                    CaseStudyId = Guid.Empty
+                }).ToList();
+
+            if (unlinkedQuestions.Any())
+            {
+                topicDtos.Add(new Topic
+                {
+                    TopicId = Guid.Empty,
+                    TopicName = "General",
+                    CaseStudy = "",
+                    description = "",
+                    Questions = unlinkedQuestions
+                });
+            }
+
+            var examDTO = new ExamDTO
+            {
+                ExamTitle = quiz.FileName,
+                Topics = topicDtos
+            };
+
+            // Serialize
+            var jsonContent = JsonConvert.SerializeObject(examDTO, Newtonsoft.Json.Formatting.Indented);
+            var fileNameWithoutextension = System.IO.Path.GetFileNameWithoutExtension(quiz.FileName);
+            var fileName = fileNameWithoutextension + ".qzs";
+            var filePath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), fileName);
+            await System.IO.File.WriteAllTextAsync(filePath, jsonContent);
+
+            // Convert to IFormFile and Upload
+            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+            var formFile = new FormFile(stream, 0, stream.Length, "file", fileName);
+            var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
+
+            quiz.FileQzsURL = uploadedPath;
             return new Response<string>(true, "File exported successfully.", "", uploadedPath);
         }
-        public async Task<Response<string>> ExportQuizPdf(Guid quizId)
+
+        public async Task<Response<string>> ExportQuizPdf(UploadedFile quizfile)
         {
             const string DefaultDomainName = "CertEmpire";
             const string PdfTempFolder = "QuizFiles";
             const string FontRelativePath = "Fonts/Roboto/static/Roboto-Regular.ttf";
 
             // 1. Fetch quiz & domain info
-            var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
+            var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizfile.FileId);
             if (quiz == null)
                 return new Response<string>(false, "Quiz not found", "", "");
 
             var domain = await _context.Domains.FirstOrDefaultAsync(x => x.DomainURL != null && quiz.FileURL != null && x.DomainURL.Contains(new Uri(quiz.FileURL).Host));
             var domainNameFooter = domain?.DomainName ?? DefaultDomainName;
 
-            var questions = await _context.Questions.Where(q => q.FileId == quizId).OrderBy(x => x.Created).ToListAsync();
-            var topics = await _context.Topics.Where(t => t.FileId == quizId).OrderBy(x => x.Created).ToListAsync();
+            var questions = await _context.Questions.Where(q => q.FileId == quizfile.FileId).OrderBy(x => x.Created).ToListAsync();
+            var topics = await _context.Topics.Where(t => t.FileId == quizfile.FileId).OrderBy(x => x.Created).ToListAsync();
 
             var imageMap = new Dictionary<string, byte[]>();
             var urlRegex = new Regex(@"https?:\/\/[^\s""']+\.(jpg|jpeg|png|gif|bmp|webp)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -1357,421 +1238,160 @@ namespace CertEmpire.Services
             var uploadedPath = await _fileService.ExportFileAsync(formFile, PdfTempFolder);
 
             quiz.FilePdfURL = uploadedPath;
-            _context.UploadedFiles.Update(quiz);
-            await _context.SaveChangesAsync();
+            //_context.UploadedFiles.Update(quiz);
+            //await _context.SaveChangesAsync();
 
             return new Response<string>(true, "PDF exported successfully.", "", uploadedPath);
         }
 
-        //public async Task<Response<string>> ExportQuizPdf(Guid quizId)
-        //{
-        //    string domainNameFooter;
-        //    var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
-        //    if (quiz == null)
-        //        return new Response<string>(false, "Quiz not found", "", "");
+        public async Task<Response<string>> ExportFile(Guid quizId, string type)
+        {
+            if (type.Equals("qzs"))
+            {
+                var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
+                if (quiz == null)
+                    return new Response<string>(false, "Quiz file not found.", "", "");
 
-        //    var domain = await _context.Domains.FirstOrDefaultAsync(x => x.DomainURL.Equals(quiz.FileURL));
-        //    domainNameFooter = domain?.DomainName ?? "CertEmpire";
+                var topicsRaw = await _context.Topics.Where(x => x.FileId.Equals(quiz)).ToListAsync();
+                var questionsRaw = await _context.Questions.Where(q => q.FileId == quizId).ToListAsync();
 
-        //    var questions = await _context.Questions.Where(q => q.FileId == quizId).OrderBy(x => x.Created).ToListAsync();
-        //    var topics = await _context.Topics.Where(t => t.FileId == quizId).OrderBy(x => x.Created).ToListAsync();
+                var topicDtos = new List<Topic>();
 
-        //    var imageMap = new Dictionary<string, byte[]>();
-        //    // 3) Pre-compile your regexes
-        //    var urlRegex = new Regex(@"https?:\/\/[^\s""']+\.(jpg|jpeg|png|gif|bmp|webp)",
-        //                                     RegexOptions.IgnoreCase | RegexOptions.Compiled);
-        //    var optionPrefixRegex = new Regex(@"^\s*[\dA-Za-z]\s*[\.\)\-]?\s*",
-        //                                     RegexOptions.Compiled);
+                // Real topics (TopicName filled, CaseStudy empty)
+                var realTopics = topicsRaw.Where(t => !string.IsNullOrWhiteSpace(t.TopicName) && string.IsNullOrWhiteSpace(t.CaseStudy)).ToList();
 
-        //    var allTextFields = questions
-        //        .SelectMany(q => new[] { q.QuestionText, q.Explanation, q.AnswerDescription }
-        //        .Concat(q.Options ?? new List<string>()))
-        //        .Concat(topics.SelectMany(t => new[] { t.CaseStudy, t.Description }))
-        //        .Where(s => !string.IsNullOrWhiteSpace(s));
+                // Case studies (CaseStudy filled, TopicName empty)
+                var caseStudies = topicsRaw.Where(t => !string.IsNullOrWhiteSpace(t.CaseStudy) && string.IsNullOrWhiteSpace(t.TopicName)).ToList();
 
-        //    var allUrls = allTextFields
-        //        .SelectMany(text => urlRegex.Matches(text).Select(m => m.Value))
-        //        .Distinct()
-        //        .ToList();
+                // Map Topics
+                foreach (var topic in realTopics)
+                {
+                    var relatedQuestions = questionsRaw
+                        .Where(q => q.TopicId == topic.TopicId)
+                        .Select(q => new QuestionObject
+                        {
+                            id = q.Id,
+                            questionText = q.QuestionText ?? "",
+                            questionDescription = q.QuestionDescription ?? "",
+                            options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
+                            correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
+                            answerExplanation = q.Explanation ?? "",
+                            questionImageURL = q.questionImageURL ?? "",
+                            answerImageURL = q.answerImageURL ?? "",
+                            showAnswer = false,
+                            TopicId = q.TopicId ?? Guid.Empty,
+                            CaseStudyId = Guid.Empty
+                        }).ToList();
 
-        //    foreach (var url in allUrls)
-        //    {
-        //        try { imageMap[url] = await _httpClient.GetByteArrayAsync(url); }
-        //        catch { /* log if needed */ }
-        //    }
+                    topicDtos.Add(new Topic
+                    {
+                        TopicId = topic.TopicId ?? Guid.Empty,
+                        TopicName = topic.TopicName ?? "",
+                        CaseStudy = topic.CaseStudy ?? "",
+                        description = topic.Description ?? "",
+                        Questions = relatedQuestions
+                    });
+                }
 
-        //    string fileName = $"{System.IO.Path.GetFileNameWithoutExtension(quiz.FileName) ?? "QuizExport"}.pdf";
-        //    string filePath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), fileName);
-        //    int questionCounter = 0;
+                // Map Case Studies
+                foreach (var cs in caseStudies)
+                {
+                    var relatedQuestions = questionsRaw
+                        .Where(q => q.TopicId == cs.TopicId)
+                        .Select(q => new QuestionObject
+                        {
+                            id = q.Id,
+                            questionText = q.QuestionText ?? "",
+                            questionDescription = q.QuestionDescription ?? "",
+                            options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
+                            correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
+                            answerExplanation = q.Explanation ?? "",
+                            questionImageURL = q.questionImageURL ?? "",
+                            answerImageURL = q.answerImageURL ?? "",
+                            showAnswer = false,
+                            TopicId = Guid.Empty,
+                            CaseStudyId = q.TopicId ?? Guid.Empty
+                        }).ToList();
 
-        //    // Fix the de-duplication logic - use Distinct() with a proper comparer
-        //    var uniqueQuestions = questions
-        //        .GroupBy(q => q.QuestionId)
-        //        .Select(g => g.First())
-        //        .ToList();
+                    topicDtos.Add(new Topic
+                    {
+                        TopicId = cs.TopicId ?? Guid.Empty,
+                        TopicName = "",
+                        CaseStudy = cs.CaseStudy ?? "",
+                        description = "",
+                        Questions = relatedQuestions
+                    });
+                }
 
-        //    // Verify the count matches your expectations
-        //    //if (uniqueQuestions.Count != 119)
-        //    //{
-        //    //    // Log or handle mismatch
-        //    //}
+                // Map unlinked questions (no topic or invalid topic reference)
+                var unlinkedQuestions = questionsRaw
+                    .Where(q => q.TopicId == Guid.Empty || !topicsRaw.Any(t => t.TopicId == q.TopicId))
+                    .Select(q => new QuestionObject
+                    {
+                        id = q.Id,
+                        questionText = q.QuestionText ?? "",
+                        questionDescription = q.QuestionDescription ?? "",
+                        options = q.Options?.Where(o => o != null).ToList() ?? new List<string>(),
+                        correctAnswerIndices = q.CorrectAnswerIndices ?? new List<int>(),
+                        answerExplanation = q.Explanation ?? "",
+                        questionImageURL = q.questionImageURL ?? "",
+                        answerImageURL = q.answerImageURL ?? "",
+                        showAnswer = false,
+                        TopicId = Guid.Empty,
+                        CaseStudyId = Guid.Empty
+                    }).ToList();
 
-        //    // Fix the topic/case study organization logic
-        //    var pureTopics = new List<(TopicEntity Topic, List<Question> Questions)>();
-        //    var topicWithCaseStudies = new List<(TopicEntity Topic, string CaseStudy, List<Question> Questions)>();
-        //    var standaloneCaseStudies = new List<(string CaseStudy, List<Question> Questions)>();
+                if (unlinkedQuestions.Any())
+                {
+                    topicDtos.Add(new Topic
+                    {
+                        TopicId = Guid.Empty,
+                        TopicName = "General",
+                        CaseStudy = "",
+                        description = "",
+                        Questions = unlinkedQuestions
+                    });
+                }
 
-        //    foreach (var topic in topics)
-        //    {
-        //        // Step 1: Questions linked to a case study under this topic
-        //        var caseStudyQuestions = uniqueQuestions
-        //            .Where(q =>
-        //                topic.CaseStudyId != Guid.Empty &&
-        //                q.CaseStudyId == topic.CaseStudyId &&
-        //                topic.CaseStudyTopicId == topic.TopicId
-        //            )
-        //            .ToList();
+                var examDTO = new ExamDTO
+                {
+                    ExamTitle = quiz.FileName,
+                    Topics = topicDtos
+                };
 
-        //        // Step 2: Questions linked directly to topic (not through a case study)
-        //        var topicOnlyQuestions = uniqueQuestions
-        //            .Where(q =>
-        //                q.TopicId == topic.TopicId &&
-        //                q.CaseStudyId == Guid.Empty &&
-        //                topic.CaseStudyTopicId == Guid.Empty
-        //            )
-        //            .ToList();
+                // Serialize and Encrypt
+                var jsonContent = JsonConvert.SerializeObject(examDTO, Newtonsoft.Json.Formatting.Indented);
+                // var encryptedContent = _aesOperation.EncryptString(Key, jsonContent);
+                var fileNameWithoutextension = System.IO.Path.GetFileNameWithoutExtension(quiz.FileName);
+                var fileName = fileNameWithoutextension + ".qzs";
+                var filePath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), fileName);
+                //    var base64Encrypted = Convert.ToBase64String(Encoding.UTF8.GetBytes(encryptedContent));
+                await System.IO.File.WriteAllTextAsync(filePath, jsonContent);
 
-        //        bool hasTopicName = !string.IsNullOrWhiteSpace(topic.TopicName);
-        //        bool hasCaseStudy = !string.IsNullOrWhiteSpace(topic.Description);
+                // Convert to IFormFile and Upload
+                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                var formFile = new FormFile(stream, 0, stream.Length, "file", fileName);
+                var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
+                quiz.FileQzsURL = uploadedPath;
+                _context.UploadedFiles.Update(quiz);
+                await _context.SaveChangesAsync();
+                return new Response<string>(true, "File exported successfully.", "", uploadedPath);
+            }
+            else if (type.Equals("pdf"))
+            {
 
-        //        if (hasTopicName && hasCaseStudy)
-        //        {
-        //            topicWithCaseStudies.Add((topic, topic.Description, caseStudyQuestions));
-        //        }
-        //        else if (hasTopicName)
-        //        {
-        //            pureTopics.Add((topic, topicOnlyQuestions));
-        //        }
-        //        else if (hasCaseStudy)
-        //        {
-        //            standaloneCaseStudies.Add((topic.Description, caseStudyQuestions));
-        //        }
-        //    }
-        //    // Make sure general questions are truly general
-        //    var generalQuestions = uniqueQuestions
-        //        .Where(q => (!q.TopicId.HasValue || q.TopicId == Guid.Empty) &&
-        //                   (!q.CaseStudyId.HasValue || q.CaseStudyId == Guid.Empty))
-        //        .ToList();
-        //    string CleanText(string input) => input.Replace("�", "").Replace("“", "\"").Replace("”", "\"").Replace("–", "-").Replace("‘", "'").Replace("’", "'");
+                var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
+                var result = await ExportQuizPdf(quiz);
+                return result;
+            }
+            else
+            {
+                var result = await ExportQuizDocx(quizId);
+                return result;
+            }
+        }
 
-        //    string fontPath = System.IO.Path.Combine("Fonts", "Roboto", "static", "Roboto-Regular.ttf");
-        //    FontManager.RegisterFont(System.IO.File.OpenRead(fontPath));
-
-        //    QuestPDF.Fluent.Document.Create(doc =>
-        //    {
-        //        // —— Cover Page ——
-        //        doc.Page(page =>
-        //        {
-        //            page.Size(PageSizes.A4);
-        //            page.Margin(2, Unit.Centimetre);
-        //            page.DefaultTextStyle(x => x.FontFamily("Roboto"));
-        //            page.PageColor("#5232ea");
-
-        //            page.Content().Column(col =>
-        //            {
-        //                col.Item().PaddingTop(3, Unit.Centimetre)
-        //                   .Text(CleanText(quiz.FileName))
-        //                   .FontSize(30).FontColor(Colors.White).Bold();
-
-        //                col.Item()
-        //                   .Text("Exam Questions & Answers")
-        //                   .FontSize(30).FontColor(Colors.White).Bold();
-
-        //                col.Item().Height(8, Unit.Centimetre);
-
-        //                col.Item().AlignCenter()
-        //                   .Text("Thank You for your purchase")
-        //                   .FontSize(25).FontColor("#c0c3cb");
-
-        //                col.Item().AlignCenter()
-        //                   .Text("CertEmpire.com")
-        //                   .FontSize(25).FontColor(Colors.White);
-        //            });
-        //        });
-
-        //        // —— Intro Page ——
-        //        doc.Page(page =>
-        //        {
-        //            page.Size(PageSizes.A4);
-        //            page.Margin(30);
-        //            page.DefaultTextStyle(x => x.FontFamily("Roboto"));
-
-        //            page.Header().Element(header =>
-        //            {
-        //                header.Column(col =>
-        //                {
-        //                    col.Item().Row(row =>
-        //                    {
-        //                        row.RelativeItem()
-        //                           .Text("Questions and Answers PDF")
-        //                           .FontSize(10).Bold();
-
-        //                        row.ConstantItem(100)
-        //                           .AlignRight()
-        //                           .Text(t =>
-        //                           {
-        //                               t.CurrentPageNumber().FontSize(10).Bold();
-        //                               t.Span("/").FontSize(10);
-        //                               t.TotalPages().FontSize(10).Bold();
-        //                           });
-        //                    });
-        //                    col.Item().LineHorizontal(1).LineColor("#3366cc");
-        //                });
-        //            });
-
-        //            page.Footer().Element(footer =>
-        //            {
-        //                footer.Column(col =>
-        //                {
-        //                    col.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
-        //                    col.Item().AlignCenter()
-        //                       .Text("CertEmpire.com")
-        //                       .FontSize(12).Italic().FontColor(Colors.Grey.Medium);
-        //                });
-        //            });
-
-        //            page.Content().AlignMiddle().AlignCenter()
-        //               .Column(col =>
-        //               {
-        //                   col.Item().Text($"Questions Count: {questions.Count}")
-        //                      .FontSize(25).ExtraBold();
-        //                   col.Item().Text("Version: 1.0")
-        //                      .FontSize(25).ExtraBold();
-        //               });
-        //        });
-
-        //        // —— Helpers —— 
-        //        void AddPage(Action<IContainer> content)
-        //        {
-        //            doc.Page(page =>
-        //            {
-        //                page.Size(PageSizes.A4);
-        //                page.Margin(30);
-        //                page.DefaultTextStyle(x => x.FontFamily("Roboto"));
-
-        //                page.Header().Element(h =>
-        //                {
-        //                    h.Column(c =>
-        //                    {
-        //                        c.Item().Row(r =>
-        //                        {
-        //                            r.RelativeItem()
-        //                             .Text("Questions and Answers PDF")
-        //                             .FontSize(10).Bold();
-        //                            r.ConstantItem(100)
-        //                             .AlignRight()
-        //                             .Text(t =>
-        //                             {
-        //                                 t.CurrentPageNumber().FontSize(10).Bold();
-        //                                 t.Span("/").FontSize(10);
-        //                                 t.TotalPages().FontSize(10).Bold();
-        //                             });
-        //                        });
-        //                        c.Item().LineHorizontal(1).LineColor("#3366cc");
-        //                    });
-        //                });
-
-        //                page.Footer().Element(f =>
-        //                {
-        //                    f.Column(c =>
-        //                    {
-        //                        c.Item().Row(r =>
-        //                        {
-        //                            r.RelativeItem()
-        //                             .AlignLeft()
-        //                             .Text(x => x.CurrentPageNumber().FontSize(10).Bold());
-        //                            r.RelativeItem()
-        //                             .AlignCenter()
-        //                             .Text("CertEmpire.com")
-        //                             .FontSize(12).Italic().SemiBold();
-        //                            r.RelativeItem();
-        //                        });
-        //                    });
-        //                });
-
-        //                page.Content().Element(content);
-        //            });
-        //        }
-
-        //        void RenderTextWithImages(IContainer c, string text)
-        //        {
-        //            var parts = Regex.Split(text, @"(https?:\/\/[^\s""']+\.(?:jpg|jpeg|png|gif|bmp|webp))", RegexOptions.IgnoreCase);
-
-        //            c.Column(col =>
-        //            {
-        //                foreach (var part in parts)
-        //                {
-        //                    if (string.IsNullOrWhiteSpace(part)) continue;
-
-        //                    if (urlRegex.IsMatch(part.Trim()))
-        //                    {
-        //                        if (imageMap.TryGetValue(part.Trim(), out var img))
-        //                            col.Item().ScaleToFit().MaxWidth(500).MaxHeight(300).Image(img);
-        //                        else
-        //                            col.Item().Text("[Image failed to load]").FontColor(Colors.Red.Medium);
-        //                    }
-        //                    else
-        //                    {
-        //                        col.Item()
-        //                           .Element(e => e.Background(Colors.White).Padding(5))
-        //                           .Text(CleanText(part))
-        //                           .FontSize(11)
-        //                           .Justify();
-        //                    }
-        //                }
-        //            });
-        //        }
-
-        //        void RenderQuestion(IContainer c, Question q)
-        //        {
-        //            questionCounter++;
-        //            c.Column(col =>
-        //            {
-        //                col.Spacing(5);
-
-        //                // Header
-        //                col.Item().PaddingTop(5).AlignLeft().Column(innerCol =>
-        //                {
-        //                    //innerCol.Item().PaddingTop(10).Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
-        //                    innerCol.Item().Text($"Question: {questionCounter}")
-        //                        .FontSize(14).Bold().AlignCenter();
-        //                    // innerCol.Item().Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
-        //                });
-
-
-        //                // Question text & inline images
-        //                if (!string.IsNullOrWhiteSpace(q.QuestionText))
-        //                    col.Item().Element(e => RenderTextWithImages(e, q.QuestionText));
-
-        //                // Standalone question image
-        //                if (!string.IsNullOrWhiteSpace(q.questionImageURL) &&
-        //                    imageMap.TryGetValue(q.questionImageURL, out var qImg))
-        //                {
-        //                    col.Item().Image(qImg).FitWidth();
-        //                }
-
-        //                // Options
-        //                if (q.Options?.Any() == true)
-        //                {
-        //                    for (int i = 0; i < q.Options.Count; i++)
-        //                    {
-        //                        var letter = ((char)('A' + i)).ToString();
-        //                        var clean = optionPrefixRegex.Replace(q.Options[i].Trim(), "");
-
-        //                        col.Item().PaddingLeft(5)
-        //                           .Text($"{letter}. {clean}")
-        //                           .FontSize(11).Justify();
-        //                    }
-        //                }
-
-        //                // Correct answer
-        //                // Correct Answer
-        //                if (q.CorrectAnswerIndices.Any())
-        //                {
-        //                    var correctLetters = q.CorrectAnswerIndices
-        //                        .Where(i => i >= 0 && i < q.Options.Count)
-        //                        .Select(i => ((char)('A' + i)).ToString());
-
-        //                    string answerText = $"Answer: {string.Join(", ", correctLetters)}";
-
-        //                    col.Item().AlignLeft().Column(innerCol =>
-        //                    {
-        //                        // innerCol.Item().Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
-        //                        innerCol.Item().Text(answerText).FontSize(11).Bold().AlignCenter();
-        //                        // innerCol.Item().Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
-        //                    });
-        //                }
-
-        //                // Why incorrect
-        //                if (!string.IsNullOrWhiteSpace(q.Explanation))
-        //                {
-        //                    col.Item().Text("Explanation:").Bold();
-        //                    col.Item().Element(e =>
-        //                        e.PaddingLeft(10).Element(inner =>
-        //                            RenderTextWithImages(inner, q.Explanation)
-        //                        )
-        //                    );
-        //                }
-
-        //                // Answer image
-        //                if (!string.IsNullOrWhiteSpace(q.answerImageURL) &&
-        //                    imageMap.TryGetValue(q.answerImageURL, out var aImg))
-        //                {
-        //                    col.Item().Image(aImg).FitWidth();
-        //                }
-        //            });
-        //        }
-
-        //        // —— Render all content ——
-        //        foreach (var q in generalQuestions)
-        //            AddPage(c => RenderQuestion(c, q));
-
-        //        foreach (var item in topicWithCaseStudies)
-        //        {
-        //            AddPage(c => c.Column(col =>
-        //            {
-        //                col.Spacing(5);
-        //                col.Item()
-        //                   .Text($"Topic: {CleanText(item.Topic.TopicName)}")
-        //                   .Bold().FontSize(14);
-        //                col.Item()
-        //                   .Text(CleanText(item.CaseStudy))
-        //                   .Justify().FontSize(11);
-        //            }));
-
-        //            foreach (var q in item.Questions)
-        //                AddPage(c => RenderQuestion(c, q));
-        //        }
-
-        //        foreach (var item in pureTopics)
-        //        {
-        //            AddPage(c => c.Column(col =>
-        //            {
-        //                col.Item()
-        //                   .Text($"Topic: {CleanText(item.Topic.TopicName)}")
-        //                   .Bold().FontSize(14);
-        //            }));
-
-        //            foreach (var q in item.Questions)
-        //                AddPage(c => RenderQuestion(c, q));
-        //        }
-
-        //        foreach (var item in standaloneCaseStudies)
-        //        {
-        //            AddPage(c => c.Column(col =>
-        //            {
-        //                col.Spacing(5);
-        //                col.Item().Text("Case Study").Bold().FontSize(14);
-        //                col.Item()
-        //                   .Text(CleanText(item.CaseStudy))
-        //                   .Justify().FontSize(11);
-        //            }));
-
-        //            foreach (var q in item.Questions)
-        //                AddPage(c => RenderQuestion(c, q));
-        //        }
-        //    })
-        //   .GeneratePdf(filePath);
-
-        //    await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-        //    var formFile = new FormFile(stream, 0, stream.Length, "file", System.IO.Path.GetFileName(filePath));
-        //    var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
-        //    quiz.FilePdfURL = uploadedPath;
-        //    _context.UploadedFiles.Update(quiz);
-        //    await _context.SaveChangesAsync();
-        //    return new Response<string>(true, "PDF exported successfully.", "", uploadedPath);
-        //}
-     
+      
         public async Task<Response<string>> ExportQuizDocx(Guid quizId)
         {
             var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId.Equals(quizId));

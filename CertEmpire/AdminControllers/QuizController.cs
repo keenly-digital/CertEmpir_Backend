@@ -79,20 +79,6 @@ namespace CertEmpire.AdminControllers
             }
         }
         [HttpGet("[action]")]
-        public async Task<IActionResult> ExportQuizPdfFile(Guid fileId)
-        {
-            try
-            {
-                var response = await _simulationRepo.ExportQuizPdf(fileId);
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                var response = new Response<object>(false, "Error", ex.Message, "");
-                return StatusCode(500, response);
-            }
-        }
-        [HttpGet("[action]")]
         public async Task<IActionResult> GenerateFileUrl(string domainName, Guid fileId)
         {
             try
