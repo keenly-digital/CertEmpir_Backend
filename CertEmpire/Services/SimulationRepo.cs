@@ -645,9 +645,9 @@ namespace CertEmpire.Services
         }
         public async Task<Response<string>> CreateFiles(Guid fileId)
         {
-            var qzs = await ExportQuizQzs(fileId);
+            //var qzs = await ExportQuizQzs(fileId);
             var pdf = await ExportQuizPdf(fileId);
-            if (qzs.Success ==true & pdf.Success ==true)
+            if ( pdf.Success ==true)
             {
 
                 return new Response<string>(true, "File Created successfully.", "","Created");
@@ -936,24 +936,26 @@ namespace CertEmpire.Services
         }
         public async Task<Response<string>> ExportQuizPdf(Guid quizId)
         {
-            string domainNameFooter;
+            const string DefaultDomainName = "CertEmpire";
+            const string PdfTempFolder = "QuizFiles";
+            const string FontRelativePath = "Fonts/Roboto/static/Roboto-Regular.ttf";
+
+            // 1. Fetch quiz & domain info
             var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
             if (quiz == null)
                 return new Response<string>(false, "Quiz not found", "", "");
 
-            var domain = await _context.Domains.FirstOrDefaultAsync(x => x.DomainURL.Equals(quiz.FileURL));
-            domainNameFooter = domain?.DomainName ?? "CertEmpire";
+            var domain = await _context.Domains.FirstOrDefaultAsync(x => x.DomainURL != null && quiz.FileURL != null && x.DomainURL.Contains(new Uri(quiz.FileURL).Host));
+            var domainNameFooter = domain?.DomainName ?? DefaultDomainName;
 
             var questions = await _context.Questions.Where(q => q.FileId == quizId).OrderBy(x => x.Created).ToListAsync();
             var topics = await _context.Topics.Where(t => t.FileId == quizId).OrderBy(x => x.Created).ToListAsync();
 
             var imageMap = new Dictionary<string, byte[]>();
-            // 3) Pre-compile your regexes
-            var urlRegex = new Regex(@"https?:\/\/[^\s""']+\.(jpg|jpeg|png|gif|bmp|webp)",
-                                             RegexOptions.IgnoreCase | RegexOptions.Compiled);
-            var optionPrefixRegex = new Regex(@"^\s*[\dA-Za-z]\s*[\.\)\-]?\s*",
-                                             RegexOptions.Compiled);
+            var urlRegex = new Regex(@"https?:\/\/[^\s""']+\.(jpg|jpeg|png|gif|bmp|webp)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+            var optionPrefixRegex = new Regex(@"^\s*[\dA-Za-z]\s*[\.\)\-]?\s*", RegexOptions.Compiled);
 
+            // Gather all text fields for image URL extraction
             var allTextFields = questions
                 .SelectMany(q => new[] { q.QuestionText, q.Explanation, q.AnswerDescription }
                 .Concat(q.Options ?? new List<string>()))
@@ -967,34 +969,34 @@ namespace CertEmpire.Services
 
             foreach (var url in allUrls)
             {
-                try { imageMap[url] = await _httpClient.GetByteArrayAsync(url); }
-                catch { /* log if needed */ }
+                try
+                {
+                    imageMap[url] = await _httpClient.GetByteArrayAsync(url);
+                }
+                catch (Exception ex)
+                {
+                    // LOG the image download failure
+                    Console.WriteLine($"[ExportQuizPdf] Image download failed for {url}: {ex.Message}");
+                }
             }
 
             string fileName = $"{System.IO.Path.GetFileNameWithoutExtension(quiz.FileName) ?? "QuizExport"}.pdf";
             string filePath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), fileName);
             int questionCounter = 0;
 
-            // Fix the de-duplication logic - use Distinct() with a proper comparer
+            // Deduplicate questions
             var uniqueQuestions = questions
                 .GroupBy(q => q.QuestionId)
                 .Select(g => g.First())
                 .ToList();
 
-            // Verify the count matches your expectations
-            //if (uniqueQuestions.Count != 119)
-            //{
-            //    // Log or handle mismatch
-            //}
-
-            // Fix the topic/case study organization logic
+            // Organize topics/case studies
             var pureTopics = new List<(TopicEntity Topic, List<Question> Questions)>();
             var topicWithCaseStudies = new List<(TopicEntity Topic, string CaseStudy, List<Question> Questions)>();
             var standaloneCaseStudies = new List<(string CaseStudy, List<Question> Questions)>();
 
             foreach (var topic in topics)
             {
-                // Step 1: Questions linked to a case study under this topic
                 var caseStudyQuestions = uniqueQuestions
                     .Where(q =>
                         topic.CaseStudyId != Guid.Empty &&
@@ -1003,7 +1005,6 @@ namespace CertEmpire.Services
                     )
                     .ToList();
 
-                // Step 2: Questions linked directly to topic (not through a case study)
                 var topicOnlyQuestions = uniqueQuestions
                     .Where(q =>
                         q.TopicId == topic.TopicId &&
@@ -1028,15 +1029,33 @@ namespace CertEmpire.Services
                     standaloneCaseStudies.Add((topic.Description, caseStudyQuestions));
                 }
             }
-            // Make sure general questions are truly general
+
             var generalQuestions = uniqueQuestions
                 .Where(q => (!q.TopicId.HasValue || q.TopicId == Guid.Empty) &&
                            (!q.CaseStudyId.HasValue || q.CaseStudyId == Guid.Empty))
                 .ToList();
-            string CleanText(string input) => input.Replace("�", "").Replace("“", "\"").Replace("”", "\"").Replace("–", "-").Replace("‘", "'").Replace("’", "'");
 
-            string fontPath = System.IO.Path.Combine("Fonts", "Roboto", "static", "Roboto-Regular.ttf");
-            FontManager.RegisterFont(System.IO.File.OpenRead(fontPath));
+            string CleanText(string input) =>
+                input?
+                .Replace("�", "")
+                .Replace("“", "\"")
+                .Replace("”", "\"")
+                .Replace("–", "-")
+                .Replace("‘", "'")
+                .Replace("’", "'")
+                ?? "";
+
+            // Font check and register
+            string fontPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, FontRelativePath);
+            if (File.Exists(fontPath))
+            {
+                FontManager.RegisterFont(File.OpenRead(fontPath));
+            }
+            else
+            {
+                Console.WriteLine($"[ExportQuizPdf] Font file not found at: {fontPath}");
+                // Optionally throw or fallback
+            }
 
             QuestPDF.Fluent.Document.Create(doc =>
             {
@@ -1106,7 +1125,7 @@ namespace CertEmpire.Services
                         {
                             col.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
                             col.Item().AlignCenter()
-                               .Text("CertEmpire.com")
+                               .Text(domainNameFooter) // Use the domainNameFooter variable here!
                                .FontSize(12).Italic().FontColor(Colors.Grey.Medium);
                         });
                     });
@@ -1121,7 +1140,7 @@ namespace CertEmpire.Services
                        });
                 });
 
-                // —— Helpers —— 
+                // —— Helpers ——
                 void AddPage(Action<IContainer> content)
                 {
                     doc.Page(page =>
@@ -1163,7 +1182,7 @@ namespace CertEmpire.Services
                                      .Text(x => x.CurrentPageNumber().FontSize(10).Bold());
                                     r.RelativeItem()
                                      .AlignCenter()
-                                     .Text("CertEmpire.com")
+                                     .Text(domainNameFooter) // Use domainNameFooter here as well!
                                      .FontSize(12).Italic().SemiBold();
                                     r.RelativeItem();
                                 });
@@ -1176,7 +1195,7 @@ namespace CertEmpire.Services
 
                 void RenderTextWithImages(IContainer c, string text)
                 {
-                    var parts = Regex.Split(text, @"(https?:\/\/[^\s""']+\.(?:jpg|jpeg|png|gif|bmp|webp))", RegexOptions.IgnoreCase);
+                    var parts = Regex.Split(text ?? "", @"(https?:\/\/[^\s""']+\.(?:jpg|jpeg|png|gif|bmp|webp))", RegexOptions.IgnoreCase);
 
                     c.Column(col =>
                     {
@@ -1213,12 +1232,9 @@ namespace CertEmpire.Services
                         // Header
                         col.Item().PaddingTop(5).AlignLeft().Column(innerCol =>
                         {
-                            //innerCol.Item().PaddingTop(10).Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
-                            innerCol.Item().Text($"Question {questionCounter}")
+                            innerCol.Item().Text($"Question: {questionCounter}")
                                 .FontSize(14).Bold().AlignCenter();
-                            // innerCol.Item().Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
                         });
-
 
                         // Question text & inline images
                         if (!string.IsNullOrWhiteSpace(q.QuestionText))
@@ -1234,7 +1250,6 @@ namespace CertEmpire.Services
                         // Options
                         if (q.Options?.Any() == true)
                         {
-                            col.Item().PaddingTop(10).Text("Options:").Bold();
                             for (int i = 0; i < q.Options.Count; i++)
                             {
                                 var letter = ((char)('A' + i)).ToString();
@@ -1247,7 +1262,6 @@ namespace CertEmpire.Services
                         }
 
                         // Correct answer
-                        // Correct Answer
                         if (q.CorrectAnswerIndices.Any())
                         {
                             var correctLetters = q.CorrectAnswerIndices
@@ -1258,23 +1272,9 @@ namespace CertEmpire.Services
 
                             col.Item().AlignLeft().Column(innerCol =>
                             {
-                                // innerCol.Item().Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
                                 innerCol.Item().Text(answerText).FontSize(11).Bold().AlignCenter();
-                                // innerCol.Item().Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
                             });
                         }
-
-
-                        // Explanation
-                        //if (!string.IsNullOrWhiteSpace(q.Explanation))
-                        //{
-                        //    col.Item().Text("Explanation:").Bold();
-                        //    col.Item().Element(e =>
-                        //        e.PaddingLeft(10).Element(inner =>
-                        //            RenderTextWithImages(inner, q.AnswerDescription)
-                        //        )
-                        //    );
-                        //}
 
                         // Why incorrect
                         if (!string.IsNullOrWhiteSpace(q.Explanation))
@@ -1345,16 +1345,428 @@ namespace CertEmpire.Services
                         AddPage(c => RenderQuestion(c, q));
                 }
             })
-           .GeneratePdf(filePath);
+            .GeneratePdf(filePath);
 
             await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
             var formFile = new FormFile(stream, 0, stream.Length, "file", System.IO.Path.GetFileName(filePath));
-            var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
+            var uploadedPath = await _fileService.ExportFileAsync(formFile, PdfTempFolder);
+
             quiz.FilePdfURL = uploadedPath;
             _context.UploadedFiles.Update(quiz);
             await _context.SaveChangesAsync();
+
             return new Response<string>(true, "PDF exported successfully.", "", uploadedPath);
         }
+
+        //public async Task<Response<string>> ExportQuizPdf(Guid quizId)
+        //{
+        //    string domainNameFooter;
+        //    var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId == quizId);
+        //    if (quiz == null)
+        //        return new Response<string>(false, "Quiz not found", "", "");
+
+        //    var domain = await _context.Domains.FirstOrDefaultAsync(x => x.DomainURL.Equals(quiz.FileURL));
+        //    domainNameFooter = domain?.DomainName ?? "CertEmpire";
+
+        //    var questions = await _context.Questions.Where(q => q.FileId == quizId).OrderBy(x => x.Created).ToListAsync();
+        //    var topics = await _context.Topics.Where(t => t.FileId == quizId).OrderBy(x => x.Created).ToListAsync();
+
+        //    var imageMap = new Dictionary<string, byte[]>();
+        //    // 3) Pre-compile your regexes
+        //    var urlRegex = new Regex(@"https?:\/\/[^\s""']+\.(jpg|jpeg|png|gif|bmp|webp)",
+        //                                     RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        //    var optionPrefixRegex = new Regex(@"^\s*[\dA-Za-z]\s*[\.\)\-]?\s*",
+        //                                     RegexOptions.Compiled);
+
+        //    var allTextFields = questions
+        //        .SelectMany(q => new[] { q.QuestionText, q.Explanation, q.AnswerDescription }
+        //        .Concat(q.Options ?? new List<string>()))
+        //        .Concat(topics.SelectMany(t => new[] { t.CaseStudy, t.Description }))
+        //        .Where(s => !string.IsNullOrWhiteSpace(s));
+
+        //    var allUrls = allTextFields
+        //        .SelectMany(text => urlRegex.Matches(text).Select(m => m.Value))
+        //        .Distinct()
+        //        .ToList();
+
+        //    foreach (var url in allUrls)
+        //    {
+        //        try { imageMap[url] = await _httpClient.GetByteArrayAsync(url); }
+        //        catch { /* log if needed */ }
+        //    }
+
+        //    string fileName = $"{System.IO.Path.GetFileNameWithoutExtension(quiz.FileName) ?? "QuizExport"}.pdf";
+        //    string filePath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), fileName);
+        //    int questionCounter = 0;
+
+        //    // Fix the de-duplication logic - use Distinct() with a proper comparer
+        //    var uniqueQuestions = questions
+        //        .GroupBy(q => q.QuestionId)
+        //        .Select(g => g.First())
+        //        .ToList();
+
+        //    // Verify the count matches your expectations
+        //    //if (uniqueQuestions.Count != 119)
+        //    //{
+        //    //    // Log or handle mismatch
+        //    //}
+
+        //    // Fix the topic/case study organization logic
+        //    var pureTopics = new List<(TopicEntity Topic, List<Question> Questions)>();
+        //    var topicWithCaseStudies = new List<(TopicEntity Topic, string CaseStudy, List<Question> Questions)>();
+        //    var standaloneCaseStudies = new List<(string CaseStudy, List<Question> Questions)>();
+
+        //    foreach (var topic in topics)
+        //    {
+        //        // Step 1: Questions linked to a case study under this topic
+        //        var caseStudyQuestions = uniqueQuestions
+        //            .Where(q =>
+        //                topic.CaseStudyId != Guid.Empty &&
+        //                q.CaseStudyId == topic.CaseStudyId &&
+        //                topic.CaseStudyTopicId == topic.TopicId
+        //            )
+        //            .ToList();
+
+        //        // Step 2: Questions linked directly to topic (not through a case study)
+        //        var topicOnlyQuestions = uniqueQuestions
+        //            .Where(q =>
+        //                q.TopicId == topic.TopicId &&
+        //                q.CaseStudyId == Guid.Empty &&
+        //                topic.CaseStudyTopicId == Guid.Empty
+        //            )
+        //            .ToList();
+
+        //        bool hasTopicName = !string.IsNullOrWhiteSpace(topic.TopicName);
+        //        bool hasCaseStudy = !string.IsNullOrWhiteSpace(topic.Description);
+
+        //        if (hasTopicName && hasCaseStudy)
+        //        {
+        //            topicWithCaseStudies.Add((topic, topic.Description, caseStudyQuestions));
+        //        }
+        //        else if (hasTopicName)
+        //        {
+        //            pureTopics.Add((topic, topicOnlyQuestions));
+        //        }
+        //        else if (hasCaseStudy)
+        //        {
+        //            standaloneCaseStudies.Add((topic.Description, caseStudyQuestions));
+        //        }
+        //    }
+        //    // Make sure general questions are truly general
+        //    var generalQuestions = uniqueQuestions
+        //        .Where(q => (!q.TopicId.HasValue || q.TopicId == Guid.Empty) &&
+        //                   (!q.CaseStudyId.HasValue || q.CaseStudyId == Guid.Empty))
+        //        .ToList();
+        //    string CleanText(string input) => input.Replace("�", "").Replace("“", "\"").Replace("”", "\"").Replace("–", "-").Replace("‘", "'").Replace("’", "'");
+
+        //    string fontPath = System.IO.Path.Combine("Fonts", "Roboto", "static", "Roboto-Regular.ttf");
+        //    FontManager.RegisterFont(System.IO.File.OpenRead(fontPath));
+
+        //    QuestPDF.Fluent.Document.Create(doc =>
+        //    {
+        //        // —— Cover Page ——
+        //        doc.Page(page =>
+        //        {
+        //            page.Size(PageSizes.A4);
+        //            page.Margin(2, Unit.Centimetre);
+        //            page.DefaultTextStyle(x => x.FontFamily("Roboto"));
+        //            page.PageColor("#5232ea");
+
+        //            page.Content().Column(col =>
+        //            {
+        //                col.Item().PaddingTop(3, Unit.Centimetre)
+        //                   .Text(CleanText(quiz.FileName))
+        //                   .FontSize(30).FontColor(Colors.White).Bold();
+
+        //                col.Item()
+        //                   .Text("Exam Questions & Answers")
+        //                   .FontSize(30).FontColor(Colors.White).Bold();
+
+        //                col.Item().Height(8, Unit.Centimetre);
+
+        //                col.Item().AlignCenter()
+        //                   .Text("Thank You for your purchase")
+        //                   .FontSize(25).FontColor("#c0c3cb");
+
+        //                col.Item().AlignCenter()
+        //                   .Text("CertEmpire.com")
+        //                   .FontSize(25).FontColor(Colors.White);
+        //            });
+        //        });
+
+        //        // —— Intro Page ——
+        //        doc.Page(page =>
+        //        {
+        //            page.Size(PageSizes.A4);
+        //            page.Margin(30);
+        //            page.DefaultTextStyle(x => x.FontFamily("Roboto"));
+
+        //            page.Header().Element(header =>
+        //            {
+        //                header.Column(col =>
+        //                {
+        //                    col.Item().Row(row =>
+        //                    {
+        //                        row.RelativeItem()
+        //                           .Text("Questions and Answers PDF")
+        //                           .FontSize(10).Bold();
+
+        //                        row.ConstantItem(100)
+        //                           .AlignRight()
+        //                           .Text(t =>
+        //                           {
+        //                               t.CurrentPageNumber().FontSize(10).Bold();
+        //                               t.Span("/").FontSize(10);
+        //                               t.TotalPages().FontSize(10).Bold();
+        //                           });
+        //                    });
+        //                    col.Item().LineHorizontal(1).LineColor("#3366cc");
+        //                });
+        //            });
+
+        //            page.Footer().Element(footer =>
+        //            {
+        //                footer.Column(col =>
+        //                {
+        //                    col.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
+        //                    col.Item().AlignCenter()
+        //                       .Text("CertEmpire.com")
+        //                       .FontSize(12).Italic().FontColor(Colors.Grey.Medium);
+        //                });
+        //            });
+
+        //            page.Content().AlignMiddle().AlignCenter()
+        //               .Column(col =>
+        //               {
+        //                   col.Item().Text($"Questions Count: {questions.Count}")
+        //                      .FontSize(25).ExtraBold();
+        //                   col.Item().Text("Version: 1.0")
+        //                      .FontSize(25).ExtraBold();
+        //               });
+        //        });
+
+        //        // —— Helpers —— 
+        //        void AddPage(Action<IContainer> content)
+        //        {
+        //            doc.Page(page =>
+        //            {
+        //                page.Size(PageSizes.A4);
+        //                page.Margin(30);
+        //                page.DefaultTextStyle(x => x.FontFamily("Roboto"));
+
+        //                page.Header().Element(h =>
+        //                {
+        //                    h.Column(c =>
+        //                    {
+        //                        c.Item().Row(r =>
+        //                        {
+        //                            r.RelativeItem()
+        //                             .Text("Questions and Answers PDF")
+        //                             .FontSize(10).Bold();
+        //                            r.ConstantItem(100)
+        //                             .AlignRight()
+        //                             .Text(t =>
+        //                             {
+        //                                 t.CurrentPageNumber().FontSize(10).Bold();
+        //                                 t.Span("/").FontSize(10);
+        //                                 t.TotalPages().FontSize(10).Bold();
+        //                             });
+        //                        });
+        //                        c.Item().LineHorizontal(1).LineColor("#3366cc");
+        //                    });
+        //                });
+
+        //                page.Footer().Element(f =>
+        //                {
+        //                    f.Column(c =>
+        //                    {
+        //                        c.Item().Row(r =>
+        //                        {
+        //                            r.RelativeItem()
+        //                             .AlignLeft()
+        //                             .Text(x => x.CurrentPageNumber().FontSize(10).Bold());
+        //                            r.RelativeItem()
+        //                             .AlignCenter()
+        //                             .Text("CertEmpire.com")
+        //                             .FontSize(12).Italic().SemiBold();
+        //                            r.RelativeItem();
+        //                        });
+        //                    });
+        //                });
+
+        //                page.Content().Element(content);
+        //            });
+        //        }
+
+        //        void RenderTextWithImages(IContainer c, string text)
+        //        {
+        //            var parts = Regex.Split(text, @"(https?:\/\/[^\s""']+\.(?:jpg|jpeg|png|gif|bmp|webp))", RegexOptions.IgnoreCase);
+
+        //            c.Column(col =>
+        //            {
+        //                foreach (var part in parts)
+        //                {
+        //                    if (string.IsNullOrWhiteSpace(part)) continue;
+
+        //                    if (urlRegex.IsMatch(part.Trim()))
+        //                    {
+        //                        if (imageMap.TryGetValue(part.Trim(), out var img))
+        //                            col.Item().ScaleToFit().MaxWidth(500).MaxHeight(300).Image(img);
+        //                        else
+        //                            col.Item().Text("[Image failed to load]").FontColor(Colors.Red.Medium);
+        //                    }
+        //                    else
+        //                    {
+        //                        col.Item()
+        //                           .Element(e => e.Background(Colors.White).Padding(5))
+        //                           .Text(CleanText(part))
+        //                           .FontSize(11)
+        //                           .Justify();
+        //                    }
+        //                }
+        //            });
+        //        }
+
+        //        void RenderQuestion(IContainer c, Question q)
+        //        {
+        //            questionCounter++;
+        //            c.Column(col =>
+        //            {
+        //                col.Spacing(5);
+
+        //                // Header
+        //                col.Item().PaddingTop(5).AlignLeft().Column(innerCol =>
+        //                {
+        //                    //innerCol.Item().PaddingTop(10).Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
+        //                    innerCol.Item().Text($"Question: {questionCounter}")
+        //                        .FontSize(14).Bold().AlignCenter();
+        //                    // innerCol.Item().Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
+        //                });
+
+
+        //                // Question text & inline images
+        //                if (!string.IsNullOrWhiteSpace(q.QuestionText))
+        //                    col.Item().Element(e => RenderTextWithImages(e, q.QuestionText));
+
+        //                // Standalone question image
+        //                if (!string.IsNullOrWhiteSpace(q.questionImageURL) &&
+        //                    imageMap.TryGetValue(q.questionImageURL, out var qImg))
+        //                {
+        //                    col.Item().Image(qImg).FitWidth();
+        //                }
+
+        //                // Options
+        //                if (q.Options?.Any() == true)
+        //                {
+        //                    for (int i = 0; i < q.Options.Count; i++)
+        //                    {
+        //                        var letter = ((char)('A' + i)).ToString();
+        //                        var clean = optionPrefixRegex.Replace(q.Options[i].Trim(), "");
+
+        //                        col.Item().PaddingLeft(5)
+        //                           .Text($"{letter}. {clean}")
+        //                           .FontSize(11).Justify();
+        //                    }
+        //                }
+
+        //                // Correct answer
+        //                // Correct Answer
+        //                if (q.CorrectAnswerIndices.Any())
+        //                {
+        //                    var correctLetters = q.CorrectAnswerIndices
+        //                        .Where(i => i >= 0 && i < q.Options.Count)
+        //                        .Select(i => ((char)('A' + i)).ToString());
+
+        //                    string answerText = $"Answer: {string.Join(", ", correctLetters)}";
+
+        //                    col.Item().AlignLeft().Column(innerCol =>
+        //                    {
+        //                        // innerCol.Item().Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
+        //                        innerCol.Item().Text(answerText).FontSize(11).Bold().AlignCenter();
+        //                        // innerCol.Item().Width(200).LineHorizontal(0.5f).LineColor(Colors.Black);
+        //                    });
+        //                }
+
+        //                // Why incorrect
+        //                if (!string.IsNullOrWhiteSpace(q.Explanation))
+        //                {
+        //                    col.Item().Text("Explanation:").Bold();
+        //                    col.Item().Element(e =>
+        //                        e.PaddingLeft(10).Element(inner =>
+        //                            RenderTextWithImages(inner, q.Explanation)
+        //                        )
+        //                    );
+        //                }
+
+        //                // Answer image
+        //                if (!string.IsNullOrWhiteSpace(q.answerImageURL) &&
+        //                    imageMap.TryGetValue(q.answerImageURL, out var aImg))
+        //                {
+        //                    col.Item().Image(aImg).FitWidth();
+        //                }
+        //            });
+        //        }
+
+        //        // —— Render all content ——
+        //        foreach (var q in generalQuestions)
+        //            AddPage(c => RenderQuestion(c, q));
+
+        //        foreach (var item in topicWithCaseStudies)
+        //        {
+        //            AddPage(c => c.Column(col =>
+        //            {
+        //                col.Spacing(5);
+        //                col.Item()
+        //                   .Text($"Topic: {CleanText(item.Topic.TopicName)}")
+        //                   .Bold().FontSize(14);
+        //                col.Item()
+        //                   .Text(CleanText(item.CaseStudy))
+        //                   .Justify().FontSize(11);
+        //            }));
+
+        //            foreach (var q in item.Questions)
+        //                AddPage(c => RenderQuestion(c, q));
+        //        }
+
+        //        foreach (var item in pureTopics)
+        //        {
+        //            AddPage(c => c.Column(col =>
+        //            {
+        //                col.Item()
+        //                   .Text($"Topic: {CleanText(item.Topic.TopicName)}")
+        //                   .Bold().FontSize(14);
+        //            }));
+
+        //            foreach (var q in item.Questions)
+        //                AddPage(c => RenderQuestion(c, q));
+        //        }
+
+        //        foreach (var item in standaloneCaseStudies)
+        //        {
+        //            AddPage(c => c.Column(col =>
+        //            {
+        //                col.Spacing(5);
+        //                col.Item().Text("Case Study").Bold().FontSize(14);
+        //                col.Item()
+        //                   .Text(CleanText(item.CaseStudy))
+        //                   .Justify().FontSize(11);
+        //            }));
+
+        //            foreach (var q in item.Questions)
+        //                AddPage(c => RenderQuestion(c, q));
+        //        }
+        //    })
+        //   .GeneratePdf(filePath);
+
+        //    await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+        //    var formFile = new FormFile(stream, 0, stream.Length, "file", System.IO.Path.GetFileName(filePath));
+        //    var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
+        //    quiz.FilePdfURL = uploadedPath;
+        //    _context.UploadedFiles.Update(quiz);
+        //    await _context.SaveChangesAsync();
+        //    return new Response<string>(true, "PDF exported successfully.", "", uploadedPath);
+        //}
+     
         public async Task<Response<string>> ExportQuizDocx(Guid quizId)
         {
             var quiz = await _context.UploadedFiles.FirstOrDefaultAsync(x => x.FileId.Equals(quizId));
