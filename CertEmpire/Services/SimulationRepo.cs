@@ -648,12 +648,12 @@ namespace CertEmpire.Services
             var uploadFile = await _context.UploadedFiles.FirstOrDefaultAsync (x => x.FileId == fileId);
             if(uploadFile==null)
                 return new Response<string>(false, "File not found.", "", "");
-            var qzs = await ExportQuizQzs(fileId);
+          //  var qzs = await ExportQuizQzs(fileId);
             var pdf = await ExportQuizPdf(fileId);
-            uploadFile.FileQzsURL = qzs.Data??"";
-            uploadFile.FilePdfURL = pdf.Data??"";
-            _context.UploadedFiles.Update(uploadFile);
-            await _context.SaveChangesAsync();
+            //uploadFile.FileQzsURL = qzs.Data??"";
+            //uploadFile.FilePdfURL = pdf.Data??"";
+            //_context.UploadedFiles.Update(uploadFile);
+            //await _context.SaveChangesAsync();
             if ( pdf.Success ==true)
             {
                 return new Response<string>(true, "File Created successfully.", "","Created");
@@ -935,9 +935,9 @@ namespace CertEmpire.Services
                 var formFile = new FormFile(stream, 0, stream.Length, "file", fileName);
                 var uploadedPath = await _fileService.ExportFileAsync(formFile, "QuizFiles");
                 quiz.FileQzsURL = uploadedPath;
-                //_context.UploadedFiles.Update(quiz);
-                //await _context.SaveChangesAsync();
-                return new Response<string>(true, "File exported successfully.", "", uploadedPath);
+            _context.UploadedFiles.Update(quiz);
+            await _context.SaveChangesAsync();
+            return new Response<string>(true, "File exported successfully.", "", uploadedPath);
         }
         public async Task<Response<string>> ExportQuizPdf(Guid quizId)
         {
@@ -1356,9 +1356,9 @@ namespace CertEmpire.Services
             var formFile = new FormFile(stream, 0, stream.Length, "file", System.IO.Path.GetFileName(filePath));
             var uploadedPath = await _fileService.ExportFileAsync(formFile, PdfTempFolder);
 
-            //quiz.FilePdfURL = uploadedPath;
-            //_context.UploadedFiles.Update(quiz);
-            //await _context.SaveChangesAsync();
+            quiz.FilePdfURL = uploadedPath;
+            _context.UploadedFiles.Update(quiz);
+            await _context.SaveChangesAsync();
 
             return new Response<string>(true, "PDF exported successfully.", "", uploadedPath);
         }
